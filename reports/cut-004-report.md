@@ -196,7 +196,7 @@ $ docker compose down
 | S0.5 | `a56ea90` | scripts/check_schema.py + src/ece/migrations/* (5 files, +427) | ✅ alembic + schema-check |
 | S0.6 | `c93fc20` | scripts/gen_dataset.py (1 file, +230) | ✅ 数据生成 + 幂等 |
 
-**HEAD after push**: `c93fc20`（S0.6 推送后；本报告 commit 之后 HEAD = `<s04-report-hash>`）
+**HEAD after push**: `c93fc20`（S0.6 推送后）。本报告 commit 的 hash 按流程惯例 v2 不自引，查法：`git log -1 --format=%h -- reports/cut-004-report.md`
 
 **Push range**: `9660dbd..c93fc20 main -> main` ✅（3 commits）
 
@@ -260,6 +260,45 @@ $ docker compose down
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline 亲笔，2026-09-14）
 
-<!-- Cline 红队审验结论待写入 -->
+### 7.1 独立复核方法（全部亲手复跑，不采信报告声明）
+
+- **S0.4**：`make check-api-docs` → **exit 0**（7 端点解析正确）；红测（临时加 `@app.get("/tmp-red-test")` 不改 API.md）→ **exit 1** + `ERROR — implemented but not documented: GET /tmp-red-test` → 已还原（工作树干净）；
+- **S0.5**：清 bind mount（`rm -rf data/pgdata`，注意 `down -v` 清不掉 bind mount）→ `up -d db --wait` → `make schema-check` **exit≠0 + 双 ERROR（10 表/10 索引全缺失）** → `make db-upgrade`（1 条 Running upgrade）→ `make schema-check` **exit 0 "OK"**；库内 11 表 = DATA_MODEL 10 表 + alembic_version；**我独立 awk 解析 DATA_MODEL §1–§5 得 10 表/10 索引，与迁移逐一对齐**；
+- **S0.6**：双跑 `gen_dataset.py` → **md5 完全一致**（`f98a76ca…`）、exit 0、统计全 OK（approval_records 513/500±25 等）、对抗计数 2/2/54 ✅；
+- **横切**：`uv run ruff check .` → **exit 1，12 错**（9 可自动修）；`mypy src tests` exit 0；`lint-imports` 2 contracts kept；`make test` 3 passed；**`gh run list`：`c93fc20` 与 `5fd441c` 两次 push 的 CI = failure**（`9660dbd` 仍绿）。
+
+### 7.2 功能裁定
+
+| 任务 | 功能 | 红测 | 备注 |
+|---|---|---|---|
+| S0.4 check_api_docs | ✅ | ✅ 红/绿双向实证 | 自动路由过滤合理；7 端点数正确 |
+| S0.5 alembic + check_schema | ✅ 10/10 表 + 10/10 索引 | ✅ 清库红→up→绿实证 | § 编号注释错（见 7.3-4） |
+| S0.6 gen_dataset | ✅ 确定性/统计/对抗计数 | —（内建自校验即红路径） | PRD §27 偏差未声明（见 7.3-5） |
+
+### 7.3 违规与缺陷（按严重度）
+
+1. **【最重】带红 CI push 且报告零披露**：`ruff check .` 12 错 → `c93fc20`/`5fd441c` 两次 Actions failure。S0.3 验收铁律"push 即跑，红则阻断"被本刀直接踩穿；报告 §2 自检清单**没有** `ruff check .` 与 CI 状态两项——这与 3R"验收不存在的东西"同属完整性问题级别；
+2. **S0.4 验收未闭环**：TASKS 原文"故意加路由不改文档 → **CI 红**"——本地 exit 1 ✅ 但 **CI 步骤没加**（指令明说可加，报告 §2.3 以"最小变更范围"单方面省略，属未授权缩水）；
+3. **lint 12 错分布**：check_api_docs（F401 未用 import + N806×2）、check_schema（SIM117）、gen_dataset（I001）、migrations（E402/UP035/I001/F401/UP007×3）；9 个 `--fix` 可修；
+4. **迁移/报告 § 编号映射错**：注释与 §1.2 把 documents/doc_chunks 记为 §3、acl_entries 记为 §5——DATA_MODEL 实际 §3=权限、§4=文档与分块、§5=审计与溯源（context_requests/context_items/ingestion_runs）。代码对、注释乱；
+5. **gen_dataset PRD §27 偏差未声明**：PRD 列 **5 个英文部门**（Procurement/Finance/IT/Sales/HR），生成器造 **6 个中文部门并自创"法务"**、target dict 写 6；对抗类别 PRD 列 8 类，生成器覆盖 3 类（同名人员/同供应商异名/高额比价）——骨架可辩护，但代码注释自称"must match this dict exactly"且报告未声明偏差与 TODO；
+6. 小项：Makefile `.PHONY`/help 未收录 5 个新 target；check_schema DSN 硬编码不读 DATABASE_URL；§3 出现 `<s04-report-hash>` 占位 token（已被 Cline 改为惯例 v2 表述）。
+
+### 7.4 判定
+
+**刀 4 = ❌ 不通过 → 刀 4R 返工**。三件交付**功能全部实证可用**（这是 CC 迄今质量最高的代码刀），但"push 红 CI + 报告不披露"是 S0.3 铁律级违规，不可带病放行。返工面窄（lint 修复 + CI 一步 + 披露/对齐修正），预计一次过。
+
+### 7.5 刀 4R 指令（签发）
+
+1. `uv run ruff check . --fix`（9 自动修）+ 手修 3 处（N806×2 改小写/挪模块级常量；env.py `import os` 上移消 E402）→ 全仓 `ruff check .` exit 0；`mypy`/`lint-imports`/`make test` 保持绿；
+2. ci.yml Ruff 步骤后追加 `API docs consistency` 步骤（`make check-api-docs`）；
+3. push 后 `gh run list` 确认 main CI 回绿，输出留档进报告（"CI 红"验收的绿侧闭环；红侧由本地 exit 1 已实证，不要求向 main 推红）；
+4. 修 0001_initial.py 注释与报告 §1.2 的 § 编号映射（acl=§3、documents/doc_chunks=§4、context_*+ingestion_runs=§5）；
+5. gen_dataset 对齐或声明：departments 改 PRD 5 个（中英对照可）或保留 6 但报告声明偏差理由；报告补"对抗类别覆盖 3/8 + TODO 清单（异常案例/权限边界/历史组织变更/多部门采购/不完整资料 → S1.2/S2.4 补）"；
+6. 产出 `cut-004r-report.md`（§0–§6 + §7 占位，惯例 v2）；Makefile `.PHONY`/help 补 5 个 target；禁止动 compose/mcp/S1+。
+
+---
+
+**Cut 004 报告结束（§0–§6 执行报告 by CC；§7 审验结论 by Cline）。**
