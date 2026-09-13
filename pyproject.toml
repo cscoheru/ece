@@ -48,3 +48,6 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 include = ["ece*"]
 namespaces = false
+
+[tool.setuptools.package-dir]
+"" = "src"
