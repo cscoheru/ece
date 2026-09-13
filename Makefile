@@ -26,3 +26,11 @@ demo:
 
 rev:
 	uv run alembic downgrade -1
+
+# R5 (cut-003r2): pgvector 镜像源补救 — daocloud.io 对 library/postgres:16-pgvector 403 Forbidden,
+# 但 pgvector/pgvector:pg16 走同一 mirror 可拉;tag 一下 compose 即可找到。
+pull-db:
+	@echo "Pulling pgvector/pgvector:pg16 (avoids daocloud.io 403 on library/postgres:16-pgvector upstream)..."
+	docker pull pgvector/pgvector:pg16
+	docker tag pgvector/pgvector:pg16 postgres:16-pgvector
+	@echo "Tagged pgvector/pgvector:pg16 → postgres:16-pgvector (compose can now find it locally)"
