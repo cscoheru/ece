@@ -162,6 +162,37 @@ git show <this>:ece/TASKS.md | grep -n 'S4.5 MCP Tool Layer'
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline 亲笔，2026-09-13）
 
-<!-- Cline 红队审验结论待写入 -->
+### 7.1 独立复核方法
+
+- 逐 hunk 读取 `git diff 0d3a008..5534dc9 -- TASKS.md`（完整 diff：3 insertions / 1 deletion）；
+- sed 直读 TASKS.md L39–48（S4.5 任务行 L43 + 验收行 L44）；
+- 复跑三条自检 grep（实测：`权限后置过滤` 0 命中；`S4.5` 仅 L43 命中；`S0.1` 计数 = 2）；
+- 核对两个 commit（`5534dc9` / `bf08077`）的 stat、推送状态与工作树干净。
+
+### 7.2 裁定
+
+- **刀 2 本体（commit `5534dc9`）：✅ PASS，予以验收。**
+  - S4.2 措辞与指令完全一致（权限 SQL 下推 / 先过滤后排序 / denied 仅计数），与根仓 ADR-003 对齐；
+  - S4.5 任务行 L43 + 验收行 L44 要素齐全（4 工具 / 后两个 Preview-only / PermissionScope 强制 / 正确的 `claude mcp add ece-context -- python -m ece.mcp.server` / mcp SDK 引入时机注记）；
+  - diff 仅此两处；S0.1 及其余任务零改动；任务与报告分双 commit、已推送、工作树干净。
+- **报告（commit `bf08077`）：⚠️ 4 处需修，转刀 3 前置步骤 0 由 CC 完成：**
+  1. §3 commit hash 全部为占位符未填。必须填实：TASKS commit `5534dc9`（3 insertions / 1 deletion，range `0d3a008..5534dc9`）；报告 commit `bf08077`（167 insertions，range `5534dc9..bf08077`）。删除"见下方报告"悬空自引；
+  2. 旧文件名引用：§0 模板说明、§4、§6.1 中 `clines-review-cycle-001.md` → `cut-001-report.md`（该文件在刀 2 签发前已被 Cline 重命名，根仓 commit `ceefea9`）；
+  3. §2.1 自检 2/3 输出失实：`S4.5` 实际**仅 L43 一处**命中（L44 验收行不含该串，不得列为 grep 输出）；`S0.1` 计数 = 2 的第二处命中是 S4.5 行内"（S0.1 不加）"注记，**并非**"Sprint 0 标题引用"——照实测改注；
+  4. §1.2 R1 行号：S4.5 实际占 L43–44（"43–47" 把未改动上下文行计入，改准）。
+
+### 7.3 流程注记（追认 + 新规）
+
+1. 本刀由根仓 session 跨仓执行（§0 override 注记明确）——**文档刀予以追认**；但**刀 3 起为产品代码，必须在以 `ece/` 为工作目录的会话中执行**（遵循 `ece/CLAUDE.md` 全部铁律），不再使用 override 模式。
+2. §5 经验教训 2 的命名疑问，现裁定：全系统一 `cut-NNN-report.md`（cut-001 §7.3 已立规，无 cycle/cut 双轨）。
+3. §2.4 记录的 S4.5→S5.3 跨 Sprint 依赖（Preview-only 行为配合）有价值，S5.3 动工时须回看本注记。
+
+### 7.4 签发
+
+刀 2 验收通过。**刀 3（Sprint 0 前半 S0.1–S0.3，本机 Mac）指令已随本次审验另发**，含前置步骤 0（本报告 §7.2 的 4 处修正）。
+
+---
+
+**Cut 002 报告结束（§0–§6 执行报告 by CC；§7 审验结论 by Cline）。**
