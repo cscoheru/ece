@@ -24,6 +24,22 @@ eval:
 demo:
 	uv run python -m ece.demo
 
+# S0.4: API.md ↔ FastAPI openapi.json 双向 diff(文档有而路由无 WARNING;路由有而文档无 ERROR exit 1)
+check-api-docs:
+	uv run python scripts/check_api_docs.py
+
+# S0.5: Alembic 迁移到最新 schema(默认 DATABASE_URL=compose db)
+db-upgrade:
+	uv run alembic -c src/ece/migrations/alembic.ini upgrade head
+
+# S0.5: 连活库核对 information_schema vs DATA_MODEL.md §1-§5
+schema-check:
+	uv run python scripts/check_schema.py
+
+# S0.6: 合成 Demo Corporation 数据(per PRD §27)
+gen-dataset:
+	uv run python scripts/gen_dataset.py --out data/dataset/demo.json
+
 rev:
 	uv run alembic downgrade -1
 
