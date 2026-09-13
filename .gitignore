@@ -1,26 +1,16 @@
-# macOS
-.DS_Store
-
-# Python (Sprint 0 ready)
 __pycache__/
 *.py[cod]
-.venv/
-venv/
+*$py.class
 *.egg-info/
-dist/
-build/
-
-# tooling caches
+.venv/
 .pytest_cache/
-.ruff_cache/
 .mypy_cache/
-.coverage
-htmlcov/
-
-# secrets / local env (ECE_LLM_*, DATABASE_URL, ECE_ADMIN_TOKEN)
-.env
-.env.*
-
-# runtime volumes (postgres data etc.) — synthetic dataset under data/ IS tracked
-volumes/
+.ruff_cache/
+build/
+dist/
+.DS_Store
 *.log
+.env
+.env.local
+data/*.db
+volumes/
