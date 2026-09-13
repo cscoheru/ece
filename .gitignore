@@ -13,4 +13,5 @@ dist/
 .env
 .env.local
 data/*.db
+data/
 volumes/

@@ -4,7 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      # 宿主 8000 被 china_platform 长期占用（cut-003 §7.2 #3）；容器内仍 8000，代码不变
+      - "127.0.0.1:8765:8000"
     volumes:
       - ./data:/app/data
     depends_on:
@@ -14,11 +15,12 @@ services:
       DATABASE_URL: postgresql+psycopg://ece:ece@db:5432/ece
       ECE_LOG_LEVEL: INFO
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
-      interval: 10s
-      timeout: 5s
+      # python:3.12-slim 无 curl —— 用标准库 urllib（compose healthcheck 覆盖 Dockerfile HEALTHCHECK）
+      test: ["CMD", "python", "-c", "import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   db:
     image: postgres:16-pgvector
