@@ -20,6 +20,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.11",
+    "import-linter>=2.15",
 ]
 
 [tool.ruff]
@@ -39,6 +40,12 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q"
+markers = [
+    "integration: integration tests (require live postgres)",
+    "security: security / permission / E2 tests",
+    "eval: E1-E6 evaluation suite (needs LLM endpoint)",
+    "eval_llm: LLM-backed evaluation cases",
+]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -51,3 +58,19 @@ namespaces = false
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.importlinter]
+root_packages = ["ece"]
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Domain pack isolation"
+type = "forbidden"
+source_modules = ["ece"]
+forbidden_modules = ["ece.domain_packs"]
+
+[[tool.importlinter.contracts]]
+name = "Engine core isolation"
+type = "forbidden"
+source_modules = ["ece.domain_packs"]
+forbidden_modules = ["ece"]
