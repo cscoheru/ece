@@ -1,6 +1,6 @@
 # Cut 002 执行报告（CC）
 
-> **模板说明**: 本文件按根仓 `docs/track_b/clines-review-cycle-001.md` §0–§6 结构产出。§7 留作 Cline 红队审验结论占位（**不自写审验结论**）。
+> **模板说明**: 本文件按根仓 `docs/track_b/cut-001-report.md` §0–§6 结构产出。§7 留作 Cline 红队审验结论占位（**不自写审验结论**）。
 
 ---
 
@@ -38,7 +38,7 @@
 
 | # | 文件:行号 | 关联 | 修复前 | 修复后 |
 |---|---|---|---|---|
-| **R1** | `ece/TASKS.md:43-47`（S4.5 新增） | 根仓 `execution-plan.md §4` | （无 S4.5） | `- [ ] S4.5 MCP Tool Layer（K7，设计=根仓 execution-plan.md §4）：src/ece/mcp/{server,transport,auth}.py；暴露 4 工具 search / get_record / create_task / send_message，后两个仅 Preview 不执行；每个 tool call 强制经 PermissionScope（auth.py），不得绕过权限引擎；Claude Code 接入：\`claude mcp add ece-context -- python -m ece.mcp.server\`（仓库根目录执行）；mcp SDK 依赖本任务动工时引入 pyproject（S0.1 不加）。`<br/>`  验收：...E2=0 不破；离线 stdio 可用。` |
+| **R1** | `ece/TASKS.md:43-44`（S4.5 新增） | 根仓 `execution-plan.md §4` | （无 S4.5） | `- [ ] S4.5 MCP Tool Layer（K7，设计=根仓 execution-plan.md §4）：src/ece/mcp/{server,transport,auth}.py；暴露 4 工具 search / get_record / create_task / send_message，后两个仅 Preview 不执行；每个 tool call 强制经 PermissionScope（auth.py），不得绕过权限引擎；Claude Code 接入：\`claude mcp add ece-context -- python -m ece.mcp.server\`（仓库根目录执行）；mcp SDK 依赖本任务动工时引入 pyproject（S0.1 不加）。`<br/>`  验收：...E2=0 不破；离线 stdio 可用。` |
 | **R2** | `ece/TASKS.md:40`（S4.2 措辞） | 根仓 ADR-003（SQL 子查询层强制，不是 post-filter） | `Query Planner：keyword(FTS+bigram)/vector/structured/relationship 四路 + Entity Linking + 权限后置过滤 + merge/rank` | `Query Planner：... + Entity Linking + 权限 SQL 下推（四路召回各自查询内做 PermissionScope 过滤，先过滤、后排序/截断；denied 仅计数） + merge/rank` |
 
 ---
@@ -54,10 +54,9 @@ $ grep -n '权限后置过滤' ece/TASKS.md
 
 # 2. S4.5 必须存在（任务行 + 验收行）
 $ grep -n 'S4.5' ece/TASKS.md
-43:- [ ] S4.5 MCP Tool Layer...
-45:  验收：`python -m ece.mcp.server`...（含 "S4.5" 不直接命中但任务包含 S4.5 标识）
+43:- [ ] S4.5 MCP Tool Layer（K7，设计=根仓 execution-plan.md §4）：src/ece/mcp/{server,transport,auth}.py；暴露 4 工具 search / get_record / create_task / send_message，后两个仅 Preview 不执行；每个 tool call 强制经 PermissionScope（auth.py），不得绕过权限引擎；Claude Code 接入：`claude mcp add ece-context -- python -m ece.mcp.server`（仓库根目录执行）；mcp SDK 依赖本任务动工时引入 pyproject（S0.1 不加）。
 
-# 3. S0.1 未被改动（计数应为 2：任务行 + Sprint 0 标题引用）
+# 3. S0.1 未被改动（计数 = 2：S0.1 任务行 + S4.5 行内"（S0.1 不加）"注记，并非" Sprint 0 标题引用"）
 $ grep -c 'S0.1' ece/TASKS.md
 2
 ```
@@ -71,7 +70,7 @@ $ grep -c 'S0.1' ece/TASKS.md
 git show <commit> --stat
 
 # 2. 看改动 diff
-git diff <prev>..<this> -- ece/TASKS.md
+git diff 0d3a008..5534dc9 -- ece/TASKS.md
 
 # 3. 验证 S4.2 措辞已修正
 git show <this>:ece/TASKS.md | grep -n '权限 SQL 下推'
@@ -101,13 +100,16 @@ git show <this>:ece/TASKS.md | grep -n 'S4.5 MCP Tool Layer'
 ## 3. Commit 信息
 
 ```
-[main <hash>] tasks: add S4.5 MCP Tool Layer + fix S4.2 permission wording (per root track_b spec)
- 1 file changed, <N> insertions(+), <N> deletions(-)
+[main 5534dc97c9d728f19174fad3d0ca02485c85aac7] tasks: add S4.5 MCP Tool Layer + fix S4.2 permission wording (per root track_b spec)
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 ```
 
-**Pushed**: `<prev>..<this> main -> main` ✅
+**Pushed**: `0d3a008..5534dc9 main -> main` ✅
 
-**Commit hash**: 见下方报告
+[main bf080773305c8810585933c491af3d1148b801fb] docs(reports): cut 002 execution report
+ 1 file changed, 167 insertions(+)
+Pushed: 5534dc9..bf08077 main -> main ✅
+
 
 ---
 
@@ -116,7 +118,7 @@ git show <this>:ece/TASKS.md | grep -n 'S4.5 MCP Tool Layer'
 | 项 | 说明 |
 |---|---|
 | **跨仓操作** | 本刀从 `domainAgentECE` session 修改 `ece/` 仓文件（override ROOT CLAUDE.md "不要在本仓操作它" session-level 约束）。本刀用户明确授权 |
-| **报告路径不同** | 根仓 cycle-001 报告在 `docs/track_b/clines-review-cycle-001.md`，本刀报告在 `ece/reports/cut-002-report.md`（仓独立） |
+| **报告路径不同** | 根仓 cut-001 报告在 `docs/track_b/cut-001-report.md`，本刀报告在 `ece/reports/cut-002-report.md`（仓独立） |
 | **自检 grep 数量** | 用户指定 3 条 grep（`权限后置过滤` / `S4.5` / `S0.1` 计数），与 cycle-001 模式不同 |
 | **范围声明差异** | cycle-001 范围仅 `docs/track_b/`；本刀范围仅 `ece/TASKS.md` + `ece/reports/` |
 
@@ -139,7 +141,7 @@ git show <this>:ece/TASKS.md | grep -n 'S4.5 MCP Tool Layer'
 |---|---|
 | `ece/reports/cut-002-report.md` | `ece/reports/cut-NNN-report.md`（NNN 递增，从 002 起） |
 
-> **注意**: 命名与根仓 `docs/track_b/clines-review-cycle-NNN.md` 不同（cycle vs cut）。后续是否统一由用户决定。
+> **注意**: 命名与根仓 `docs/track_b/cut-001-report.md` 一致（cut-NNN-report.md 全系统一）——cut-002 §7.3.2 已裁定无 cycle/cut 双轨。
 
 ### 6.2 必保留章节
 
