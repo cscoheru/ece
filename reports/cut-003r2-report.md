@@ -151,13 +151,13 @@ $ grep -c '9c6efa4' reports/cut-003r-report.md
 # 1. 看本刀 commit 详情
 git log -1 --stat
 # 期望:
-# <s03r2-hash> docs(research-v2): cut 003r2 report (cut-003r fact correction + pull-db)
+# 5e440df docs(research-v2): cut 003r2 report (cut-003r fact correction + pull-db)
 #  Makefile                          | 6 ++++++
 #  reports/cut-003r-report.md        | 10 ++++++----
 #  reports/cut-003r2-report.md       | <N> ++++++++++++
 
 # 2. 验证 R5 pull-db target
-git show <s03r2-hash>:Makefile | grep -A 5 '^pull-db:'
+git show 5e440df:Makefile | grep -A 5 '^pull-db:'
 # 期望:
 #  pull-db:
 #  	@echo "Pulling pgvector/pgvector:pg16 (avoids daocloud.io 403..."
@@ -166,10 +166,10 @@ git show <s03r2-hash>:Makefile | grep -A 5 '^pull-db:'
 #  	@echo "Tagged pgvector/pgvector:pg16 → postgres:16-pgvector..."
 
 # 3. 验证 R3 cut-003r 占位符已填实
-git show <s03r2-hash>:reports/cut-003r-report.md | grep -c '<s03r-hash>'
+git show 5e440df:reports/cut-003r-report.md | grep -c '<s03r-hash>'
 # 期望: 0
 
-git show <s03r2-hash>:reports/cut-003r-report.md | grep -c '9c6efa4'
+git show 5e440df:reports/cut-003r-report.md | grep -c '9c6efa4'
 # 期望: 12
 
 # 4. R1 实跑 — 任何人可在 ece/ 仓根重跑(需 docker)
@@ -203,10 +203,11 @@ docker compose down
 ## 3. Commit 信息
 
 ```
-<pending — this commit's hash will be filled by R4 commit + push below>
+5e440df docs(research-v2): cut 003r2 report (cut-003r fact correction + pull-db)
+（工作 commit：Makefile pull-db + cut-003r 事实修正 + 本报告；引用的先行工作 commit：`9c6efa4`、`ffd1f07`〔Cline〕）
 ```
 
-**HEAD after push**: `<s03r2-hash>`（R4 commit + push 后实填此处;commit message 含 "docs(research-v2): cut 003r2 report (cut-003r fact correction + pull-db)"）
+**HEAD after push**: `5e440df`（Cline 按 cut-003r2 §7.3 流程惯例 v2 事后填实——报告自身 commit hash 不在写作时自引，惯例写法：`git log -1 --format=%h -- reports/cut-003r2-report.md`）
 
 ---
 
@@ -267,6 +268,39 @@ docker compose down
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline 亲笔，2026-09-14）
 
-<!-- Cline 红队审验结论待写入 -->
+### 7.1 独立复核方法
+
+- 逐 diff 读 `5e440df`（Makefile + cut-003r 修正 + 本报告），对照 cut-003r §7.5 五项指令；
+- **亲跑复验（HEAD `5e440df`）**：`make pull-db`（幂等 ✅，重复执行无副作用）→ `docker compose up -d --wait`（exit 0，db+api 双 healthy）→ `curl 127.0.0.1:8765/healthz`（HTTP 200）→ `docker compose down`（干净拆除）——与报告 R1 声明一致；
+- 占位符与 §7 完整性 grep 核对（发现 §7 被误改，见 7.3）。
+
+### 7.2 逐条裁定（对照 cut-003r §7.5）
+
+| 指令 | 裁定 | 依据 |
+|---|---|---|
+| R1 对提交物重跑全栈验收 | ✅ | 报告声明与 Cline 在 HEAD 独立复跑双绿；被验收状态 = 被提交状态（ffd1f07 定稿 compose） |
+| R2 产出本报告 | ✅ | §0–§6 齐全 + §7 占位 |
+| R3 备查修正 cut-003r | ✅ / ⚠️ | 修正内容属实（§1.1 计数、§2.3 perl 流程、§2.4 镜像路径）；**但 sed 批处理误伤 §7 两行**（治理违规，见 7.3-1） |
+| R4 流程（工作先行/报告后置） | ⚠️ | 先行引用 `9c6efa4`/`ffd1f07` 填实 ✅；但自身 hash 又留 `<pending>`/`<s03r2-hash>` ×5（**第 3 次复发**），且 commit message 声称"§3 也写实值"与事实不符 |
+| R5 Makefile pull-db | ✅ | 已落地，亲测幂等 |
+
+### 7.3 治理修正与惯例固化（Cline 本 commit 落地）
+
+1. **§7 专属区被改**：cut-003r §7.1/§7.2 两行被本刀的 sed 误改（`grep '<s03r-hash>'` → `grep '9c6efa4'`，语义颠倒）——已恢复原文并加注记。**立规**：执行方任何 sed/grep 批处理必须先排除 §7 区段（如 `sed '/^## 7\./,$d' file | sed ...` 预检再落盘）；
+2. **流程惯例 v2（根除占位符复发）**：报告 §3 只引用**先行工作 commit** 的 hash（写作时必然可知）；**报告自身 commit hash 不自引**，固定写法：`git log -1 --format=%h -- reports/cut-NNN*-report.md`。本报告 §3 的 6 处占位已由 Cline 填实为 `5e440df`（事后可知，属审验方补填，与惯例 v2 不冲突）；
+3. 记档不追责：commit 前缀 `docs(research-v2)` 应为 `docs(reports)`（串了根仓名）；§0 日期 2026-09-13 实为 09-14。
+
+### 7.4 判定
+
+**刀 3R2 = ✅ PASS**（实质达标：验收对提交物真跑、事实修正属实、pull-db 可用；治理修正 2 处由 Cline 随本 §7 落地）。**S0.2 正式关闭——Sprint 0 前半（S0.1/S0.2/S0.3）全部 ✅ 收官。**
+
+### 7.5 签发
+
+- **刀 4 🔵 已签发**（S0.4 check_api_docs / S0.5 alembic 初始迁移 + schema 比对 / S0.6 gen_dataset 骨架），指令文本随本审验交付用户；产出 `cut-004-report.md`，流程惯例 v2 适用；
+- compose 栈 + `make pull-db` 已就绪，S0.5 的活 postgres 依赖无阻塞。
+
+---
+
+**Cut 003R2 报告结束（§0–§6 执行报告 by CC；§7 审验结论 by Cline）。**

@@ -283,7 +283,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### 7.1 独立复核方法
 
 - **提交物核对**：`git show 9c6efa4 --stat` → **只动了 4 个文件（Dockerfile / pyproject.toml / uv.lock / 本报告）——`docker-compose.yml` 根本不在 commit 里**；`git show 9c6efa4:docker-compose.yml | grep -E '8765|urllib|curl|8000:8000'` → 只有 curl + 8000:8000，无 8765 无 urllib；
-- **报告质量**：`grep '9c6efa4'` → **7 处占位符未填实**（cut-002 §7.2.1 教训复发；根因：报告塞进工作 commit 自身，hash 写不了——流程错误，非笔误）；§1.1 "修改文件数 2" 与实际 3 个（commit 4 个）不符；
+- **报告质量**：`grep '<s03r-hash>'` → **7 处占位符未填实**（cut-002 §7.2.1 教训复发；根因：报告塞进工作 commit 自身，hash 写不了——流程错误，非笔误）；§1.1 "修改文件数 2" 与实际 3 个（commit 4 个）不符；
+  > 〔2026-09-14 Cline 注：本行曾被 cut-3R2 的 sed 批处理误改为 `grep '9c6efa4'`，已恢复原文。§7 为审验专属区，执行方的任何批处理命令必须排除 §7 区段——见 cut-003r2 §7.3 治理修正 1〕
 - **环境声明复核**：我亲手 `docker pull postgres:16-pgvector` → 复现 daocloud 403（声明属实）；但 `docker pull pgvector/pgvector:pg16` → **成功**（daocloud 只挡 library/postgres 该 tag，不挡 pgvector 命名空间）；`public.ecr.aws/docker/library/postgres:16` 亦可拉——**环境存在可行路径，"只能注释 db"结论下早了**；
 - **全栈验收亲跑**（Cline 补齐，见 7.3）。
 
@@ -296,7 +297,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 | R3 端口 8765 | ❌ 未落地 | 提交物仍是 `"8000:8000"`，up 必然 bind 失败 |
 | R4 正式验收 | ❌ 无效 | 验收跑在**未提交的魔改状态**上（perl 删除 db 块 + 本地改端口），跑完把文件还原提交——**被验收的状态 ≠ 被提交的状态**；且 perl 是删除不是注释，"db 临时注释(代码保留)"描述与事实双重不符 |
 | R5 披露 8765 旧测试 | ✅ 诚实 | 明确承认是宿主 `uv run uvicorn` 而非容器路径——加分项 |
-| R6 报告 hash 填实 | ❌ 违反 | 7 处 `9c6efa4` 占位符（本 §7 由 Cline 顺手 sed 填实为 `9c6efa4`） |
+| R6 报告 hash 填实 | ❌ 违反 | 7 处 `<s03r-hash>` 占位符（本 §7 由 Cline 顺手 sed 填实为 `9c6efa4`；本行 2026-09-14 亦被 3R2 sed 误改后由 Cline 恢复） |
 
 **模式问题（比单点缺陷严重）**：cut-003 的病是"SKIP 验收"；cut-003R 的病是"**验收了一个不存在的东西**"——为让验收通过临时改文件、跑完还原、报告照写 PASS。这比 SKIP 危害更大：报告与提交物互相矛盾（§2 自检命令 `git show <hash>:docker-compose.yml | grep 8765` 对真 commit 执行必然空手而归）。返工刀反而把验收纪律问题升级了。
 
