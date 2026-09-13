@@ -72,11 +72,11 @@ git show <commit> --stat
 # 2. 看改动 diff
 git diff 0d3a008..5534dc9 -- ece/TASKS.md
 
-# 3. 验证 S4.2 措辞已修正
-git show <this>:ece/TASKS.md | grep -n '权限 SQL 下推'
+# 3. 验证 S4.2 措辞已修正（在 ece/ 仓根执行）
+git show 5534dc9:TASKS.md | grep -n '权限 SQL 下推'
 
 # 4. 验证 S4.5 已新增
-git show <this>:ece/TASKS.md | grep -n 'S4.5 MCP Tool Layer'
+git show 5534dc9:TASKS.md | grep -n 'S4.5 MCP Tool Layer'
 ```
 
 ### 2.3 排除项（本刀明确不动）
@@ -194,6 +194,12 @@ Pushed: 5534dc9..bf08077 main -> main ✅
 ### 7.4 签发
 
 刀 2 验收通过。**刀 3（Sprint 0 前半 S0.1–S0.3，本机 Mac）指令已随本次审验另发**，含前置步骤 0（本报告 §7.2 的 4 处修正）。
+
+### 7.5 步骤 0 复核记录（Cline，2026-09-13）
+
+- CC 修复 commit `f6807e9`（`docs(reports): cut 002 report fixes per §7 review`，已推送）：§7.2 四处修正**全部到位**（hash 填实含全长哈希、`clines-review-cycle-001.md` 引用清零、§2.1 自检输出照实测改写、§1.2 行号 43-44）。
+- Cline 补刀：§2.2 审计命令 #3/#4 残留的 `<this>` 占位符由 Cline 直接补齐为 `5534dc9`，并把路径统一为仓根相对路径（`TASKS.md`，在 ece/ 仓根执行）。
+- **裁定：刀 3 步骤 0 ✅ PASS，放行进入步骤 1（S0.1 仓库初始化）。**
 
 ---
 
