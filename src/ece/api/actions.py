@@ -36,6 +36,32 @@ class ActionsPreviewRequest(BaseModel):
     )
 
 
+@router.post("/actions/execute")
+def post_actions_execute(
+    req: ActionsPreviewRequest,
+    x_user_id: str | None = Header(None, alias="X-User-Id"),
+) -> dict[str, Any]:
+    """Real action execution — DISABLED in v0 (per ADR-004 + ECE/CLAUDE.md).
+
+    Per ADR-004: /actions/execute v0 disabled (env kill-switch + route-level
+    double safety). Use /actions/preview to see what would happen.
+
+    Sprint 5+ 真实部署 can enable via env ECE_ACTIONS_EXECUTE_ENABLED=true
+    (when implemented).
+    """
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "disabled_feature",
+            "message": (
+                "v0: /actions/execute disabled per ADR-004; use /actions/preview "
+                "for what would happen. Enable via env ECE_ACTIONS_EXECUTE_ENABLED=true "
+                "in Sprint 5+ deployment."
+            ),
+        },
+    )
+
+
 @router.post("/actions/preview")
 def post_actions_preview(
     req: ActionsPreviewRequest,
