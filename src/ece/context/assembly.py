@@ -29,9 +29,11 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from ece.context.documents import get_documents
 from ece.context.provenance import build_sources, record_package
 from ece.context.relationships import get_relationships
 from ece.context.spec import load_spec
+from ece.context.structured_data import get_structured_data
 from ece.identity.parser import resolve_identity
 from ece.permissions.engine import check_permission
 
@@ -293,12 +295,11 @@ def assemble_context(
                 "decision": "allowed", "reason": "spec:relationship",
             })
 
-    # Step 6 + 7: documents + structured_data — STUBBED (Sprint 4 territory).
-    # Per ADR-003 + TASKS.md S3.2: documents require FTS/vector + classification+ACL;
-    # structured_data requires per-spec.kind SQL + row-level permissions.
-    # Returning empty lists here keeps cut-007 scope-clean.
-    documents: list[dict[str, Any]] = []
-    business_data: list[dict[str, Any]] = []
+    # Step 6: Document retrieval (FTS keyword route; vector deferred to cut-012)
+    # Step 7: Structured data (per-spec.kind SQL; per-kind handlers in
+    # context/structured_data.py)
+    documents = get_documents(engine, spec, identity, as_of=as_of)
+    business_data = get_structured_data(engine, spec, identity, as_of=as_of)
 
     # Step 8 already applied (as_of in get_relationships).
     # Step 9: rank + truncate per spec.limits.
