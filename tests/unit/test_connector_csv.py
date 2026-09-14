@@ -1,4 +1,4 @@
-"""S1.1 — CsvConnector unit tests (no docker needed)."""
+"""S1.1 -- CsvConnector unit tests (no docker needed)."""
 from __future__ import annotations
 
 import csv
@@ -33,7 +33,7 @@ def test_csv_connector_empty_row_skipped(tmp_path: Path) -> None:
     c = CsvConnector(path=f)
     rows = c.fetch()
     assert c.normalize(rows[0]) is not None
-    assert c.normalize(rows[1]) is None  # blank row → skip
+    assert c.normalize(rows[1]) is None  # blank row -> skip
 
 
 def test_csv_connector_missing_file_raises() -> None:

@@ -1,18 +1,18 @@
-"""S0.5 initial migration — covers docs/DATA_MODEL.md §1-§5.
+"""S0.5 initial migration -- covers docs/DATA_MODEL.md 1-5.
 
-Per PRD §27 + DATA_MODEL § 末段:
+Per PRD 27 + DATA_MODEL  末段:
 - 必须含 pgvector extension (vector 列需要)
 - 全部 entity/relationship/docs/chunks/ingestion_runs/context_* 表 + 索引
-- §6 是文本图、§7/§8 是策略 → 不纳入迁移
+- 6 是文本图,7/8 是策略 -> 不纳入迁移
 
-DATA_MODEL § 编号映射（Cline 4R 补注：以 DATA_MODEL.md 实际章节标题为准——§1 实体与解析 / §2 关系 / §3 权限 / §4 文档与分块 / §5 审计与溯源；4R 初版映射把 §3/§4 记反，已纠正）:
-- entities / entity_aliases / entity_revisions → §1 实体与解析
-- relationships                  → §2 关系（Temporal）
-- acl_entries                    → §3 权限（PRD §13/§28）
-- documents / doc_chunks         → §4 文档与分块
-- context_requests / context_items / ingestion_runs → §5 审计与溯源（PRD §22/§31）
+DATA_MODEL  编号映射(Cline 4R 补注：以 DATA_MODEL.md 实际章节标题为准----1 实体与解析 / 2 关系 / 3 权限 / 4 文档与分块 / 5 审计与溯源;4R 初版映射把 3/4 记反,已纠正):
+- entities / entity_aliases / entity_revisions -> 1 实体与解析
+- relationships                  -> 2 关系(Temporal)
+- acl_entries                    -> 3 权限(PRD 13/28)
+- documents / doc_chunks         -> 4 文档与分块
+- context_requests / context_items / ingestion_runs -> 5 审计与溯源(PRD 22/31)
 
-按迁移顺序书写,无 § 编号标注 — 业务领域 → 表分组。
+按迁移顺序书写,无  编号标注 -- 业务领域 -> 表分组.
 """
 
 from collections.abc import Sequence
@@ -30,7 +30,7 @@ def upgrade() -> None:
     # 1. pgvector extension (vector 列需要)
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
-    # 2. entities (§1)
+    # 2. entities (1)
     op.execute("""
         CREATE TABLE entities (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -51,7 +51,7 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_entities_type_name ON entities (entity_type, normalized_name)")
     op.execute("CREATE INDEX idx_entities_attrs ON entities USING gin (attributes jsonb_path_ops)")
 
-    # 3. entity_aliases (§1)
+    # 3. entity_aliases (1)
     op.execute("""
         CREATE TABLE entity_aliases (
             id bigserial PRIMARY KEY,
@@ -68,7 +68,7 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX idx_aliases_norm ON entity_aliases (norm_alias)")
 
-    # 4. entity_revisions (§1 — temporal)
+    # 4. entity_revisions (1 -- temporal)
     op.execute("""
         CREATE TABLE entity_revisions (
             id bigserial PRIMARY KEY,
@@ -80,7 +80,7 @@ def upgrade() -> None:
         )
     """)
 
-    # 5. relationships (§2 — temporal)
+    # 5. relationships (2 -- temporal)
     op.execute("""
         CREATE TABLE relationships (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -100,7 +100,7 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_rel_src ON relationships (src_entity_id, relation)")
     op.execute("CREATE INDEX idx_rel_dst ON relationships (dst_entity_id, relation)")
 
-    # 6. documents (§3 — text + chunks via vector)
+    # 6. documents (3 -- text + chunks via vector)
     op.execute("""
         CREATE TABLE documents (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +130,7 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_chunks_tsv ON doc_chunks USING gin (tsv)")
     op.execute("CREATE INDEX idx_chunks_vec ON doc_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)")
 
-    # 7. ingestion_runs (§3)
+    # 7. ingestion_runs (3)
     op.execute("""
         CREATE TABLE ingestion_runs (
             id bigserial PRIMARY KEY,
@@ -142,7 +142,7 @@ def upgrade() -> None:
         )
     """)
 
-    # 8. context tables (§4 / §5 — Context API + Audit/Debugger)
+    # 8. context tables (4 / 5 -- Context API + Audit/Debugger)
     op.execute("""
         CREATE TABLE context_requests (
             request_id uuid PRIMARY KEY,
@@ -173,7 +173,7 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX idx_citems_req ON context_items (request_id)")
 
-    # 9. acl_entries (§5 — Permission)
+    # 9. acl_entries (5 -- Permission)
     op.execute("""
         CREATE TABLE acl_entries (
             id bigserial PRIMARY KEY,

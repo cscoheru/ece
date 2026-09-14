@@ -1,7 +1,10 @@
-"""ECE domain packs — placeholder.
+# S1.2 domain_packs 包 marker -- import-linter 双向隔离契约需要此目录存在
 
-S0.3 时此目录仅为 import-linter contract target(防止 src/ece/** import 此处 + 反向同禁)。
-Sprint 1+ 起逐 Sprint 填充 procurement / audit / contract 等领域包。
+# Per ADR-010 (root仓) / ECE ADR-010 (ece仓):
+# src/ece/** 不得 import src/ece/domain_packs/** (Engine core isolation)
+# src/ece/domain_packs/** 不得 import src/ece/** (Domain pack isolation)
+#
+# Sprint 1 起逐 Sprint 填充 procurement / audit 等领域包内容;
+# 当前 S1.2 仅 procurement/ontology.yaml 白名单.
 
-Per ece/CLAUDE.md 铁律:"src/domain_packs/<domain>/ 与 src/ece/ 引擎零耦合"
-"""
+__all__ = []

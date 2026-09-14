@@ -1,9 +1,9 @@
-"""S1.1 — CSV Connector.
+"""S1.1 -- CSV Connector.
 
 Reads CSV files from data/source/{connector_type}/.
 Used by make seed for ingesting suppliers / products / contracts.
 
-Per ece/TASKS.md S1.1 + DATA_MODEL.md §1: csv connector produces raw records
+Per ece/TASKS.md S1.1 + DATA_MODEL.md 1: csv connector produces raw records
 that map to entities (entity_type=supplier/product/etc).
 """
 
@@ -16,7 +16,7 @@ from ece.connectors import Connector
 
 
 class CsvConnector(Connector):
-    """CSV file → list of dicts (header row is field names)."""
+    """CSV file -> list of dicts (header row is field names)."""
 
     connector_type = "csv:generic"
 
@@ -45,7 +45,7 @@ class CsvConnector(Connector):
         # Strip whitespace; skip rows that are entirely empty after stripping
         cleaned = {(k or "").strip(): (v or "").strip() for k, v in raw.items()}
         if not any(cleaned.values()):
-            return None  # empty row → skip
+            return None  # empty row -> skip
         return cleaned
 
     def close(self) -> None:

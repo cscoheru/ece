@@ -1,4 +1,4 @@
-"""ECE v0 FastAPI application — S0.2 only ships /healthz.
+"""ECE v0 FastAPI application -- S0.2 only ships /healthz.
 
 后续 Sprint 逐步添加:
 - Sprint 1: /ingest/runs
@@ -16,7 +16,7 @@ from ece.api.ingest import router as ingest_router
 app = FastAPI(
     title="ECE v0",
     version="0.1.0",
-    description="Enterprise Context Engine — v0 (Procurement domain pack validation)",
+    description="Enterprise Context Engine -- v0 (Procurement domain pack validation)",
 )
 
 # S1.1: ingest routes

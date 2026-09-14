@@ -1,4 +1,4 @@
-"""S1.1 — JSON Connector.
+"""S1.1 -- JSON Connector.
 
 Reads JSON files (list of objects) from data/source/{connector_type}/.
 Used by make seed for ingesting purchase_requests.
@@ -13,7 +13,7 @@ from ece.connectors import Connector
 
 
 class JsonConnector(Connector):
-    """JSON file (list of dicts) → list of dicts."""
+    """JSON file (list of dicts) -> list of dicts."""
 
     connector_type = "json:generic"
 

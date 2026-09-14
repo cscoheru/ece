@@ -1,7 +1,7 @@
-"""S1.1 — Ingestion pipeline.
+"""S1.1 -- Ingestion pipeline.
 
-Drives Connector lifecycle (connect → fetch → normalize) and writes to DB.
-Tracks stats (created / skipped / errors) — written to ingestion_runs table.
+Drives Connector lifecycle (connect -> fetch -> normalize) and writes to DB.
+Tracks stats (created / skipped / errors) -- written to ingestion_runs table.
 
 Per ece/TASKS.md S1.1:
 - Happy path + 脏数据 skip 计数
@@ -82,7 +82,7 @@ def run_ingestion(connector: Connector, engine, batch: str = "default") -> Inges
             continue
         normalized.append(norm)
 
-    # Sync — for now record the run; per-entity writes handled by S1.2 pipeline
+    # Sync -- for now record the run; per-entity writes handled by S1.2 pipeline
     stats.created = len(normalized)
     stats.finished_at = datetime.now(UTC)
     _persist_run(engine, batch, stats)

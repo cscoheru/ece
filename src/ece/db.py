@@ -13,7 +13,7 @@ from sqlalchemy.engine import Engine
 def get_engine() -> Engine:
     """Singleton SQLAlchemy Engine.
 
-    DATABASE_URL env override → defaults to compose db:
+    DATABASE_URL env override -> defaults to compose db:
       postgresql+psycopg://ece:ece@localhost:5432/ece
     (compose exposes 5432 on host; use docker compose up -d db to start.)
     """

@@ -2,7 +2,7 @@
 
 Reads DATABASE_URL from env (per ece/CLAUDE.md S0.5 验收要求);
 default postgresql+psycopg://ece:ece@localhost:5432/ece
-(compose db 暴露 5432;compose 默认账户 ece:ece@db:5432/ece)。
+(compose db 暴露 5432;compose 默认账户 ece:ece@db:5432/ece).
 """
 
 import os

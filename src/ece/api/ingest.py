@@ -1,7 +1,7 @@
-"""S1.1 — POST /api/v1/ingest/runs + GET /api/v1/ingest/runs/{run_id}.
+"""S1.1 -- POST /api/v1/ingest/runs + GET /api/v1/ingest/runs/{run_id}.
 
-Per docs/API.md §7:
-- POST /ingest/runs: {"connector": "csv:suppliers", "params": {}} → {"run_id": ...}; 同步执行,v0 不做队列
+Per docs/API.md 7:
+- POST /ingest/runs: {"connector": "csv:suppliers", "params": {}} -> {"run_id": ...}; 同步执行,v0 不做队列
 - GET /ingest/runs/{run_id}: 状态与 stats (created/updated/skipped/errors)
 
 v0 connector_type: csv:generic / json:generic / docs:folder
@@ -40,7 +40,7 @@ class IngestResponse(BaseModel):
 def post_ingest_run(req: IngestRequest) -> IngestResponse:
     """Trigger an ingestion run synchronously.
 
-    Per ece/TASKS.md S1.1: 同步执行,v0 不做队列;stats 写 ingestion_runs。
+    Per ece/TASKS.md S1.1: 同步执行,v0 不做队列;stats 写 ingestion_runs.
     """
     connector = _build_connector(req.connector, req.params)
     if connector is None:
@@ -62,7 +62,7 @@ def post_ingest_run(req: IngestRequest) -> IngestResponse:
 
 @router.get("/runs/{run_id}")
 def get_ingest_run(run_id: int) -> dict[str, Any]:
-    """GET /ingest/runs/{run_id} — status + stats."""
+    """GET /ingest/runs/{run_id} -- status + stats."""
     engine = get_engine()
     with engine.connect() as conn:
         row = conn.execute(
@@ -86,7 +86,7 @@ def get_ingest_run(run_id: int) -> dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Connector registry (per connector_type → factory)
+# Connector registry (per connector_type -> factory)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _build_connector(connector_type: str, params: dict[str, Any]):
@@ -109,4 +109,4 @@ def _build_connector(connector_type: str, params: dict[str, Any]):
         classification = params.get("classification", "department")
         return DocsConnector(folder=folder, classification=classification)
 
-    return None  # unknown connector type → 400
+    return None  # unknown connector type -> 400

@@ -1,10 +1,10 @@
-"""S1.1 — Docs Connector.
+"""S1.1 -- Docs Connector.
 
 Reads a folder of plain text/markdown files into Document records.
 Used for ingesting policy / contract / report documents.
 
-Per DATA_MODEL.md §3: documents has title / doc_type / file_path / classification.
-Per ece/CLAUDE.md §3 "Connector 正常处理脏数据: 跳过并计数,不中断整批".
+Per DATA_MODEL.md 3: documents has title / doc_type / file_path / classification.
+Per ece/CLAUDE.md 3 "Connector 正常处理脏数据: 跳过并计数,不中断整批".
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ece.connectors import Connector
 
-# 文件扩展名 → doc_type 映射
+# 文件扩展名 -> doc_type 映射
 _EXT_TO_DOCTYPE = {
     ".md": "policy",
     ".txt": "report",
@@ -22,7 +22,7 @@ _EXT_TO_DOCTYPE = {
 
 
 class DocsConnector(Connector):
-    """Folder of files → list of {title, file_path, doc_type, classification}."""
+    """Folder of files -> list of {title, file_path, doc_type, classification}."""
 
     connector_type = "docs:folder"
 
