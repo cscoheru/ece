@@ -200,6 +200,41 @@ make test    # 期望 28 passed, 1 skipped
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline）
 
-<!-- Cline 红队审验结论待写入 -->
+**裁定：❌ 不通过 → 签发刀 6R**（2026-09-14）。
+
+本刀交付分两半：**引擎层真实可用**（identity/permission engine/resolver 三件 + gap (a) ontology 拒绝落库，全部活体验证通过，诚实披露 S2.3 stage 4-6 推迟，自曝列序 bug——执行质量较 5R 有延续）；但 **Sprint 2 四个 S 的验收核心有三个未做或虚假**，且报告出现**第 4 次完整性事故**（声称 gap (b) s13 已重构，实际全刀零改动）。
+
+### 7.1 实证通过项（Cline 亲跑）
+
+| 项 | 证据 |
+|---|---|
+| 五项纪律 + CI | ruff/mypy(43 files)/lint-imports/make test **28 passed**/check-api-docs 全绿；CI 3 连 success（含报告 commit） |
+| 迁移链 | 干净库 `alembic upgrade head` = 0001+0002+0003 三级全上 |
+| S2.1 引擎 | `/permissions/check` unknown user → `default-deny` fail-closed ✅ |
+| S2.2 判定引擎 | 6 级判定顺序 + classification 矩阵 + `/permissions/check` 读 acl_entries（表在 0001）✅ |
+| S2.3 resolver | 活体真数据：`POST /resolve 无限极` → `resolved=true, SUP054, normalized 0.95`；歧义 multi-candidate → resolved=false 代码路径在位 ✅ |
+| gap (a) | 0003 `ontology_rejections` 表 + `log_rejection` + pipeline hook；`count_rejections` 前后断言 ✅ |
+
+### 7.2 阻断级缺口（对照 TASKS 验收原文）
+
+| # | 缺口 | 事实 |
+|---|---|---|
+| **C1** | **S2.2 "PermissionScope 注入所有 Store 读路径（SQL 子查询过滤）"未做** | `PermissionScope`/`dept_match_clause` 是**死代码**（全仓零调用）；`api/entities.py` 三个读端点无任何权限过滤/X-User-Id 检查，line 172 注释自认 "future S2 permission"。**活体实证泄露洞**：`X-User-Id: nonexistent-user` → GET /entities 照常返回全部数据。API.md §3 承诺"过权限"＝契约未兑现 |
+| **C2** | **S2.4 "安全套件 E2（50 例）+ 间接泄露"未做** | `EVALUATION.md` §1 明文：E2 ≥50 例、`data/eval/e2_permission.json`、Unauthorized Exposure=0 一票否决、**间接泄露专项**。实际 `test_s24_e2_security.py` 仅 2 个测试函数，无 parametrize、无评测数据文件、无间接泄露用例（读路径无过滤，想做也做不了——与 C1 互为因果） |
+| **C3** | **S2.3 "E1 ≥95%" 与"pending 队列落库"未做** | `EVALUATION.md` 明文 E1 ≥50 例（`data/eval/e1_resolution.json`，含同名/歧义例）——该文件不存在，无 runner，无准确率数字；pending 队列全仓零实现且**报告未披露**（只披露了 stage 4-6 推迟） |
+| **C4** | **gap (b) 虚假声明（第 4 次完整性事故）** | 报告 §1.2 称 "s13 contract 测试补 + 去顺序耦合 ✅ (refactored)"；实际 `git diff 9f458fe..c97b24a -- tests/integration/test_s13_api_contract.py` **为空**——文件全刀未动（误导名 `wrapped_items` 仍在、条件 skip 仍在） |
+
+次级问题（记档不单列）：s24 第二测为**空断言**（display_id 猜错走 src-not-found 分支 → `after >= before` 恒真）；`_object_dept()` placeholder 恒空 → classification "department" 默认永不放行（fail-closed 可辩但等于砍掉该档）；unknown user + public 仍拒（同上可辩）。
+
+### 7.3 刀 6R 范围（C1–C4 对应 R1–R6）
+
+- **R1** PermissionScope 真注入 `GET /entities`、`GET /entities/{id}`、`GET /entities/{id}/relationships`：X-User-Id 必填（缺失/未知 → 404 统一包络防探测）；**SQL 子查询过滤非后过滤**（防 sort/limit 侧信道）；404 = 不存在 ∪ 无权
+- **R2** E2 落地：`data/eval/e2_permission.json` ≥50 例（A/B/C 用户 × 6 分类 × 跨部门诱导 + **间接泄露专项**〔对被拒对象的存在推断〕）+ runner（`make eval-e2` 或并入 `make test`）+ Unauthorized Exposure=0 + CI 阻断
+- **R3** E1 落地：`data/eval/e1_resolution.json` ≥50 例（含"无限极/无限极中国"式歧义与同名人员）+ runner + **准确率实数入报告**；当前 3-stage 达不到 95% 就如实报数 + 缺口分析（允许"未达标但已量化"过审，禁止不测）
+- **R4** pending 队列落库：0004 迁移（`resolution_pending` 表）+ resolver 未决/零候选自动入队 + 测试
+- **R5** s13 真补强（C4）：`wrapped_items` 改 POST /entities 正路断言 + `/relationships` 端点契约 + 去顺序耦合
+- **R6** 空断言测试修复（真 display_id + `after == before+1`）+ 6R 报告 §4 如实记录本刀虚假声明（完整性事故第 4 次，模式：报告 ✅ ≠ 仓内事实——审验将以 `git diff` 为准）
+
+纪律：全部既往规则 + R5 规则（commit message 验收附可复跑命令）。
