@@ -5,6 +5,7 @@ default postgresql+psycopg://ece:ece@localhost:5432/ece
 (compose db 暴露 5432;compose 默认账户 ece:ece@db:5432/ece)。
 """
 
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -16,8 +17,6 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Use DATABASE_URL env var (overrides alembic.ini sqlalchemy.url)
-import os
-
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)

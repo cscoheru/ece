@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
-
 # PRD §27 target scale (must match this dict exactly)
 PRD_27_TARGET = {
     "users": 20,

@@ -4,19 +4,27 @@ Per PRD §27 + DATA_MODEL § 末段:
 - 必须含 pgvector extension (vector 列需要)
 - 全部 entity/relationship/docs/chunks/ingestion_runs/context_* 表 + 索引
 - §6 是文本图、§7/§8 是策略 → 不纳入迁移
+
+DATA_MODEL § 编号映射 (Cline 刀 4R 注: 此前记串,本迁移按数据架构领域重整):
+- entities / entity_aliases / entity_revisions → "实体与解析" 章节 (DataModel.md §1)
+- relationships                  → "关系 (Temporal)" 章节 (§2)
+- documents / doc_chunks        → "文档与分块" 章节 (§3)
+- acl_entries                   → "权限" 章节 (§3 末段 — 文档分类默认矩阵相关)
+- ingestion_runs                → "审计与溯源" 章节 (§5 末段)
+- context_requests / context_items → "Context Package" 章节 (§5)
+
+按迁移顺序书写,无 § 编号标注 — 业务领域 → 表分组。
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = "0001_initial"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

@@ -25,6 +25,9 @@ jobs:
       - name: Ruff (lint)
         run: uv run ruff check .
 
+      - name: API docs consistency
+        run: make check-api-docs
+
       - name: Mypy (type check)
         run: uv run mypy src tests
 

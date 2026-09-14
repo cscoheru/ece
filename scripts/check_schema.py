@@ -43,19 +43,18 @@ def query_db(dsn: str) -> tuple[set[str], set[tuple[str, str]]]:
     actual_tables: set[str] = set()
     actual_indexes: set[tuple[str, str]] = set()
 
-    with psycopg.connect(dsn) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-            )
-            for (t,) in cur.fetchall():
-                actual_tables.add(t.lower())
-            cur.execute(
-                "SELECT tablename, indexname FROM pg_indexes WHERE schemaname = 'public'"
-            )
-            for tbl, idx in cur.fetchall():
-                actual_indexes.add((tbl.lower(), idx.lower()))
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+        )
+        for (t,) in cur.fetchall():
+            actual_tables.add(t.lower())
+        cur.execute(
+            "SELECT tablename, indexname FROM pg_indexes WHERE schemaname = 'public'"
+        )
+        for tbl, idx in cur.fetchall():
+            actual_indexes.add((tbl.lower(), idx.lower()))
 
     return actual_tables, actual_indexes
 

@@ -14,7 +14,11 @@ import re
 import sys
 from pathlib import Path
 
-from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI
+
+# 过滤 FastAPI 自动生成的路由(模块级常量 — N806 修复)
+_AUTO_PREFIXES = ("/docs", "/openapi.json", "/redoc", "/healthz")
+_SKIP_METHODS = {"HEAD", "OPTIONS"}
 
 
 def parse_api_md_endpoints(path: Path) -> set[tuple[str, str]]:
@@ -31,7 +35,7 @@ def parse_api_md_endpoints(path: Path) -> set[tuple[str, str]]:
     return endpoints
 
 
-def get_app_endpoints(app) -> set[tuple[str, str]]:
+def get_app_endpoints(app: FastAPI) -> set[tuple[str, str]]:
     """Extract (method, path) tuples from FastAPI app routes.
 
     过滤 FastAPI 自动生成的路由:
@@ -41,18 +45,16 @@ def get_app_endpoints(app) -> set[tuple[str, str]]:
     - HEAD 方法(GET 自动衍生)
     - OPTIONS 方法
     """
-    AUTO_PREFIXES = ("/docs", "/openapi.json", "/redoc", "/healthz")
-    SKIP_METHODS = {"HEAD", "OPTIONS"}
     endpoints: set[tuple[str, str]] = set()
     for route in app.routes:
         methods = getattr(route, "methods", None) or set()
         path = getattr(route, "path", None)
         if not path or not methods:
             continue
-        if path.startswith(AUTO_PREFIXES):
+        if path.startswith(_AUTO_PREFIXES):
             continue
         for method in methods:
-            if method in SKIP_METHODS:
+            if method in _SKIP_METHODS:
                 continue
             endpoints.add((method, path))
     return endpoints
