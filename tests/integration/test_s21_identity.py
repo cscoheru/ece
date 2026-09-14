@@ -15,8 +15,17 @@ def test_identity_resolve_unknown_user_returns_stub() -> None:
 def test_identity_upsert_then_resolve_returns_match() -> None:
     engine = get_engine()
     user_ref = "X-S21-TEST-USER"
-    # Clean prior
+    # Clean prior (relationships first to avoid FK violation; cut-009 path A
+    # may reference this person entity via seeded SUBMITTED_BY relationships)
     with engine.begin() as conn:
+        conn.execute(
+            __import__("sqlalchemy").text(
+                "DELETE FROM relationships WHERE "
+                "src_entity_id IN (SELECT id FROM entities WHERE source_id = :r) "
+                "OR dst_entity_id IN (SELECT id FROM entities WHERE source_id = :r)"
+            ),
+            {"r": user_ref},
+        )
         conn.execute(
             __import__("sqlalchemy").text(
                 "DELETE FROM entity_aliases WHERE source_ref = :r"

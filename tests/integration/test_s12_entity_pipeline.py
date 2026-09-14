@@ -10,8 +10,17 @@ from ece.entities.pipeline import upsert_entity, upsert_relationship
 def test_upsert_entity_then_upsert_again_returns_existing() -> None:
     engine = get_engine()
     source_id = "R4-entity-test-001"
-    # clean previous
+    # clean previous (relationships first to avoid FK violation; cut-009 path A
+    # adds 1206 relationships referencing demo entities including this one)
     with engine.begin() as conn:
+        conn.execute(
+            __import__("sqlalchemy").text(
+                "DELETE FROM relationships WHERE "
+                "src_entity_id IN (SELECT id FROM entities WHERE source_id = :sid) "
+                "OR dst_entity_id IN (SELECT id FROM entities WHERE source_id = :sid)"
+            ),
+            {"sid": source_id},
+        )
         conn.execute(
             __import__("sqlalchemy").text("DELETE FROM entities WHERE source_id = :sid"),
             {"sid": source_id},

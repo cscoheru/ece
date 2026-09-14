@@ -94,12 +94,19 @@ def _gen_e4(pr_ids: list[str]) -> list[dict]:
 
 
 def _gen_e5(pr_ids: list[str]) -> list[dict]:
-    """E5: Temporal as_of/between cases (target ≥30)."""
+    """E5: Temporal as_of/between cases (target ≥30).
+
+    Per cut-009: after seed_relationships, each PR has 5 relationships
+    (BELONGS_TO + SUBMITTED_BY + SELECTS + CONTAINS + SUBJECT_TO).
+    None are temporal (valid_from=NULL), so as_of doesn't filter — all
+    dates see the same 5 relationships.
+    """
     cases: list[dict] = []
     as_of_dates = [
         "2024-01-01", "2024-12-31", "2025-06-30", "2025-12-31",
         "2026-01-01", "2026-06-30", "2026-09-14",
     ]
+    expected_rels_per_pr = 5  # see seed_relationships.py
     for i in range(30):
         pr_id = pr_ids[i % len(pr_ids)]
         as_of = as_of_dates[i % len(as_of_dates)]
@@ -109,8 +116,11 @@ def _gen_e5(pr_ids: list[str]) -> list[dict]:
             "from": pr_id,
             "relation": "SELECTS",
             "as_of": as_of,
-            "expected_count": 0,
-            "note": f"as_of={as_of}; no temporal relationships seeded (expected: empty)",
+            "expected_count": expected_rels_per_pr,
+            "note": (
+                f"as_of={as_of}; {expected_rels_per_pr} non-temporal relationships "
+                "from seed_relationships (cut-009)"
+            ),
         })
     return cases
 
