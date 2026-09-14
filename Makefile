@@ -1,13 +1,18 @@
-.PHONY: setup up test eval demo rev help
+.PHONY: setup up test eval demo rev help check-api-docs db-upgrade schema-check gen-dataset pull-db
 
 help:
 	@echo "ECE v0 Makefile"
-	@echo "  make setup  - install deps via uv"
-	@echo "  make up     - start docker compose (api + postgres)"
-	@echo "  make test   - run unit + integration + security tests"
-	@echo "  make eval   - run E1-E6 evaluation suite (needs ECE_LLM_*)"
-	@echo "  make demo   - run procurement demo scenario"
-	@echo "  make rev    - alembic downgrade by 1"
+	@echo "  make setup            - install deps via uv"
+	@echo "  make up               - start docker compose (api + postgres)"
+	@echo "  make test             - run unit + integration + security tests"
+	@echo "  make eval             - run E1-E6 evaluation suite (needs ECE_LLM_*)"
+	@echo "  make demo             - run procurement demo scenario"
+	@echo "  make check-api-docs   - API.md ↔ FastAPI routes 双向 diff (S0.4)"
+	@echo "  make db-upgrade       - alembic upgrade head (S0.5)"
+	@echo "  make schema-check     - live DB ↔ DATA_MODEL.md 比对 (S0.5)"
+	@echo "  make gen-dataset      - 生成 PRD §27 合成数据 (S0.6)"
+	@echo "  make pull-db          - pgvector 镜像 pull+tag（绕 daocloud 403）"
+	@echo "  make rev              - alembic downgrade by 1"
 
 setup:
 	uv sync --all-groups

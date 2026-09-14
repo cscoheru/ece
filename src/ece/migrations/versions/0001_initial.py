@@ -5,13 +5,12 @@ Per PRD §27 + DATA_MODEL § 末段:
 - 全部 entity/relationship/docs/chunks/ingestion_runs/context_* 表 + 索引
 - §6 是文本图、§7/§8 是策略 → 不纳入迁移
 
-DATA_MODEL § 编号映射 (Cline 刀 4R 注: 此前记串,本迁移按数据架构领域重整):
-- entities / entity_aliases / entity_revisions → "实体与解析" 章节 (DataModel.md §1)
-- relationships                  → "关系 (Temporal)" 章节 (§2)
-- documents / doc_chunks        → "文档与分块" 章节 (§3)
-- acl_entries                   → "权限" 章节 (§3 末段 — 文档分类默认矩阵相关)
-- ingestion_runs                → "审计与溯源" 章节 (§5 末段)
-- context_requests / context_items → "Context Package" 章节 (§5)
+DATA_MODEL § 编号映射（Cline 4R 补注：以 DATA_MODEL.md 实际章节标题为准——§1 实体与解析 / §2 关系 / §3 权限 / §4 文档与分块 / §5 审计与溯源；4R 初版映射把 §3/§4 记反，已纠正）:
+- entities / entity_aliases / entity_revisions → §1 实体与解析
+- relationships                  → §2 关系（Temporal）
+- acl_entries                    → §3 权限（PRD §13/§28）
+- documents / doc_chunks         → §4 文档与分块
+- context_requests / context_items / ingestion_runs → §5 审计与溯源（PRD §22/§31）
 
 按迁移顺序书写,无 § 编号标注 — 业务领域 → 表分组。
 """
