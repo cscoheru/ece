@@ -12,7 +12,6 @@ Pre-condition: make seed has been run (PRs + test users exist).
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 from sqlalchemy import text

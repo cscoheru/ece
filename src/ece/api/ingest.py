@@ -103,10 +103,9 @@ def _build_connector(connector_type: str, params: dict[str, Any]):
         path = Path(params.get("path", "data/sample/purchase_requests.json"))
         return JsonConnector(path=path)
 
-    if connector_type.startswith("docs"):
-        from ece.connectors.docs import DocsConnector
-        folder = Path(params.get("folder", "data/sample/docs/"))
-        classification = params.get("classification", "department")
-        return DocsConnector(folder=folder, classification=classification)
+    # NOTE: documents (connector_type="docs:*") ingestion is S4.1 territory
+    # but is NOT routed through /ingest/runs (different model — file-based,
+    # not database-source). Use scripts/ingest_demo_docs.py directly.
+    # See ece.reports.cut-010-report §2.3 for path A vs B separation.
 
     return None  # unknown connector type -> 400
