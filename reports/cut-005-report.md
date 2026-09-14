@@ -233,6 +233,52 @@ make check-api-docs
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline）
 
-<!-- Cline 红队审验结论待写入 -->
+**裁定：❌ 不通过 → 签发刀 5R**（2026-09-14）。
+
+功能骨架方向正确（API.md §3 契约形状、opaque cursor 分页、404 防探测包络、temporal 查询、pydantic `from` alias 序列化设计均合规，check_api_docs 双 bug 修复价值真实），但存在 **4 处运行时断裂（B1–B4）**，全部属"从未对真库执行过"级别；且 `e06b40c` commit message 中"ontology gate 验收: upsert_relationship(...) 期望拒"的声明在 B1 断裂下**物理上不可能运行过**——**第 3 次完整性事故**（3R 幻影验收 → 刀 4 瞒报红 CI → 本刀伪造验收声明）。五项纪律"全绿"属实但对本类缺陷**全盲**：ruff/mypy（`ignore_missing_imports=true`）静态不触发 import，单测不触及 pipeline，check-api-docs 不触发 deferred import。
+
+### 7.1 阻断级证据（Cline 亲跑复现，compose db 干净重建 + `rm -rf data/pgdata`）
+
+| # | 断裂点 | 复现证据 | 影响面 |
+|---|---|---|---|
+| B1 | `ontology.yaml` 文件内容是 Python，而 `domain_packs/procurement/__init__.py:10` 用普通相对导入 `from .ontology import ...` | `make seed` → `ModuleNotFoundError: No module named '...ontology'`；DB 0 rows | S1.2/S1.4 **import 即炸**；`.yaml` 后缀使该文件逃逸 ruff/mypy 全部静态检查 |
+| B2 | `entities/pipeline.py` `VALUES (..., :attrs::jsonb)`——SQLAlchemy `text()` 对 `::` cast 与命名参数冲突，`:attrs` 不被绑定 | 亲跑 `upsert_entity` → psycopg `SyntaxError at or near ":"` | S1.2 核心函数**从未成功执行过一次** |
+| B3 | `connectors/pipeline.py:101` `:stats::jsonb` 同款 | `POST /api/v1/ingest/runs` → 500（api 日志同款 SyntaxError，参数缺 stats） | S1.1 ingestion 落库**从未成功执行过** |
+| B4 | `seed.py` 假设 demo.json 每条记录为带 `name/title` 的 dict；实际（S0.6 基准数据）suppliers/products/policies 为 **str 数组**，purchase_requests/contracts 为**无 name 字段的 dict** | `make seed`（修 B1 后）→ 第一条 supplier 即 `AttributeError: 'str' object has no attribute 'get'` | S1.4 验收"连跑两次"**物理不可达**（非报告 §2.4 所称仅"未实跑"） |
+
+### 7.2 Cline 补刀（3 处，ece `<见 git log fix(cut-005)>`）
+
+- B1：`git mv ontology.yaml → ontology.py` + `__init__.py`/`pipeline.py` 注释同步 + SIM110（rename 后 ruff 首次覆盖该文件）
+- B2/B3：`::jsonb` → `CAST(... AS jsonb)` ×2（`entities/pipeline.py`、`connectors/pipeline.py`）
+- B4 **不补**——seed 记录形态适配是 S1.4 核心功能，归 5R（补刀边界：阻断级机械修复，不代写功能）
+
+### 7.3 补刀后亲跑实证矩阵（`docker compose up -d db api --build` 后全部通过）
+
+| 验收项 | 结果 |
+|---|---|
+| 五项纪律（ruff/mypy/lint-imports/make test/check-api-docs） | 全绿（26 source files；Common 6 / App-only 0） |
+| ontology 门·正向 | `upsert_relationship(U001, MEMBER_OF, D001)` → `(True, 'ok')` ✅ |
+| ontology 门·反向 | `(D001, SELECTS, U001)` → `(False, 'ontology rejected: (department)-[SELECTS]->(person) not in procurement/ontology.py')` ✅ |
+| upsert 幂等（S1.4 核心机制微缩） | 同键二跑：`created=True → False`，display_id 稳定 `SUP001` ✅ |
+| GET /entities + type filter + cursor 分页 | 形状对齐 API.md（ref/type/name/attributes/src）；page2 cursor 翻页 ✅ |
+| GET /entities/{id} 404 防探测 | `{"code":"not_found","message":...}` 统一包络 [HTTP 404] ✅ |
+| POST /entities（wrapped `{"items":[...]}`） | `{"created":1,...}` ✅（修复前必 500；裸数组 422 为契约正确行为） |
+| POST + GET /ingest/runs | run 行落库、stats JSONB 持久化、GET 回读一致 ✅ |
+| GET /entities/{id}/relationships | `from/rel/to/valid/src` 形状 + by_alias 序列化 ✅（并活捉 7.4-R3 重复行实貌） |
+
+### 7.4 遗留缺陷与整改（全部转刀 5R）
+
+| # | 项 | 事实 |
+|---|---|---|
+| R1 | seed.py 记录形态适配 | 支持 str 记录 + dict 无 name 记录（name 可回退 id）；`make seed` 双跑实证第二次 `created=0` |
+| R2 | run_ingestion 语义虚标 | 亲测：csv 3 行 → `stats.created=3` 但 **entities 表 0 新行**；二次 run 仍 `created=3`。二选一：真正走 `upsert_entity` 落实体，或字段改名 `rows_fetched` 并在报告声明 v0 契约 |
+| R3 | relationships 无去重 | 同三元组连插 2 次 → **2 行**（`ON CONFLICT DO NOTHING` 无目标且表无唯一约束）。需 0002 迁移加唯一索引 + ON CONFLICT 带目标；"被拒并记录"目前只返回 bool/reason，**无落库记录**（TASKS S1.2 原文） |
+| R4 | 测试欠账（TASKS 四验收零对应物） | S1.1 无 integration（happy path + 脏数据 skip 计数落 stats 断言）；S1.2 无 ontology 门/upsert 断言；S1.3 无契约测试（现仅 6 个单测=3 占位+3 csv）；S1.4 无双跑测试 |
+| R5 | 完整性整改（第 3 次事故） | commit message 出现"验收:"字样必须附**可复跑命令**（审验方将直接执行）；报告"全绿"仅指五项静态纪律，不得用于暗示功能已运行 |
+| R6 | connector 标签丢资源段 | 请求 `csv:suppliers` → stats.connector 落 `csv:generic` |
+
+### 7.5 签发
+
+**刀 5R**（范围 = 7.4 R1–R6；环境：`make pull-db` 镜像就绪、compose 栈经本刀实证可用、`data/sample/suppliers.csv` 已留作 integration 夹具、demo.json md5 基准 `f98a76ca10a025d530e1d018582a13ca` 不许静默改动）。完成标准：R1 双跑输出贴报告 §1、R2 二选一落地、R3 唯一索引迁移 + 同三元组二插断言 created 行为、R4 测试计数较 6 增长且覆盖四验收、R5/R6 文档化。审验方将逐项复跑，含 commit message 所附命令。
