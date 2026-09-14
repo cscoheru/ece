@@ -41,6 +41,11 @@ class SearchRequest(BaseModel):
         description="filters (entity_type, doc_type, etc.)",
     )
     top_k: int = Field(default=10, ge=1, le=100)
+    query_embedding: list[float] | None = Field(
+        default=None,
+        description="pre-computed query vector (512-dim) for vector route; "
+        "omit to skip vector route even if 'vector' in kinds",
+    )
 
 
 @router.post("/search")
@@ -107,6 +112,42 @@ def post_search(
                     "page": chunk_idx,
                 },
                 "matched_by": ["tsv"],
+            })
+
+    # Route 2: Vector similarity (cut-013; requires query_embedding)
+    if "vector" in req.kinds and req.query_embedding is not None:
+        from ece.connectors.docs import search_documents_vector
+
+        doc_type = req.filters.get("doc_type")
+        try:
+            hits = search_documents_vector(
+                engine,
+                query_embedding=req.query_embedding,
+                top_k=req.top_k,
+                doc_type_filter=doc_type,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "internal", "message": str(e)},
+            ) from e
+
+        kinds_used.append("vector")
+        for hit in hits:
+            display_id = hit["document_display_id"]
+            chunk_idx = hit["chunk_index"]
+            items.append({
+                "kind": "vector",
+                "ref": f"{display_id}#{chunk_idx}",
+                "title": display_id,
+                "snippet": hit["snippet"],
+                "score": hit["similarity"],
+                "src": {
+                    "system": "docs",
+                    "document_id": display_id,
+                    "page": chunk_idx,
+                },
+                "matched_by": ["embedding"],
             })
 
     # Routes 2-4: stubs for cut-010

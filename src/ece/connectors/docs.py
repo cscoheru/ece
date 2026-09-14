@@ -207,3 +207,71 @@ def search_documents(
         }
         for r in rows
     ]
+
+
+def search_documents_vector(
+    engine: Engine,
+    *,
+    query_embedding: list[float],
+    top_k: int = 10,
+    doc_type_filter: str | None = None,
+) -> list[dict]:
+    """Vector similarity search via pgvector cosine distance.
+
+    Per docs/ARCHITECTURE.md §4 + DATA_MODEL §4: doc_chunks.embedding
+    is vector(512) (bge-small-zh-v1.5 default per ADR-009). Cosine distance
+    via pgvector `<=>` operator; similarity = 1 - distance.
+
+    Args:
+        engine: SQLAlchemy Engine
+        query_embedding: 512-dim query vector (caller must pre-compute via
+            bge-small-zh-v1.5 or similar; cut-013 v0 has no embedding model)
+        top_k: max results
+        doc_type_filter: optional doc_type filter
+
+    Returns ranked list of {chunk_id, document_id, document_display_id,
+    chunk_index, text, snippet, similarity}. Empty if no docs have embeddings
+    (V0: all NULL since no embedding model run yet).
+
+    Note: pgvector strict on dimension — wrong dim raises DataError.
+    pgvector binding: SQLAlchemy `text()` doesn't auto-convert list → vector;
+    serialize to '[a,b,c,...]' string + CAST AS vector in SQL.
+    """
+    type_filter_sql = ""
+    # Serialize embedding as pgvector-compatible string '[a,b,c,...]'
+    embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+    params: dict[str, object] = {
+        "q_vec": embedding_str,
+        "limit": top_k,
+    }
+    if doc_type_filter:
+        type_filter_sql = "AND d.doc_type = :dt"
+        params["dt"] = doc_type_filter
+
+    sql = f"""
+        SELECT dc.id, dc.document_id, d.display_id, dc.chunk_index, dc.text,
+               d.classification, d.title,
+               1 - (dc.embedding <=> CAST(:q_vec AS vector)) AS similarity
+        FROM doc_chunks dc
+        JOIN documents d ON dc.document_id = d.id
+        WHERE dc.embedding IS NOT NULL
+        {type_filter_sql}
+        ORDER BY dc.embedding <=> CAST(:q_vec AS vector)
+        LIMIT :limit
+    """
+
+    with engine.connect() as conn:
+        rows = conn.execute(text(sql), params).fetchall()
+
+    return [
+        {
+            "chunk_id": r[0],
+            "document_id": str(r[1]),
+            "document_display_id": r[2],
+            "chunk_index": r[3],
+            "text": r[4],
+            "snippet": r[4][:200],
+            "similarity": float(r[5]),
+        }
+        for r in rows
+    ]

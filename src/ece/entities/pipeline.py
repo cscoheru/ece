@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from sqlalchemy import text
@@ -151,8 +152,8 @@ def upsert_relationship(
     source_system: str,
     source_ref: str = "",
     confidence: float = 1.0,
-    valid_from: str | None = None,
-    valid_to: str | None = None,
+    valid_from: str | date | None = None,
+    valid_to: str | date | None = None,
 ) -> tuple[bool, str]:
     """Insert one relationship; reject if (src_type, relation, dst_type) not in ontology.
 
