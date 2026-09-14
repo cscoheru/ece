@@ -43,15 +43,28 @@ class IngestionStats:
         }
 
 
-def run_ingestion(connector: Connector, engine, batch: str = "default") -> IngestionStats:
+def run_ingestion(
+    connector: Connector,
+    engine,
+    connector_type: str,
+    batch: str = "default",
+) -> IngestionStats:
     """Drive connector + persist ingestion_runs row + stats.
 
     engine: SQLAlchemy Engine (e.g. create_engine("postgresql+psycopg://...")).
     batch: batch label stored in ingestion_runs.stats for grouping.
-    """
-    stats = IngestionStats(connector=connector.connector_type)
+    connector_type: USER-PROVIDED label (e.g. "csv:suppliers"); preserved
+      in stats so resource segment is not lost. Per Cline cut-005 R6:
+      use this rather than connector.connector_type which is the generic
+      class label (e.g. "csv:generic").
 
-    # Connect
+    Per Cline cut-005 R2: stats.created now counts ENTITIES actually upserted
+    to the DB (via upsert_entity), not records fetched. Aligns stats
+    with real-world ingestion (the previous B2/B3 bug masked the gap because
+    upsert_entity never succeeded against the real DB).
+    """
+    stats = IngestionStats(connector=connector_type)
+
     try:
         connector.connect()
     except Exception as e:
@@ -60,7 +73,6 @@ def run_ingestion(connector: Connector, engine, batch: str = "default") -> Inges
         _persist_run(engine, batch, stats)
         return stats
 
-    # Fetch + normalize
     try:
         raw_records = connector.fetch()
     except Exception as e:
@@ -69,7 +81,9 @@ def run_ingestion(connector: Connector, engine, batch: str = "default") -> Inges
         _persist_run(engine, batch, stats)
         return stats
 
-    normalized = []
+    # Lazy import to avoid circular dependency
+    from ece.entities.pipeline import upsert_entity
+
     for idx, raw in enumerate(raw_records):
         try:
             norm = connector.normalize(raw)
@@ -80,15 +94,60 @@ def run_ingestion(connector: Connector, engine, batch: str = "default") -> Inges
         if norm is None:
             stats.skipped += 1
             continue
-        normalized.append(norm)
 
-    # Sync -- for now record the run; per-entity writes handled by S1.2 pipeline
-    stats.created = len(normalized)
+        # Per Cline cut-005 R2: actually upsert entity to DB
+        try:
+            entity_type = norm.get("entity_type") or _infer_entity_type(connector_type)
+            name = norm.get("name") or norm.get("title") or norm.get("id") or f"row-{idx}"
+            source_id = str(norm.get("id") or f"{connector_type}:{idx}")
+            attributes = {k: v for k, v in norm.items() if k not in ("entity_type", "name", "title", "id")}
+            result = upsert_entity(
+                engine,
+                entity_type=entity_type,
+                name=str(name),
+                source_system=f"{connector_type}",
+                source_id=source_id,
+                attributes=attributes,
+            )
+            if result.created:
+                stats.created += 1
+            else:
+                stats.updated += 1
+        except Exception as e:
+            stats.skipped += 1
+            stats.errors.append({"phase": "upsert", "index": idx, "source_id": source_id, "error": str(e)})
+
     stats.finished_at = datetime.now(UTC)
     _persist_run(engine, batch, stats)
 
     connector.close() if hasattr(connector, "close") else None
     return stats
+
+
+_DEFAULT_ENTITY_TYPE_BY_PREFIX = {
+    "csv:suppliers": "supplier",
+    "csv:products": "product",
+    "csv:contracts": "contract",
+    "csv:policies": "policy",
+    "csv:prs": "purchase_request",
+    "json:prs": "purchase_request",
+    "json:contracts": "contract",
+    "json:users": "person",
+    "json:departments": "department",
+    "docs:folder": "document",
+}
+
+
+def _infer_entity_type(connector_type: str) -> str:
+    """Infer entity_type from connector_type prefix when normalize() omits it.
+
+    Per Cline cut-005 R2: keep this conservative. Falls back to connector
+    family ("csv" -> "csv_record") so unknown types are visible in errors.
+    """
+    if connector_type in _DEFAULT_ENTITY_TYPE_BY_PREFIX:
+        return _DEFAULT_ENTITY_TYPE_BY_PREFIX[connector_type]
+    family = connector_type.split(":", 1)[0]
+    return f"{family}_record"
 
 
 def _persist_run(engine, batch: str, stats: IngestionStats) -> None:

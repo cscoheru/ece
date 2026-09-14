@@ -47,7 +47,7 @@ def post_ingest_run(req: IngestRequest) -> IngestResponse:
         raise HTTPException(status_code=400, detail=f"unknown connector: {req.connector}")
 
     engine = get_engine()
-    stats = run_ingestion(connector, engine, batch=req.batch)
+    stats = run_ingestion(connector, engine, connector_type=req.connector, batch=req.batch)
 
     # Fetch the inserted row's id (sync; lastvalue or RETURNING)
     with engine.begin() as conn:
