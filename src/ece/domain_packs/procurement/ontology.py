@@ -47,10 +47,7 @@ def is_allowed(src_type: str, relation: str, dst_type: str) -> bool:
     """Return True iff (src_type, relation, dst_type) is in the ontology."""
     if src_type not in allowed_relations:
         return False
-    for rel, dst in allowed_relations[src_type]:
-        if rel == relation and dst == dst_type:
-            return True
-    return False
+    return any(rel == relation and dst == dst_type for rel, dst in allowed_relations[src_type])
 
 
 def allowed_targets(src_type: str, relation: str) -> list[str]:

@@ -89,7 +89,7 @@ def upsert_entity(
                 INSERT INTO entities
                     (display_id, entity_type, name, normalized_name,
                      source_system, source_id, attributes)
-                VALUES (:display_id, :etype, :name, :norm, :sys, :sid, :attrs::jsonb)
+                VALUES (:display_id, :etype, :name, :norm, :sys, :sid, CAST(:attrs AS jsonb))
                 ON CONFLICT (entity_type, source_system, source_id) DO NOTHING
                 RETURNING display_id
             """),
@@ -160,7 +160,7 @@ def upsert_relationship(
         if not is_allowed(src_type, relation, dst_type):
             return False, (
                 f"ontology rejected: ({src_type})-[{relation}]->({dst_type}) "
-                f"not in procurement/ontology.yaml"
+                f"not in procurement/ontology.py"
             )
 
         ids = conn.execute(

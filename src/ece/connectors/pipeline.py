@@ -98,7 +98,7 @@ def _persist_run(engine, batch: str, stats: IngestionStats) -> None:
             text("""
                 INSERT INTO ingestion_runs
                     (connector, status, stats, started_at, finished_at)
-                VALUES (:connector, :status, :stats::jsonb, :started_at, :finished_at)
+                VALUES (:connector, :status, CAST(:stats AS jsonb), :started_at, :finished_at)
             """),
             {
                 "connector": stats.connector,
