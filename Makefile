@@ -45,6 +45,10 @@ schema-check:
 gen-dataset:
 	uv run python scripts/gen_dataset.py --out data/dataset/demo.json
 
+# S1.4: seed 入库 (Connectors + Entity pipeline 串接);幂等:再跑 created=0
+seed:
+	uv run python -m ece.seed
+
 rev:
 	uv run alembic downgrade -1
 
