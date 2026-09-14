@@ -38,7 +38,10 @@ def test_get_entity_found(client: TestClient) -> None:
 
 
 def test_list_entities_pagination(client: TestClient) -> None:
-    r = client.get("/api/v1/entities?type=supplier&limit=5")
+    r = client.get(
+        "/api/v1/entities?type=supplier&limit=5",
+        headers={"X-User-Id": "demo-user-procurement"},
+    )
     assert r.status_code == 200
     body = r.json()
     assert "items" in body

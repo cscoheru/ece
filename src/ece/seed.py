@@ -72,6 +72,53 @@ def _normalize_record(record: object, idx: int, entity_type: str) -> tuple[str |
     return (name_str, src_id, attrs)
 
 
+# R1 (cut-006): seed a known test user with X-User-Id 'demo-user-procurement'
+# so permission filter tests have a known identity to resolve.
+_TEST_USERS: list[dict[str, str | list[str]]] = [
+    {
+        "source_id": "demo-user-procurement",
+        "name": "Demo Procurement Manager",
+        "department": "procurement",
+        "roles": ["procurement_manager", "buyer"],
+    },
+    {
+        "source_id": "demo-user-finance",
+        "name": "Demo Finance Manager",
+        "department": "finance",
+        "roles": ["finance_manager"],
+    },
+    {
+        "source_id": "demo-user-engineering",
+        "name": "Demo Engineering Manager",
+        "department": "sales",  # 'sales' dept; not procurement/finance
+        "roles": ["buyer"],
+    },
+]
+
+
+def seed_test_users(engine) -> dict[str, int]:
+    """Seed a few known test users so permission tests have identities to resolve."""
+    from ece.identity.parser import upsert_identity
+
+    counters: Counter[str] = Counter()
+    for u in _TEST_USERS:
+        # Typed locals to satisfy mypy (dict[str, str|list[str]] union)
+        user_id: str = str(u["source_id"])
+        user_name: str = str(u["name"])
+        user_dept: str = str(u["department"])
+        user_roles: list[str] = list(u["roles"]) if isinstance(u["roles"], list) else []
+        display_id = upsert_identity(
+            engine,
+            x_user_id=user_id,
+            name=user_name,
+            department=user_dept,
+            roles=user_roles,
+        )
+        if display_id:
+            counters["person"] += 1
+    return dict(counters)
+
+
 def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
     """Seed entities from data/dataset/demo.json. Returns per-entity-type created/updated counts.
 
@@ -118,7 +165,10 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
 def run_seed() -> dict[str, object]:
     """Entry: load demo.json, upsert all entities, return summary."""
     engine = get_engine()
-    return seed_from_demo_json(engine, Path("data/dataset/demo.json"))
+    out = seed_from_demo_json(engine, Path("data/dataset/demo.json"))
+    users = seed_test_users(engine)
+    out["test_users"] = users
+    return out
 
 
 if __name__ == "__main__":
