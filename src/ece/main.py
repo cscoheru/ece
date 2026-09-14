@@ -11,11 +11,16 @@
 
 from fastapi import FastAPI
 
+from ece.api.ingest import router as ingest_router
+
 app = FastAPI(
     title="ECE v0",
     version="0.1.0",
     description="Enterprise Context Engine — v0 (Procurement domain pack validation)",
 )
+
+# S1.1: ingest routes
+app.include_router(ingest_router)
 
 
 @app.get("/healthz")
