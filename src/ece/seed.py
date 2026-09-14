@@ -6,9 +6,13 @@ Idempotency contract:
 
 Per ece/TASKS.md S1.4:
 - Source: data/dataset/demo.json (S0.6 gen_dataset output)
-- Source: data/sample/*.csv / *.json (Cline/seed custom data; not provided in S0.6)
-- Strategy v0: seed from demo.json -> upsert entities (suppliers / purchase_requests / contracts / etc.)
-- Future: S1.4R adds csv / json connectors reading from data/source/{connector_type}/
+- Strategy v0: seed from demo.json -> upsert entities (suppliers / products / purchase_requests / contracts / policies)
+- Demo.json record shapes (per S0.6 gen_dataset):
+  - suppliers / products / policies: list[str] (name only)
+  - purchase_requests / contracts: list[dict] (id + fields)
+  - Generic record handler: dict has .get(); str is the name; dict without name falls back to id.
+
+B4 fix (cut-005 Cline review): seed.py no longer assumes dict records.
 """
 
 from __future__ import annotations
@@ -20,8 +24,8 @@ from pathlib import Path
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity
 
-# Map from gen_dataset top-level key -> entity_type (per PRD §27)
-# Suppliers / PRs / Contracts / etc map directly; users / departments / policies / approval_records are derived
+# Map from gen_dataset top-level key -> entity_type (per PRD §27).
+# Some lists contain str (name only), others contain dict (id + fields).
 _DATASET_TO_ENTITY = {
     "suppliers": "supplier",
     "products": "product",
@@ -29,6 +33,43 @@ _DATASET_TO_ENTITY = {
     "contracts": "contract",
     "policies": "policy",
 }
+
+
+def _normalize_record(record: object, idx: int, entity_type: str) -> tuple[str | None, str, dict[str, object]]:
+    """Return (name, source_id, attributes) from a heterogeneous record.
+
+    - str: name = record, source_id = f"{entity_type}:{idx}", attributes = {}
+    - dict: name = record.get("name") or record.get("title") or str(record.get("id", idx))
+      source_id = str(record.get("id", f"{entity_type}:{idx}"))
+      attributes = record minus id/name/title
+    - other: rejected (name=None)
+
+    Per ece/TASKS.md S1.2: provenance fields source_system/source_ref are
+    stored separately (not in attributes); the entity_type prefix in
+    source_id avoids collisions when the same name appears in different
+    entity_type lists.
+    """
+    if isinstance(record, str):
+        name = record.strip() if record else ""
+        if not name:
+            return (None, "", {})
+        return (name, f"{entity_type}:{idx}", {})
+
+    if not isinstance(record, dict):
+        return (None, "", {})
+
+    rid = record.get("id", f"{entity_type}:{idx}")
+    name = (
+        record.get("name")
+        or record.get("title")
+        or (str(rid) if rid is not None else f"{entity_type}:{idx}")
+    )
+    name_str = str(name).strip() if name is not None else ""
+    if not name_str:
+        return (None, "", {})
+    src_id = str(rid) if rid is not None else f"{entity_type}:{idx}"
+    attrs = {k: v for k, v in record.items() if k not in ("id", "name", "title")}
+    return (name_str, src_id, attrs)
 
 
 def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
@@ -45,12 +86,8 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
 
     for dataset_key, entity_type in _DATASET_TO_ENTITY.items():
         for idx, record in enumerate(raw.get(dataset_key, [])):
-            # derive source_id from record id if present, else from name + index
-            source_id = (
-                str(record["id"]) if "id" in record else f"{entity_type}:{idx}"
-            )
-            name = record.get("name") or record.get("title")
-            if not name:
+            name, source_id, attrs = _normalize_record(record, idx, entity_type)
+            if name is None:
                 skipped.append({
                     "dataset_key": dataset_key,
                     "index": idx,
@@ -65,7 +102,7 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
                     name=name,
                     source_system=f"demo:{path.stem}",
                     source_id=source_id,
-                    attributes=_strip_keys(record, {"id", "name", "title"}),
+                    attributes=attrs,
                 )
                 counters[entity_type] += 1 if result.created else 0
             except Exception as e:
@@ -76,11 +113,6 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
                 })
 
     return {"created_by_type": dict(counters), "skipped": skipped}
-
-
-def _strip_keys(d: dict[str, object], keys: set[str]) -> dict[str, object]:
-    """Strip given keys from dict for attributes JSONB."""
-    return {k: v for k, v in d.items() if k not in keys}
 
 
 def run_seed() -> dict[str, object]:
@@ -96,8 +128,9 @@ if __name__ == "__main__":
     created_by_type: dict[str, int] = result["created_by_type"]  # type: ignore[assignment]
     skipped_list: list[dict[str, object]] = result["skipped"]  # type: ignore[assignment]
     print(f"Seed complete: {created_by_type}")
+    print(f"Total created: {sum(created_by_type.values())}")
+    print(f"Total skipped: {len(skipped_list)}")
     if skipped_list:
-        print(f"Skipped: {len(skipped_list)}")
         for s in skipped_list[:5]:
-            print(f"  {s}")
+            print(f"  skipped: {s}")
     sys.exit(0)
