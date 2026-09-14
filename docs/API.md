@@ -88,12 +88,42 @@
 
 ## 3. Entities / Relationships
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | /entities/{display_id} | 单实体（过权限；404=不存在或无权，响应一致以防探测） |
-| GET | /entities?type=&q=&limit=&cursor= | 过滤查询（q 匹配 name/alias，过权限） |
-| POST | /entities | 批量 upsert（Admin；走 Connector 归一化通道，禁止直插绕过 resolution） |
-| GET | /entities/{id}/relationships?relation=&direction=out&as_of= | 关系查询（过权限 + temporal） |
+### GET /api/v1/entities/{display_id}
+
+单实体（过权限；404=不存在或无权，响应一致以防探测）
+
+**Response**: `{ "ref": "SUP001", "type": "supplier", "name": "...", "attributes": {...}, "src": {"system": "...", "record_id": "..."} }`
+
+### GET /api/v1/entities
+
+过滤查询（q 匹配 name/alias，过权限）
+
+**Query**:
+- `type` (optional): filter by entity_type
+- `q` (optional): substring match on name or alias
+- `limit` (default 50, max 200)
+- `cursor` (optional): opaque base64 of last display_id from previous page
+
+**Response**: `{ "items": [Entity, ...], "next_cursor": "<base64>" | null }`
+
+### POST /api/v1/entities
+
+批量 upsert（Admin；走 Connector 归一化通道，禁止直插绕过 resolution）
+
+**Body**: `{ "items": [{"type": "...", "name": "...", "source_id": "...", "source_system": "...", "attributes": {...}}, ...] }`
+
+**Response**: `{ "created": int, "updated": int, "errors": [{"index": int, "source_id": "...", "error": "..."}] }`
+
+### GET /api/v1/entities/{display_id}/relationships
+
+关系查询（过权限 + temporal）
+
+**Query**:
+- `relation` (optional): filter by relation type (e.g. SUBMITTED_BY)
+- `direction` (default "out"): out | in | both
+- `as_of` (optional, ISO date): temporal filter
+
+**Response**: `{ "items": [{"from": "U001", "rel": "SUBMITTED_BY", "to": "PR001", "valid": ["2026-01-01", null], "src": {"system": "...", "record_id": "..."}}, ...] }`
 
 ## 4. Resolve（Entity Resolution 服务化）
 
@@ -149,10 +179,17 @@ v0 **恒定返回** `403 {"code":"disabled_feature"}`（env kill-switch + 路由
 
 ## 7. Ingest（Admin）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | /ingest/runs | `{"connector": "csv:suppliers", "params": {}}` → `{run_id}`；同步执行，v0 不做队列 |
-| GET | /ingest/runs/{run_id} | 状态与 stats（created/updated/skipped/errors） |
+### POST /api/v1/ingest/runs
+
+`{"connector": "csv:suppliers", "params": {"path": "data/sample/suppliers.csv"}, "batch": "default"}` → `{"run_id": int, "stats": {...}}`
+
+同步执行，v0 不做队列。stats 含 created / updated / skipped / errors。
+
+### GET /api/v1/ingest/runs/{run_id}
+
+状态与 stats（created/updated/skipped/errors）
+
+**Response**: `{ "run_id": int, "connector": "...", "status": "done|done_with_errors", "stats": {...}, "started_at": "...", "finished_at": "..." }`
 
 Connector 契约（ARCHITECTURE §1）：`connect / discover_schema / fetch / normalize / sync`；新数据源 = 新 Connector 类 + ontology 映射声明，不改引擎。
 

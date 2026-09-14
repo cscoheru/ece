@@ -36,7 +36,7 @@ def parse_api_md_endpoints(path: Path) -> set[tuple[str, str]]:
 
 
 def get_app_endpoints(app: FastAPI) -> set[tuple[str, str]]:
-    """Extract (method, path) tuples from FastAPI app routes.
+    """Extract (method, path) tuples from FastAPI app routes (recurses into included routers).
 
     过滤 FastAPI 自动生成的路由:
     - /docs, /redoc, /openapi.json (Swagger UI)
@@ -46,17 +46,29 @@ def get_app_endpoints(app: FastAPI) -> set[tuple[str, str]]:
     - OPTIONS 方法
     """
     endpoints: set[tuple[str, str]] = set()
-    for route in app.routes:
-        methods = getattr(route, "methods", None) or set()
-        path = getattr(route, "path", None)
-        if not path or not methods:
-            continue
-        if path.startswith(_AUTO_PREFIXES):
-            continue
-        for method in methods:
-            if method in _SKIP_METHODS:
+
+    def _walk(routes):
+        for route in routes:
+            # _IncludedRouter wrapper: recurse into original_router.routes
+            inner = getattr(route, "original_router", None)
+            if inner is not None and not getattr(route, "methods", None):
+                inner_routes = getattr(inner, "routes", None)
+                if inner_routes:
+                    _walk(inner_routes)
                 continue
-            endpoints.add((method, path))
+
+            methods = getattr(route, "methods", None) or set()
+            path = getattr(route, "path", None)
+            if not path or not methods:
+                continue
+            if path.startswith(_AUTO_PREFIXES):
+                continue
+            for method in methods:
+                if method in _SKIP_METHODS:
+                    continue
+                endpoints.add((method, path))
+
+    _walk(app.routes)
     return endpoints
 
 
