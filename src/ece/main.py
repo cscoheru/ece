@@ -1,16 +1,18 @@
-"""ECE v0 FastAPI application -- S0.2 only ships /healthz.
+"""ECE v0 FastAPI application -- S0.2 ships /healthz, Sprint 1-4 routes.
 
-后续 Sprint 逐步添加:
+Endpoint map:
+- Sprint 0: /healthz
 - Sprint 1: /ingest/runs
-- Sprint 2: /permissions/check
+- Sprint 2: /permissions/check, /resolve
 - Sprint 3: /context
-- Sprint 4: /search
+- Sprint 4: /search (planned)
 - Sprint 5: /actions/preview (v0 不实现 /actions/execute)
 - Sprint 6: /audit/context/{id}
 """
 
 from fastapi import FastAPI
 
+from ece.api.context import router as context_router
 from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
@@ -27,6 +29,8 @@ app.include_router(ingest_router)
 app.include_router(entities_router)
 # S2: identity / permissions / resolve
 app.include_router(identity_router)
+# S3.4: context assembly endpoint
+app.include_router(context_router)
 
 
 @app.get("/healthz")
