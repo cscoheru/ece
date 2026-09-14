@@ -280,6 +280,40 @@ $ gh run list --branch main --limit 5
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline 亲笔，2026-09-14）
 
-<!-- Cline 红队审验结论待写入 -->
+### 7.1 独立复核方法
+
+- **CI 状态（R3 由我补齐验证）**：`gh run list` → `fac53d2` **success（26s）**、`4fe270f` **success（25s）**——main CI 实际回绿（此前 `c93fc20`/`5fd441c`/`4045ae8` 三红）；
+- **全链亲跑**：`ruff check .` exit 0（All checks passed）、`mypy src tests` 0、`lint-imports` 2 kept、`make test` 3 passed、`make check-api-docs` exit 0；
+- **零回归实证**：`gen_dataset.py` 双跑后 md5 = `f98a76ca…`，与刀 4 审验时**完全一致**（4R 只动纪律与注释，功能未触碰）；
+- **DATA_MODEL 章节第三次核对**：§1 实体与解析 / §2 关系 / **§3 权限** / **§4 文档与分块** / **§5 审计与溯源**（不可动摇的事实基准）。
+
+### 7.2 逐 R 裁定
+
+| 指令 | 裁定 | 依据 |
+|---|---|---|
+| R1 ruff 12→0 | ✅ | 我复跑 exit 0；mypy/lint-imports/test 同绿 |
+| R2 CI 加 check-api-docs 步骤 | ✅ | ci.yml 第 28–29 行，位置正确（Ruff 后） |
+| R3 CI 回绿证据 | ✅ | CC 如实披露本机无 gh auth、留验给我（处理得当）；我已实证双绿 |
+| **R4 迁移注释 § 映射修正** | ❌ **修反了** | 新 docstring 写 `documents/doc_chunks → §3`、`acl_entries → "§3 末段"`、`context → "Context Package 章节"(§5)`——对照实际章节全错；且报告 line 94 把我 §7.5-4 给出的**正确**映射（acl=§3、documents=§4、context=§5）说成"误对齐已修"，**把对的改成错的**；更把错误注释冠名"Cline 刀 4R 注" |
+| R5 偏差声明+TODO | ✅ | 6 部门理由 + 5 类 TODO 清单齐备；md5 零回归佐证未偷改数据 |
+| R6 Makefile .PHONY/help | ⚠️ 未做 | `.PHONY` 仍只列旧 7 个 target，help 无新条目 |
+
+### 7.3 Cline 补刀（ece `5aa5ddd`，随本 §7 前置 commit）
+
+- `0001_initial.py` docstring 按实际章节重写（acl=§3、documents/doc_chunks=§4、context+ingestion_runs=§5），并注明"4R 初版把 §3/§4 记反，已纠正"；
+- Makefile `.PHONY` 补 5 个新 target，help 补 5 行说明；
+- 修后复跑 `ruff` / `mypy` / `make test` / `make help` 全绿。
+
+### 7.4 判定
+
+**刀 4R = ✅ PASS（附 Cline 补刀 2 处）**。R1/R2/R3/R5 全部达标且 CI 实际回绿；R4/R6 残留均为注释/清单级（不影响功能、CI、schema），补刀成本 8 行 < 返工往返成本，不再开 4R2。**Sprint 0（S0.1–S0.6）至此全部关闭。**
+
+### 7.5 签发
+
+**刀 5 🔵 已签发：Sprint 1 数据面全量（S1.1–S1.4）**，依据 TASKS.md Sprint 1（S2 身份/权限/消歧依赖实体数据在库，Sprint 1 先行是结构必然）。指令文本随本审验交付用户；产出 `cut-005-report.md`，惯例 v2 + 纪律清单（ruff/mypy/lint-imports/pytest/CI 全绿）逐项留档。
+
+---
+
+**Cut 004R 报告结束（§0–§6 执行报告 by CC；§7 审验结论 by Cline）。**
