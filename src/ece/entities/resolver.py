@@ -134,6 +134,17 @@ def resolve_mention(engine: Engine, mention: str, type_hint: str | None = None) 
             mention=mention, candidates=candidates, resolved=True,
             chosen=candidates[0]["entity"], method=candidates[0]["method"],
         )
+
+    # Per cut-006 §7.3 R4: resolver 未决/零候选自动入队 resolution_pending
+    # (ambiguous multi-candidate + zero-candidate). Status distinguishes the two.
+    log_pending(
+        engine=engine,
+        mention=mention,
+        entity_type=type_hint,
+        candidates=candidates,
+        status="ambiguous" if len(candidates) > 1 else "no_match",
+    )
+
     if len(candidates) > 1:
         # Ambiguity: never guess. Per cut-005 §7.4 R5 / ADR-004 'fail-closed'.
         return ResolutionResult(
@@ -141,3 +152,40 @@ def resolve_mention(engine: Engine, mention: str, type_hint: str | None = None) 
         )
     # Zero candidates
     return ResolutionResult(mention=mention, candidates=[], resolved=False)
+
+
+def log_pending(
+    engine: Engine,
+    mention: str,
+    entity_type: str | None,
+    candidates: list[dict],
+    status: str = "pending",
+) -> int:
+    """Persist an unresolved resolution to resolution_pending (cut-006 §7.3 R4).
+
+    Per R4 acceptance: resolver 未决/零候选自动入队 for human-in-the-loop triage.
+    status='ambiguous' for multi-candidate, 'no_match' for zero-candidate.
+    Returns the inserted id (bigserial).
+
+    JSONB binding: uses bindparam(type_=JSONB) so SQLAlchemy hands the dict to
+    psycopg as jsonb directly. The earlier `:c::jsonb` form collided with
+    PostgreSQL's `::` cast operator — SQLAlchemy's text() compiler treated `:c::`
+    as a literal escape and left `:c` unparameterized, causing
+    `psycopg.errors.SyntaxError: syntax error at or near ":"`.
+    """
+    from sqlalchemy import bindparam  # local import (minimal blast radius)
+    from sqlalchemy.dialects.postgresql import JSONB
+
+    stmt = text("""
+        INSERT INTO resolution_pending
+            (mention, entity_type, candidates, status)
+        VALUES (:m, :t, :c, :s)
+        RETURNING id
+    """).bindparams(bindparam("c", type_=JSONB))
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            stmt,
+            {"m": mention, "t": entity_type, "c": candidates, "s": status},
+        )
+        return result.scalar_one()

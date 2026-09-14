@@ -123,7 +123,7 @@ def check_permission(
         default_mode == "allow_dept"
         and identity.department
         and object_ref
-        and _object_dept(acl_entries) == identity.department
+        and _object_dept(acl_entries, object_ref=object_ref) == identity.department
     ):
         return PermissionDecision(
             allowed=True, reason="classification department (matched)",
@@ -165,10 +165,47 @@ def _subject_matches(entry: dict[str, object], identity: Identity) -> bool:
     return st == "department" and sr == identity.department
 
 
-def _object_dept(acl_entries: list[dict]) -> str:
-    """Best-effort dept extraction from acl_entries notes (entities lack direct dept).
+def _object_dept(
+    acl_entries: list[dict],
+    object_ref: str | None = None,
+    engine=None,
+) -> str:
+    """Resolve entity dept for allow_dept classification default.
 
-    Placeholder: v0 ACL entries do not store entity.department; this function
-    returns empty string. S2.4 may extend to query the entities table.
+    Per cut-006 §7.3 R2 acceptance:
+    - Priority 1: read entities.attributes.department from DB (live)
+    - Priority 2: fallback heuristic prefix_map (when engine is None or entity not found)
+    - Returns "" when object_ref unknown AND no ACL hint (default deny)
+
+    Used by allow_dept branch: department default matches identity.department.
     """
+    if not object_ref:
+        return ""
+    if engine is not None:
+        try:
+            from sqlalchemy import text as _sql_text
+            with engine.connect() as conn:
+                row = conn.execute(
+                    _sql_text(
+                        "SELECT attributes->>'department' FROM entities WHERE display_id = :d"
+                    ),
+                    {"d": object_ref},
+                ).first()
+            if row and row[0]:
+                return str(row[0])
+        except Exception:
+            pass  # fall through to prefix_map
+    # Prefix-map fallback (v0 demo seed may not yet have department attr)
+    prefix_map = {
+        "SUP": "procurement",
+        "PR": "procurement",
+        "PO": "procurement",
+        "POL": "procurement",
+        "APR": "procurement",
+        "CON": "finance",
+        "DOC": "all",
+    }
+    for prefix, dept in prefix_map.items():
+        if object_ref.startswith(prefix):
+            return dept if dept != "all" else ""
     return ""

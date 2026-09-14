@@ -23,6 +23,7 @@ dev = [
     "mypy>=1.11",
     "import-linter>=2.15",
     "httpx>=0.27",  # required by fastapi.testclient
+    "requests>=2.31",  # required by scripts/run_e2_permission.py
 ]
 
 [tool.ruff]

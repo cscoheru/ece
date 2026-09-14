@@ -45,6 +45,11 @@ schema-check:
 gen-dataset:
 	uv run python scripts/gen_dataset.py --out data/dataset/demo.json
 
+# R2 (cut-006 §7.3): E2 权限套件 runner — Unauthorized Exposure = 0 一票否决
+# 前置: make pull-db + docker compose up -d db + uv run alembic upgrade head + make seed
+e2-runner:
+	uv run python scripts/run_e2_permission.py --data data/eval/e2_permission.json
+
 # S1.4: seed 入库 (Connectors + Entity pipeline 串接);幂等:再跑 created=0
 seed:
 	uv run python -m ece.seed
