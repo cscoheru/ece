@@ -125,9 +125,44 @@
 
 **Response**: `{ "items": [{"from": "U001", "rel": "SUBMITTED_BY", "to": "PR001", "valid": ["2026-01-01", null], "src": {"system": "...", "record_id": "..."}}, ...] }`
 
+## 5. Permissions
+
+### POST /api/v1/permissions/check
+
+检查用户是否能访问某对象。返回 decision (allowed/reason/matched_rule)。
+
+**Body**:
+```json
+{
+  "user_ref": "U001",
+  "object_type": "entity",
+  "object_ref": "SUP001",
+  "classification": "department"
+}
+```
+
+`X-User-Id` header 也可（推荐，per ADR-004）。
+
+**Response**:
+```json
+{
+  "allowed": true,
+  "reason": "classification department (matched)",
+  "matched_rule": "classification-dept"
+}
+```
+
+判定顺序（per ADR-004 Permission Before Context Assembly）：deny > user > role > dept > classification 默认矩阵 > default deny。
+
 ## 4. Resolve（Entity Resolution 服务化）
 
 ### POST /api/v1/resolve
+
+`{"mention": "无限极", "type_hint": "supplier"}` → `{ "candidates": [...], "resolved": bool }`
+
+6 级流水线（v0 实现 1-3 级）：exact → normalized → alias → rule → embedding → LLM。
+
+歧义规则（per cut-005 §7.4）：多候选 → `resolved=false`，**不猜测**。### POST /api/v1/resolve
 
 ```json
 {"mentions": [{"text": "无限极", "type_hint": "supplier"}, {"text": "张经理", "type_hint": "person"}]}

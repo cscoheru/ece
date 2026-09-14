@@ -12,6 +12,7 @@
 from fastapi import FastAPI
 
 from ece.api.entities import router as entities_router
+from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
 
 app = FastAPI(
@@ -24,6 +25,8 @@ app = FastAPI(
 app.include_router(ingest_router)
 # S1.3: entity / relationship routes
 app.include_router(entities_router)
+# S2: identity / permissions / resolve
+app.include_router(identity_router)
 
 
 @app.get("/healthz")
