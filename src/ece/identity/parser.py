@@ -26,7 +26,7 @@ class Identity:
     roles: list[str] = field(default_factory=list)
     aliases: list[str] = field(default_factory=list)
     source_system: str = "api:header"
-    is_management: bool = False  # derived: any role contains 'manager'
+    is_management: bool = False  # derived: any role contains 'manager' (set after init)
 
 
 def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
@@ -82,6 +82,8 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
         ).fetchall()
         aliases: list[str] = [r[0] for r in alias_rows]
 
+        is_management = any("manager" in r.lower() for r in roles)
+
         return Identity(
             user_ref=x_user_id,
             entity_id=str(entity_id),
@@ -90,6 +92,7 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
             department=department,
             roles=roles,
             aliases=aliases,
+            is_management=is_management,
         )
 
 

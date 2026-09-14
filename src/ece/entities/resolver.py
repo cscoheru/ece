@@ -58,7 +58,7 @@ def resolve_mention(engine: Engine, mention: str, type_hint: str | None = None) 
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-                SELECT display_id, name, source_id, 'exact' AS method, 1.0 AS confidence
+                SELECT display_id, name, source_id, 1.0 AS confidence
                 FROM entities
                 WHERE source_id = :m
                 LIMIT 5
@@ -86,7 +86,7 @@ def resolve_mention(engine: Engine, mention: str, type_hint: str | None = None) 
         with engine.connect() as conn:
             rows = conn.execute(
                 text("""
-                    SELECT display_id, name, source_id, 'normalized' AS method, 0.95 AS confidence
+                    SELECT display_id, name, source_id, 0.95 AS confidence
                     FROM entities
                     WHERE LOWER(TRIM(normalized_name)) = :n
                        OR LOWER(TRIM(name)) = :n
@@ -109,7 +109,7 @@ def resolve_mention(engine: Engine, mention: str, type_hint: str | None = None) 
         with engine.connect() as conn:
             rows = conn.execute(
                 text("""
-                    SELECT e.display_id, e.name, e.source_id, 'alias' AS method, 0.85 AS confidence
+                    SELECT e.display_id, e.name, e.source_id, 0.85 AS confidence
                     FROM entity_aliases ea
                     JOIN entities e ON ea.entity_id = e.id
                     WHERE LOWER(TRIM(ea.norm_alias)) = :n
