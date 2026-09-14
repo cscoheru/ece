@@ -10,6 +10,28 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      # cut-005R Cline supplement: integration tests (R4) need a live postgres.
+      # 0001 migration runs CREATE EXTENSION vector -> must be the pgvector image.
+      # docker.io pulls directly on GH runners (daocloud mirror issue is local-only).
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ece
+          POSTGRES_PASSWORD: ece
+          POSTGRES_DB: ece
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ece -d ece"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # ece.db default; explicit for clarity (service is reachable on localhost:5432)
+      DATABASE_URL: postgresql+psycopg://ece:ece@localhost:5432/ece
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +43,16 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --all-groups
+
+      - name: Generate demo dataset (deterministic, S0.6)
+        run: make gen-dataset
+
+      - name: Verify demo.json md5 baseline (cut-005 R5 integrity lock)
+        run: |
+          echo "f98a76ca10a025d530e1d018582a13ca  data/dataset/demo.json" | md5sum -c -
+
+      - name: Migrate (alembic 0001+0002)
+        run: uv run alembic -c src/ece/migrations/alembic.ini upgrade head
 
       - name: Ruff (lint)
         run: uv run ruff check .
