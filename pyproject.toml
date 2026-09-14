@@ -11,6 +11,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pgvector>=0.3",
     "uvicorn>=0.30",
+    "pyyaml>=6.0",  # required by S3.1 Context Spec loader (cut-007)
     # NOTE: mcp 故意不在 S0.1 依赖（Sprint 4 S4.5 MCP Tool Layer 动工时引入，per ADR-004）。
     # NOTE: openai SDK 不在 S0.1 — LLM 客户端在 Sprint 5（Procurement Agent）加入。
 ]

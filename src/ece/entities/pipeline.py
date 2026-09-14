@@ -46,26 +46,46 @@ def _normalize_name(name: str) -> str:
 
 
 def _next_display_id(engine: Engine, entity_type: str) -> str:
-    """Allocate next display_id (e.g. SUP001 -> SUP002) per existing max + 1."""
+    """Allocate next display_id (e.g. SUP1001 -> SUP1002) per existing max + 1.
+
+    Per cut-007 §4.2 bug fix: pre-existing implementation used
+    `ORDER BY display_id DESC LIMIT 1` which is TEXT ordering.
+    In text compare 'SUP999' > 'SUP1000' (because '9' > '1'),
+    so max(text) returns 'SUP999' and max+1 = 'SUP1000' — but demo
+    seed already has 'SUP1000' (source_id='supplier:45' from
+    demo:demo), causing UNIQUE display_id conflict.
+
+    Fix: iterate ALL matching display_ids, parse numeric suffix,
+    find max numerically. After fix, demo's SUP1000 is detected
+    and next becomes SUP1001.
+
+    Tradeoff: O(N) scan per upsert. Acceptable for v0 (synthetic
+    demo data, <100 suppliers). For larger datasets, consider a
+    SQL-side CAST(SUBSTRING(...) AS INTEGER) MAX.
+    """
     prefix = _DISPLAY_ID_PREFIX.get(entity_type, entity_type.upper()[:3])
     pattern = f"{prefix}%"
 
     with engine.connect() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             text("""
                 SELECT display_id FROM entities
                 WHERE entity_type = :etype AND display_id LIKE :pat
-                ORDER BY display_id DESC LIMIT 1
             """),
             {"etype": entity_type, "pat": pattern},
-        ).first()
+        ).fetchall()
 
-    if row is None:
-        return f"{prefix}001"
-    last_id = row[0] or ""
-    m = re.search(r"(\d+)$", last_id)
-    next_num = (int(m.group(1)) + 1) if m else 1
-    return f"{prefix}{next_num:03d}"
+    max_num = 0
+    for (display_id,) in rows:
+        if not display_id:
+            continue
+        m = re.search(r"(\d+)$", display_id)
+        if m:
+            n = int(m.group(1))
+            if n > max_num:
+                max_num = n
+
+    return f"{prefix}{max_num + 1:03d}"
 
 
 def upsert_entity(

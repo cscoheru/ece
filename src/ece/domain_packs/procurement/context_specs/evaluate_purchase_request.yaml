@@ -1,0 +1,44 @@
+# S3.1 — Context Specification for evaluate_purchase_request (Procurement Pack)
+#
+# Per ARCHITECTURE §2.1 + PRD §40-41: each domain task declares its Required
+# Context as YAML; runtime loads → typed model; engine resolves.
+#
+# This spec drives the "Is this purchase request reasonable?" intent (PRD §21 demo):
+#   PR001 → supplier + product + contract + policy + approvals + requester.
+
+spec: evaluate_purchase_request
+version: 1
+root_entity: purchase_request
+
+requires:
+  user: true
+  entities:
+    - {type: supplier,    via: "SELECTS",           max_hops: 1}
+    - {type: contract,    via: "SELECTS>HAS_CONTRACT", max_hops: 2}
+    - {type: product,     via: "CONTAINS",          max_hops: 1}
+    - {type: policy,      via: "SUBJECT_TO",        max_hops: 1}
+    - {type: approval,    via: "HAS_APPROVAL",      max_hops: 1}
+    - {type: person,      via: "SUBMITTED_BY",      max_hops: 1}
+    - {type: department,  via: "BELONGS_TO",        max_hops: 1}
+  relationships:
+    - SUBMITTED_BY
+    - BELONGS_TO
+    - SELECTS
+    - HAS_CONTRACT
+    - CONTAINS
+    - SUBJECT_TO
+    - HAS_APPROVAL
+  documents:
+    - {doc_type: procurement_policy, match: "applies to dept & category"}
+  structured_data:
+    - historical_purchase
+    - approval_history
+
+temporal:
+  mode: current
+
+limits:
+  max_entities: 60
+  max_relationships: 100
+  max_chunks: 30
+  max_rows: 200
