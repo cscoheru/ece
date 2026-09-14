@@ -12,6 +12,7 @@ Endpoint map:
 
 from fastapi import FastAPI
 
+from ece.api.actions import router as actions_router
 from ece.api.context import router as context_router
 from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
@@ -34,6 +35,8 @@ app.include_router(identity_router)
 app.include_router(context_router)
 # S4.3: unified search endpoint (FTS keyword route; vector/structured/rel stubbed)
 app.include_router(search_router)
+# S4.5+: actions preview endpoint (per ADR-004 /actions/execute v0 disabled)
+app.include_router(actions_router)
 
 
 @app.get("/healthz")

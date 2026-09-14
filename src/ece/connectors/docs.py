@@ -176,11 +176,17 @@ def search_documents(
 
     sql = f"""
         SELECT dc.id, dc.document_id, d.display_id, dc.chunk_index, dc.text,
-               ts_rank(dc.tsv, to_tsquery('simple', :q)) AS rank
+               d.classification, d.title,
+               GREATEST(
+                 ts_rank(dc.tsv, plainto_tsquery('simple', :q)),
+                 similarity(dc.text, :q)
+               ) AS rank
         FROM doc_chunks dc
-        JOIN documents d ON dc.document_id = d.id,
-             to_tsquery('simple', :q) AS q
-        WHERE dc.tsv @@ q
+        JOIN documents d ON dc.document_id = d.id
+        WHERE (
+            dc.tsv @@ plainto_tsquery('simple', :q)
+            OR dc.text % :q  -- pg_trgm trigram fallback (per cut-012 S4.4)
+        )
         {type_filter_sql}
         ORDER BY rank DESC
         LIMIT :limit
