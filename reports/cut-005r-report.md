@@ -221,6 +221,36 @@ make test    # 15+ passed
 
 ---
 
-## 7. 红队审验结论（Cline 待写）
+## 7. 红队审验结论（Cline）
 
-<!-- Cline 红队审验结论待写入 -->
+**裁定：✅ 通过（附 Cline 补刀 CI 基建 1 处 + 2 项小缺口记录在案转刀 6）**（2026-09-14）。**Sprint 1（S1.1–S1.4）关闭**。
+
+R5 整改到位使本轮审验效率显著提升：3 个工作 commit message **全部附根因 + 可复跑命令 + 实跑输出**，审验方逐条执行均与声明一致——这是对 cut-005 第 3 次完整性事故的正确修复，值得正面记录。
+
+### 7.1 六项 R 逐项核验（Cline 亲跑）
+
+| R | 声明 | 亲跑复核 | 裁定 |
+|---|---|---|---|
+| R1 seed 适配 | 420→0 双跑 | 干净库（down -v + rm pgdata）复跑：**Total created: 420 → 0**；5 类型精确入库（supplier=50 product=100 purchase_request=200 contract=50 policy=20）；md5 基准 `f98a76ca…` 零漂移 | ✅ |
+| R2 真 upsert | stats.created 与 db 对齐 | 活体 API：首跑 created=3（后台批次实证）/ 重跑 **updated=3**；4 次 run 后 `entities WHERE source_system='csv:suppliers'` 恰 3 行零重复；s11 测试断言 created==db delta | ✅ |
+| R3 去重 | 唯一索引 + 二插 1 行 | 干净 tag 实测同三元组连插两次：`(True,'ok')×2` 且 **rows: 1**（`uq_relationships_triple` 含 `COALESCE(valid_from,'0001-01-01')`——NULL=-inf 语义处理正确） | ✅* |
+| R4 测试补齐 | 15 passed 1 skipped | 亲跑 `make test` = **15 passed, 1 skipped**（与声明一致） | ⚠️† |
+| R5 完整性 | commit message 附命令 | `0ecc362`/`6557bb2`/`7d90ccb` 全部含根因+命令+实跑输出，逐条可复跑 | ✅ |
+| R6 标签 | 资源段保留 | 活体：请求 `csv:suppliers` → stats.connector == `csv:suppliers`；脏行（空 id/name）skipped=1 计数正确 | ✅ |
+
+\* R3 小缺口：ontology 拒绝仍只返回 `(False, reason)` **无落库记录**（TASKS S1.2"被拒并记录"），报告未披露——v0 可辩（返回值即"记录"给调用方），但 S2.4 审计表落地时必须补，**转刀 6 范围**。
+† R4 小缺口：(a) `test_s13::test_post_ingest_runs_wrapped_items` **名不副实**——只断言 unknown connector→400，未测 POST /entities wrapped items 正路与 `/relationships` 端点契约；(b) s13 的 SUP001-found 用例依赖 s11 先跑（测试顺序耦合，条件 skip 掩盖）。**转刀 6 补强**。
+
+### 7.2 CI 结构性红 → Cline 补刀（ece `2c1c026`）
+
+- **事实**：`7d90ccb` 与报告 commit `ae890e2` 的 CI 均 **failure**——R4 integration 测试打真库，CI runner 无 postgres → `psycopg.OperationalError: Connection refused`。报告 §3 给 `7d90ccb` 标"✅ 5 项绿"仅为本地视角（§2.4 已披露本机无 gh CLI），但**带红 push ×2 与刀 4 同类**，且报告未声明"CI 将红"这一可预见后果。
+- **补刀**：`.github/workflows/ci.yml` 加 `pgvector/pgvector:pg16` service（0001 需 `CREATE EXTENSION vector`）+ `DATABASE_URL` env + `make gen-dataset` + **demo.json md5 基准锁步**（R5"不许静默改数据"由 CI 机械强制）+ alembic upgrade 前置于 pytest。补刀后 CI 见绿（`gh run watch --exit-status` 复核）。
+- **立规（刀 4 规则重申 + 扩展）**：**新增任何打真库的测试前，必须同步确认 CI 能提供该依赖**（service container / skipif），否则不许合入——本地绿≠交付态绿。
+
+### 7.3 环境备注（不计入裁定）
+
+Cline 首次 `make test` 遇 7 failed（`server closed the connection unexpectedly`）——db 容器在 down -v/up 快速切换后瞬断一次（RestartCount=0、恢复后两连绿、单跑 integration 全绿），**环境事故而非代码缺陷**。留档：验收前先 `docker compose ps` 确认 healthy 再起跑。
+
+### 7.4 签发
+
+**刀 6（Sprint 2 身份/权限/消歧 S2.1–S2.4）**，前置条件已就绪：S1 实体数据管线实证可用（420 实体 seed + 0001/0002 迁移 + CI 真 postgres）。附加范围（本刀 §7.1 两缺口）：(a) ontology 拒绝落库记录（随 S2.4 审计表）；(b) s13 契约测试补 POST /entities 正路 + /relationships 端点 + 去顺序耦合。纪律清单不变，另加 7.2 立规。
