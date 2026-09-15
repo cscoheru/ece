@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
+from ece.api.delegation import resolve_user_refs, user_can_access
 from ece.audit.trace import get_context_trace
 from ece.db import get_engine
 
@@ -47,6 +48,7 @@ class AuditTraceResponse(BaseModel):
 def get_context_audit(
     request_id: str,
     x_user_id: str | None = Header(None, alias="X-User-Id"),
+    x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
 ) -> AuditTraceResponse:
     """Get audit trace for a context_requests row.
 
@@ -58,10 +60,10 @@ def get_context_audit(
         403: caller is not the owner
         404: request_id not found
     """
-    if not x_user_id:
+    if not resolve_user_refs(x_user_id, x_delegation_token):
         raise HTTPException(
             status_code=400,
-            detail={"code": "bad_request", "message": "X-User-Id header required"},
+            detail={"code": "bad_request", "message": "X-User-Id header or valid X-Delegation-Token required"},
         )
 
     trace = get_context_trace(get_engine(), request_id)
@@ -74,8 +76,8 @@ def get_context_audit(
             },
         )
 
-    # Per ADR-004: only owner can view their own trace
-    if trace["user_ref"] != x_user_id:
+    # Per ADR-004 (extended cut-018b): owner OR delegated user
+    if not user_can_access(x_user_id, x_delegation_token, trace["user_ref"]):
         raise HTTPException(
             status_code=403,
             detail={

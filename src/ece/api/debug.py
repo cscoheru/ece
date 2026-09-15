@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from ece.api.delegation import user_can_access
 from ece.audit.trace import get_context_trace
 from ece.db import get_engine
 
@@ -123,6 +124,7 @@ def get_debug_context(
     request_id: str,
     request: Request,
     x_user_id: str | None = Header(None, alias="X-User-Id"),
+    x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
 ) -> str:
     """Debugger UI: server-rendered HTML trace page.
 
@@ -131,7 +133,7 @@ def get_debug_context(
     - Non-localhost request → 403 (anti-exposure: prevent audit trace leak)
     - Override allowlist via env DEBUG_ALLOWED_HOSTS="host1,host2,..."
 
-    Per ADR-004: same permission check as /audit/context — only owner.
+    Per ADR-004 (extended cut-018b): owner OR delegated user (X-Delegation-Token).
     """
     if not _is_private_deployment():
         raise HTTPException(
@@ -156,12 +158,12 @@ def get_debug_context(
             },
         )
 
-    if not x_user_id:
+    if not x_user_id and not x_delegation_token:
         raise HTTPException(
             status_code=400,
             detail={
                 "code": "bad_request",
-                "message": "X-User-Id header required",
+                "message": "X-User-Id header or X-Delegation-Token required",
             },
         )
 
@@ -175,7 +177,8 @@ def get_debug_context(
             },
         )
 
-    if trace["user_ref"] != x_user_id:
+    # Per ADR-004 (extended cut-018b): owner OR delegated user
+    if not user_can_access(x_user_id, x_delegation_token, trace["user_ref"]):
         raise HTTPException(
             status_code=403,
             detail={
