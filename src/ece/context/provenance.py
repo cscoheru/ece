@@ -137,3 +137,17 @@ def record_package(
                     "score": item.get("score"),
                 },
             )
+
+    # cut-034: fire-and-forget webhook delivery (after successful DB commit)
+    from ece.audit.webhook import is_webhook_enabled, send_audit_event
+
+    if is_webhook_enabled():
+        send_audit_event({
+            "request_id": str(request_id),
+            "user_ref": user_ref,
+            "intent": intent,
+            "status": status,
+            "counts": counts,
+            "latency_ms": latency_ms,
+            "user_org": user_org,
+        })
