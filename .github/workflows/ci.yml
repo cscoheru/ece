@@ -41,8 +41,8 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Sync dependencies
-        run: uv sync --all-groups
+      - name: Sync dependencies (--frozen for reproducible CI)
+        run: uv sync --frozen --all-groups
 
       - name: Generate demo dataset (deterministic, S0.6)
         run: make gen-dataset
@@ -51,8 +51,16 @@ jobs:
         run: |
           echo "f98a76ca10a025d530e1d018582a13ca  data/dataset/demo.json" | md5sum -c -
 
-      - name: Migrate (alembic 0001+0002)
+      - name: Migrate (alembic 0001→0007)
         run: uv run alembic -c src/ece/migrations/alembic.ini upgrade head
+
+      - name: Verify migrations replay cleanly (cut-035 regression)
+        run: |
+          uv run alembic -c src/ece/migrations/alembic.ini downgrade base
+          uv run alembic -c src/ece/migrations/alembic.ini upgrade head
+
+      - name: Seed demo data (PRD §27)
+        run: make seed
 
       - name: Ruff (lint)
         run: uv run ruff check .

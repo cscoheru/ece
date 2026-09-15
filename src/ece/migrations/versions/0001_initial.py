@@ -1,18 +1,24 @@
-"""S0.5 initial migration -- covers docs/DATA_MODEL.md 1-5.
+"""S0.5 initial migration — covers docs/DATA_MODEL.md sections 1-4 + acl_entries.
 
-Per PRD 27 + DATA_MODEL  末段:
-- 必须含 pgvector extension (vector 列需要)
-- 全部 entity/relationship/docs/chunks/ingestion_runs/context_* 表 + 索引
-- 6 是文本图,7/8 是策略 -> 不纳入迁移
+Per PRD §27 + DATA_MODEL:
+- pgvector extension (vector columns)
+- entities / entity_aliases / entity_revisions (1 — entity & resolution)
+- relationships (2 — temporal, includes valid_from/valid_to)
+- acl_entries (3 — permission)
+- documents / doc_chunks (4 — document & chunking)
+- ingestion_runs (audit ingestion lifecycle)
 
-DATA_MODEL  编号映射(Cline 4R 补注：以 DATA_MODEL.md 实际章节标题为准----1 实体与解析 / 2 关系 / 3 权限 / 4 文档与分块 / 5 审计与溯源;4R 初版映射把 3/4 记反,已纠正):
-- entities / entity_aliases / entity_revisions -> 1 实体与解析
-- relationships                  -> 2 关系(Temporal)
-- acl_entries                    -> 3 权限(PRD 13/28)
-- documents / doc_chunks         -> 4 文档与分块
-- context_requests / context_items / ingestion_runs -> 5 审计与溯源(PRD 22/31)
+Excluded from this migration (handled later):
+- context_requests / context_items (5 — Context API + Audit/Debugger):
+  created in 0005_context_audit.py. cut-035 fix: removed retro-edit
+  duplication from 0001; 0005 is sole owner of ctx tables.
 
-按迁移顺序书写,无  编号标注 -- 业务领域 -> 表分组.
+DATA_MODEL mapping (per Cline 4R clarification):
+- 1 entity / resolution: entities, entity_aliases, entity_revisions
+- 2 relationship: relationships
+- 3 permission: acl_entries
+- 4 document: documents, doc_chunks
+- 5 audit (excluded): context_requests, context_items → 0005
 """
 
 from collections.abc import Sequence
@@ -130,7 +136,7 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_chunks_tsv ON doc_chunks USING gin (tsv)")
     op.execute("CREATE INDEX idx_chunks_vec ON doc_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)")
 
-    # 7. ingestion_runs (3)
+    # 7. ingestion_runs (audit ingestion lifecycle)
     op.execute("""
         CREATE TABLE ingestion_runs (
             id bigserial PRIMARY KEY,
@@ -142,38 +148,7 @@ def upgrade() -> None:
         )
     """)
 
-    # 8. context tables (4 / 5 -- Context API + Audit/Debugger)
-    op.execute("""
-        CREATE TABLE context_requests (
-            request_id uuid PRIMARY KEY,
-            user_ref text NOT NULL,
-            intent text NOT NULL,
-            spec_version int,
-            root_entities jsonb NOT NULL,
-            as_of date,
-            counts jsonb NOT NULL,
-            latency_ms int,
-            llm_model text,
-            status text NOT NULL,
-            created_at timestamptz NOT NULL DEFAULT now()
-        )
-    """)
-    op.execute("""
-        CREATE TABLE context_items (
-            id bigserial PRIMARY KEY,
-            request_id uuid NOT NULL REFERENCES context_requests(request_id) ON DELETE CASCADE,
-            seq int NOT NULL,
-            item_kind text NOT NULL,
-            ref text NOT NULL,
-            source jsonb NOT NULL,
-            decision text NOT NULL,
-            reason text,
-            score numeric(8, 4)
-        )
-    """)
-    op.execute("CREATE INDEX idx_citems_req ON context_items (request_id)")
-
-    # 9. acl_entries (5 -- Permission)
+    # 8. acl_entries (3 -- Permission)
     op.execute("""
         CREATE TABLE acl_entries (
             id bigserial PRIMARY KEY,
@@ -194,8 +169,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS acl_entries")
-    op.execute("DROP TABLE IF EXISTS context_items")
-    op.execute("DROP TABLE IF EXISTS context_requests")
     op.execute("DROP TABLE IF EXISTS ingestion_runs")
     op.execute("DROP TABLE IF EXISTS doc_chunks")
     op.execute("DROP TABLE IF EXISTS documents")
