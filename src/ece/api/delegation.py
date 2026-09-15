@@ -1,4 +1,4 @@
-"""Multi-user PermissionScope delegation (v0.1 deployment cut-018b + cut-021).
+"""Multi-user PermissionScope delegation (v0.1 deployment cut-018b + cut-021 + cut-022).
 
 Allow manager / team-lead / shared-service to view another user's trace
 via `X-Delegation-Token` header (instead of impersonating via X-User-Id).
@@ -16,6 +16,13 @@ Each `token:org_a,org_b` entry grants the bearer access to ALL users whose
 user_ref maps to those orgs (per ECE_USER_ORGS env). Enables cross-org read
 for managers / auditors without per-user token lists. Wildcard "*" grants
 cross-ALL-orgs access (audit role).
+
+Env format (v0.2 cut-022, per-RESOURCE):
+    ECE_AUDIT_TOKEN_REQUEST_IDS = "audit_token:req_abc,req_xyz;..."
+
+Each `token:req_abc,req_xyz` entry grants the bearer access to SPECIFIC
+request_ids, regardless of ownership or org. Used by external auditors
+given specific case IDs to investigate.
 """
 from __future__ import annotations
 
@@ -83,6 +90,51 @@ def _user_refs_in_orgs(org_ids: list[str]) -> list[str]:
     if "*" in org_ids:
         return list(user_orgs.keys())
     return [u for u, org in user_orgs.items() if org in org_ids]
+
+
+def parse_request_id_delegation_tokens() -> dict[str, list[str]]:
+    """Parse ECE_AUDIT_TOKEN_REQUEST_IDS env into {token: [request_ids]} dict.
+
+    Format: "token1:req_abc,req_xyz;token2:req_def"
+    Whitespace tolerant. Skips malformed entries (no colon).
+
+    Per-resource scope (cut-022): token grants access to SPECIFIC
+    request_ids only, regardless of who owns them or what org they're in.
+    Used by external auditors given specific case IDs to investigate.
+    """
+    raw = os.environ.get("ECE_AUDIT_TOKEN_REQUEST_IDS", "")
+    result: dict[str, list[str]] = {}
+    for entry in raw.split(";"):
+        entry = entry.strip()
+        if not entry or ":" not in entry:
+            continue
+        token, ids_str = entry.split(":", 1)
+        token = token.strip()
+        if not token:
+            continue
+        ids = [i.strip() for i in ids_str.split(",") if i.strip()]
+        if ids:
+            result[token] = ids
+    return result
+
+
+def request_id_can_access(
+    x_delegation_token: str | None,
+    request_id: str | None,
+) -> bool:
+    """True if X-Delegation-Token grants access to this specific request_id.
+
+    Per-resource scope (cut-022): independent of owner / per-user / per-org
+    checks. Token bearer can access the listed request_ids regardless of
+    ownership or org. Returns False if token absent or token has no
+    per-resource entries.
+    """
+    if not x_delegation_token or not request_id:
+        return False
+    rq_tokens = parse_request_id_delegation_tokens()
+    if x_delegation_token not in rq_tokens:
+        return False
+    return request_id in rq_tokens[x_delegation_token]
 
 
 def resolve_user_refs(

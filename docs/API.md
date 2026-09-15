@@ -236,13 +236,14 @@ Returns the trace for a context request (context_requests + context_items rows).
 
 Per ADR-004 PermissionScope: only the owner (`user_ref`) can view their own traces.
 
-**Headers** (cut-018b + cut-019 + cut-021):
+**Headers** (cut-018b + cut-019 + cut-021 + cut-022):
 
 | Header | Required | 用途 |
 |---|---|---|
 | `X-User-Id` | one of these | 自我访问 (owner check) |
 | `X-Delegation-Token` | one of these | 跨用户访问 (manager / shared service, cut-018b) |
 | `X-Delegation-Token` | 跨 org | 跨 org 访问 (cut-021 `ECE_DELEGATION_ORG_TOKENS`) |
+| `X-Delegation-Token` | per-resource | 特定 request_id 访问 (cut-022 `ECE_AUDIT_TOKEN_REQUEST_IDS`) |
 | `X-Org-Id` | 仅多租户模式 | 跨 org 隔离 (cut-019) |
 
 请求:
