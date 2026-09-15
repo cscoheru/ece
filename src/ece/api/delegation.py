@@ -122,6 +122,35 @@ def is_token_revoked(token: str | None) -> bool:
     return token in parse_revoked_tokens()
 
 
+def parse_revoked_users() -> set[str]:
+    """Parse ECE_REVOKED_USERS env into set of revoked user_refs (cut-028).
+
+    Format: "fired_user,banned_user,terminated_user"
+    Whitespace tolerant. Empty entries skipped.
+
+    Different from ECE_REVOKED_TOKENS (cut-024): revoked user is denied
+    ALL access, including owner access to their own traces. Used when
+    firing an employee or terminating an account.
+    """
+    raw = os.environ.get("ECE_REVOKED_USERS", "")
+    return {u.strip() for u in raw.split(",") if u.strip()}
+
+
+def is_user_revoked(user_ref: str | None) -> bool:
+    """True if user_ref is in ECE_REVOKED_USERS revocation list (cut-028).
+
+    Revoked users are denied ALL access — even owner check on their own
+    traces. This is intentionally stronger than cut-024 (token revocation)
+    which preserves owner access.
+
+    For graceful deactivation scenarios (employee leaving), use
+    ECE_REVOKED_USERS. For token compromise, use ECE_REVOKED_TOKENS.
+    """
+    if not user_ref:
+        return False
+    return user_ref in parse_revoked_users()
+
+
 def parse_request_id_delegation_tokens() -> dict[str, list[str]]:
     """Parse ECE_AUDIT_TOKEN_REQUEST_IDS env into {token: [request_ids]} dict.
 
@@ -222,7 +251,12 @@ def user_can_access(
     Per ADR-004: only owner can view. With delegation, token-bearer can
     view if trace_user_ref is in their allowed list (per-user or per-org).
     cut-024: revoked tokens grant nothing.
+    cut-028: revoked users (ECE_REVOKED_USERS) are denied ALL access,
+    including owner check on their own traces.
     """
+    # cut-028: revoked user → no access at all (owner + delegation both blocked)
+    if is_user_revoked(x_user_id) or is_user_revoked(trace_user_ref):
+        return False
     if x_user_id == trace_user_ref:
         return True
     allowed = resolve_user_refs(x_user_id, x_delegation_token)
