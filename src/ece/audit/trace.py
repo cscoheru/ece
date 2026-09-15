@@ -23,7 +23,7 @@ def get_context_trace(
         req_row = conn.execute(
             text("""
                 SELECT request_id, user_ref, intent, status, counts,
-                       latency_ms, created_at
+                       latency_ms, created_at, org_id
                 FROM context_requests WHERE request_id = :r
             """),
             {"r": request_id},
@@ -51,6 +51,7 @@ def get_context_trace(
         "counts": counts,
         "latency_ms": req_row[5],
         "created_at": created_at.isoformat() if created_at else "",
+        "org_id": req_row[7],
         "items": [
             {
                 "seq": r[0],

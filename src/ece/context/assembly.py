@@ -29,6 +29,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from ece.api.org import get_user_org
 from ece.context.documents import get_documents
 from ece.context.provenance import build_sources, record_package
 from ece.context.relationships import get_relationships
@@ -401,6 +402,7 @@ def _finalize(
         latency_ms=latency_ms,
         items=items_for_audit,
         status="insufficient_context" if insufficient else "ok",
+        user_org=get_user_org(user_dict["id"]),
     )
 
     return pkg

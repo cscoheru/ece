@@ -2,6 +2,9 @@
 
 Returns trace (context_requests + context_items) for Debugger UI
 consumption. Per ADR-004 PermissionScope: only owner can view own trace.
+
+cut-018b extends to multi-user via X-Delegation-Token.
+cut-019 extends to multi-tenant via X-Org-Id (when ECE_USER_ORGS configured).
 """
 from __future__ import annotations
 
@@ -11,6 +14,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from ece.api.delegation import resolve_user_refs, user_can_access
+from ece.api.org import check_org_access
 from ece.audit.trace import get_context_trace
 from ece.db import get_engine
 
@@ -39,6 +43,7 @@ class AuditTraceResponse(BaseModel):
     items: list[AuditTraceItem] = Field(default_factory=list)
     latency_ms: int | None = None
     created_at: str
+    org_id: str | None = None
 
 
 @router.get(
@@ -49,15 +54,19 @@ def get_context_audit(
     request_id: str,
     x_user_id: str | None = Header(None, alias="X-User-Id"),
     x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
+    x_org_id: str | None = Header(None, alias="X-Org-Id"),
 ) -> AuditTraceResponse:
     """Get audit trace for a context_requests row.
 
     Per docs/API.md §8: returns request metadata + per-item trace.
     Per ADR-004: only the owner (user_ref) can view their own trace.
 
+    cut-018b: extended via X-Delegation-Token (multi-user sharing).
+    cut-019: extended via X-Org-Id (multi-tenant cross-org isolation).
+
     Raises:
-        400: missing X-User-Id header
-        403: caller is not the owner
+        400: missing X-User-Id/X-Delegation-Token, or X-Org-Id in multi-tenant mode
+        403: caller is not the owner, or cross-org access (multi-tenant mode)
         404: request_id not found
     """
     if not resolve_user_refs(x_user_id, x_delegation_token):
@@ -86,6 +95,25 @@ def get_context_audit(
             },
         )
 
+    # Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id
+    org_allowed, org_error = check_org_access(x_org_id, trace["org_id"])
+    if not org_allowed:
+        if org_error == "org_id_required":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "bad_request",
+                    "message": "X-Org-Id header required (multi-tenant mode)",
+                },
+            )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": "cross-org access denied",
+            },
+        )
+
     return AuditTraceResponse(
         request_id=trace["request_id"],
         user_ref=trace["user_ref"],
@@ -95,4 +123,5 @@ def get_context_audit(
         items=[AuditTraceItem(**item) for item in trace["items"]],
         latency_ms=trace["latency_ms"],
         created_at=trace["created_at"],
+        org_id=trace["org_id"],
     )

@@ -18,6 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from ece.api.delegation import user_can_access
+from ece.api.org import check_org_access
 from ece.audit.trace import get_context_trace
 from ece.db import get_engine
 
@@ -125,6 +126,7 @@ def get_debug_context(
     request: Request,
     x_user_id: str | None = Header(None, alias="X-User-Id"),
     x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
+    x_org_id: str | None = Header(None, alias="X-Org-Id"),
 ) -> str:
     """Debugger UI: server-rendered HTML trace page.
 
@@ -134,6 +136,7 @@ def get_debug_context(
     - Override allowlist via env DEBUG_ALLOWED_HOSTS="host1,host2,..."
 
     Per ADR-004 (extended cut-018b): owner OR delegated user (X-Delegation-Token).
+    Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id.
     """
     if not _is_private_deployment():
         raise HTTPException(
@@ -184,6 +187,25 @@ def get_debug_context(
             detail={
                 "code": "forbidden",
                 "message": "can only view own context traces",
+            },
+        )
+
+    # Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id
+    org_allowed, org_error = check_org_access(x_org_id, trace["org_id"])
+    if not org_allowed:
+        if org_error == "org_id_required":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "bad_request",
+                    "message": "X-Org-Id header required (multi-tenant mode)",
+                },
+            )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": "cross-org access denied",
             },
         )
 

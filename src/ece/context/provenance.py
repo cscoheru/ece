@@ -69,6 +69,7 @@ def record_package(
     items: list[dict],
     status: str = "ok",
     llm_model: str | None = None,
+    user_org: str | None = None,
 ) -> None:
     """Write context_requests + context_items rows in one transaction.
 
@@ -86,6 +87,8 @@ def record_package(
                 decision in ('allowed', 'denied')
         status: 'ok' | 'insufficient_context' | 'error'
         llm_model: optional, agent phase may fill later (post-S3)
+        user_org: optional org_id (per cut-019 multi-tenant); NULL when
+                  ECE_USER_ORGS is unset or user_ref is not in the map.
     """
     from sqlalchemy import text
 
@@ -94,10 +97,11 @@ def record_package(
             text("""
                 INSERT INTO context_requests
                     (request_id, user_ref, intent, spec_version,
-                     root_entities, as_of, counts, latency_ms, llm_model, status)
+                     root_entities, as_of, counts, latency_ms, llm_model,
+                     status, org_id)
                 VALUES (:rid, :user, :intent, :sv,
                         CAST(:root AS jsonb), :as_of,
-                        CAST(:counts AS jsonb), :lat, :llm, :status)
+                        CAST(:counts AS jsonb), :lat, :llm, :status, :org)
             """),
             {
                 "rid": str(request_id),
@@ -110,6 +114,7 @@ def record_package(
                 "lat": latency_ms,
                 "llm": llm_model,
                 "status": status,
+                "org": user_org,
             },
         )
         for seq, item in enumerate(items):

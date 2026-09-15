@@ -236,11 +236,20 @@ Returns the trace for a context request (context_requests + context_items rows).
 
 Per ADR-004 PermissionScope: only the owner (`user_ref`) can view their own traces.
 
+**Headers** (cut-018b + cut-019):
+
+| Header | Required | 用途 |
+|---|---|---|
+| `X-User-Id` | one of these | 自我访问 (owner check) |
+| `X-Delegation-Token` | one of these | 跨用户访问 (manager / shared service) |
+| `X-Org-Id` | 仅多租户模式 | 跨 org 隔离 (cut-019) |
+
 请求:
 
 ```
 GET /api/v1/audit/context/{request_id}
 X-User-Id: demo-user-procurement
+X-Org-Id: org_a          # 仅当 ECE_USER_ORGS 配置时
 ```
 
 响应 `200`:
@@ -263,11 +272,20 @@ X-User-Id: demo-user-procurement
     }
   ],
   "latency_ms": 87,
-  "created_at": "2026-09-15T00:00:00+00:00"
+  "created_at": "2026-09-15T00:00:00+00:00",
+  "org_id": "org_a"
 }
 ```
 
-错误：`400` 缺 `X-User-Id` 头；`403` 非 owner 调用；`404` request_id 不存在。
+错误：
+- `400` 缺 `X-User-Id`/`X-Delegation-Token`；多租户模式下缺 `X-Org-Id`
+- `403` 非 owner 调用 **或** 跨 org 访问 (`X-Org-Id != trace.org_id`)
+- `404` request_id 不存在
+
+**多租户隔离 (cut-019)**：当 `ECE_USER_ORGS="user1:org_a;user2:org_b"` 配置时，
+context_requests 行在 assemble_context 时记录 user 的 org_id；/audit 必须
+提供 `X-Org-Id` 头且与 trace.org_id 匹配，否则 `403` (跨 org 阻止)。
+单租户 (env 未配置)：不强制 `X-Org-Id`。
 
 ### GET /debug/context/{request_id}
 
@@ -294,6 +312,9 @@ X-User-Id: demo-user-procurement
 - 默认允许 host: `127.0.0.1`, `::1`, `localhost`, `testclient` (test client)
 - 覆盖: `DEBUG_ALLOWED_HOSTS="host1,host2,..."` 环境变量
 - 生产部署建议: `DEBUG_ALLOWED_HOSTS=""` (empty → 只有 127.0.0.1/::1 显式允许)
+
+**多租户隔离 (cut-019)**：与 `/audit` 一致 — 多租户模式下需要 `X-Org-Id` 头
+与 trace.org_id 匹配；不匹配 `403` 跨 org 阻止。
 
 ## 9. 健康
 
