@@ -1,28 +1,19 @@
-"""JWT bearer token authentication (cut-027 — v0.2 hardening).
+"""JWT bearer token authentication (cut-027 + cut-032).
 
-Replaces X-User-Id header with standard Authorization: Bearer <jwt>
-header. JWT contains 'sub' claim with user_ref. Decoded server-side
-using HMAC-SHA256 (HS256) symmetric secret.
+cut-027: HS256 symmetric JWT (default). ECE_JWT_SECRET shared with IdP.
+cut-032: RS256 asymmetric JWT. ECE_JWT_PUBLIC_KEY (PEM) for verification;
+         IdP keeps private key. Supports multi-service deployment.
 
 Env:
-    ECE_JWT_SECRET       # HMAC-SHA256 secret (required for JWT validation)
-    ECE_JWT_ALGORITHM    # default HS256
+    ECE_JWT_SECRET       # HMAC secret (HS256 only); cut-027
+    ECE_JWT_PUBLIC_KEY   # RSA public key PEM (RS256 only); cut-032
+    ECE_JWT_ALGORITHM    # default HS256; set RS256 to use public key
 
-Back-compat: when ECE_JWT_SECRET is unset, falls back to X-User-Id
-header (deprecated, cut-027). When both are present, JWT takes
-precedence.
+PyJWT auto-detects: pass `secret` for HMAC algorithms (HS*), pass
+`public_key` for asymmetric (RS*, ES*).
 
-Claims:
-    sub: user_ref (subject)
-    exp: expiration timestamp (unix seconds)
-    iat: issued-at timestamp (unix seconds)
-
-Use case: SSO-friendly authentication. Clients obtain JWT from their
-identity provider (e.g. company SSO), pass via Authorization header.
-ECE validates signature and extracts user_ref from 'sub' claim.
-
-For v0.2: symmetric (HS256). v0.3+ may add RS256 (asymmetric) for
-multi-service deployment where ECE doesn't share secret with IdP.
+For backward compat (cut-027 deployments): if ECE_JWT_PUBLIC_KEY is
+set, take precedence over ECE_JWT_SECRET when algorithm is RS*.
 """
 from __future__ import annotations
 
@@ -31,37 +22,49 @@ from typing import Any
 
 _jwt_lib = None
 try:
-    import jwt as _jwt_lib  # type: ignore[assignment]
+    import jwt as _jwt_lib  # type: ignore[attr-defined,assignment]
     _PYJWT_AVAILABLE = True
 except ImportError:
     _PYJWT_AVAILABLE = False
 
 
 def is_jwt_mode_enabled() -> bool:
-    """True if ECE_JWT_SECRET is configured.
+    """True if ECE_JWT_SECRET or ECE_JWT_PUBLIC_KEY is configured."""
+    return bool(
+        os.environ.get("ECE_JWT_SECRET")
+        or os.environ.get("ECE_JWT_PUBLIC_KEY")
+    )
 
-When False, X-User-Id header is used (v0.1 back-compat).
-"""
-    return bool(os.environ.get("ECE_JWT_SECRET"))
+
+def _get_verification_key() -> str | None:
+    """Pick verification key based on configured env + algorithm.
+
+    Returns:
+        - ECE_JWT_PUBLIC_KEY if set (RS256 mode, cut-032)
+        - ECE_JWT_SECRET if set (HS256 mode, cut-027)
+        - None if neither configured
+    """
+    public_key = os.environ.get("ECE_JWT_PUBLIC_KEY")
+    if public_key:
+        return public_key
+    return os.environ.get("ECE_JWT_SECRET")
 
 
 def decode_jwt_token(token: str) -> dict[str, Any] | None:
     """Decode JWT and return claims dict, or None if invalid.
 
-    Uses ECE_JWT_SECRET (HMAC) + ECE_JWT_ALGORITHM (default HS256).
-
+    Uses ECE_JWT_PUBLIC_KEY (RS256) or ECE_JWT_SECRET (HS256) per env.
     Returns None if:
-    - ECE_JWT_SECRET not configured (JWT mode disabled)
-    - PyJWT not installed (cut-027 should add it)
+    - No verification key configured (JWT mode disabled)
+    - PyJWT not installed
     - Token signature invalid / expired / malformed
     """
-    secret = os.environ.get("ECE_JWT_SECRET")
-    if not secret or not _PYJWT_AVAILABLE:
+    key = _get_verification_key()
+    if not key or not _PYJWT_AVAILABLE:
         return None
     algorithm = os.environ.get("ECE_JWT_ALGORITHM", "HS256")
     try:
-        # decode validates signature, expiration (exp), and audience/issuer if configured
-        claims = _jwt_lib.decode(token, secret, algorithms=[algorithm])  # type: ignore[attr-defined]
+        claims = _jwt_lib.decode(token, key, algorithms=[algorithm])  # type: ignore[attr-defined]
         return claims
     except _jwt_lib.PyJWTError:  # type: ignore[attr-defined]
         return None
@@ -70,12 +73,7 @@ def decode_jwt_token(token: str) -> dict[str, Any] | None:
 def extract_user_ref_from_jwt(authorization_header: str | None) -> str | None:
     """Extract user_ref from Authorization: Bearer <token> header.
 
-    Returns None if:
-    - Header is None or malformed (not Bearer scheme)
-    - Token is invalid (signature / expiry / etc.)
-    - 'sub' claim missing from claims
-
-    Returns user_ref string from 'sub' claim if valid.
+    Returns None if header malformed, token invalid, or 'sub' claim missing.
     """
     if not authorization_header:
         return None
