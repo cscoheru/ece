@@ -191,7 +191,10 @@ def get_debug_context(
         )
 
     # Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id
-    org_allowed, org_error = check_org_access(x_org_id, trace["org_id"])
+    # cut-021: token may grant cross-org access via ECE_DELEGATION_ORG_TOKENS
+    org_allowed, org_error = check_org_access(
+        x_org_id, trace["org_id"], x_delegation_token
+    )
     if not org_allowed:
         if org_error == "org_id_required":
             raise HTTPException(

@@ -66,15 +66,19 @@ def is_multi_tenant_mode() -> bool:
 def check_org_access(
     x_org_id: str | None,
     trace_org_id: str | None,
+    x_delegation_token: str | None = None,
 ) -> tuple[bool, str]:
     """Check whether requester can access a trace given org headers.
 
+    cut-021 extension: `x_delegation_token` may grant cross-org access
+    if the token is in `ECE_DELEGATION_ORG_TOKENS` and trace_org_id is
+    in the token's org list. This enables cross-org read for managers
+    / auditors without per-user token lists.
+
     Returns (allowed, error_code):
-    - error_code 'multi_tenant_disabled': org checks skipped (always allow)
-    - error_code 'legacy_trace': legacy row with org_id=NULL (allow)
+    - error_code 'ok': access allowed
     - error_code 'org_id_required': X-Org-Id header missing
     - error_code 'org_mismatch': X-Org-Id != trace.org_id (cross-org blocked)
-    - error_code 'ok': access allowed
     """
     if not is_multi_tenant_mode():
         return True, "ok"
@@ -82,6 +86,19 @@ def check_org_access(
         # Legacy row recorded before cut-019; no multi-tenant enforcement
         # for it (back-compat with v0.1 cuts recorded before this was set).
         return True, "ok"
+
+    # Cross-org delegation via ECE_DELEGATION_ORG_TOKENS (cut-021)
+    if x_delegation_token:
+        from ece.api.delegation import parse_org_delegation_tokens
+
+        org_tokens = parse_org_delegation_tokens()
+        if x_delegation_token in org_tokens:
+            granted_orgs = org_tokens[x_delegation_token]
+            # Wildcard "*" grants cross-ALL-orgs access (audit role)
+            if "*" in granted_orgs or trace_org_id in granted_orgs:
+                return True, "ok"
+
+    # Standard X-Org-Id check
     if not x_org_id:
         return False, "org_id_required"
     if x_org_id != trace_org_id:
