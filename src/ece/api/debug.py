@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse
 
 from ece.api.delegation import request_id_can_access, user_can_access
 from ece.api.org import check_org_access
+from ece.api.quota import check_org_quota
 from ece.api.rate_limit import check_rate_limit
 from ece.audit.trace import get_context_trace
 from ece.auth.jwt import resolve_caller_user_ref
@@ -234,6 +235,19 @@ def get_debug_context(
                 "retry_after_seconds": retry_after,
             },
             headers={"Retry-After": str(int(retry_after) + 1)},
+        )
+
+    # Per cut-029 (org quota): check ECE_ORG_QUOTAS for caller's org
+    quota_allowed, quota_code, quota_retry = check_org_quota(x_org_id)
+    if not quota_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "quota_exceeded",
+                "message": "debug org quota exceeded",
+                "retry_after_seconds": quota_retry,
+            },
+            headers={"Retry-After": str(int(quota_retry) + 1)},
         )
 
     return _render_trace_html(trace)
