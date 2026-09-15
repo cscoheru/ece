@@ -13,7 +13,9 @@ Endpoint map:
 from fastapi import FastAPI
 
 from ece.api.actions import router as actions_router
+from ece.api.audit import router as audit_router
 from ece.api.context import router as context_router
+from ece.api.debug import router as debug_router
 from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
@@ -37,6 +39,9 @@ app.include_router(context_router)
 app.include_router(search_router)
 # S4.5+: actions preview endpoint (per ADR-004 /actions/execute v0 disabled)
 app.include_router(actions_router)
+# S6: audit trace (JSON) + debug UI (private deployment only)
+app.include_router(audit_router)
+app.include_router(debug_router)
 
 
 @app.get("/healthz")

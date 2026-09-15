@@ -232,7 +232,59 @@ Connector 契约（ARCHITECTURE §1）：`connect / discover_schema / fetch / no
 
 ### GET /api/v1/audit/context/{request_id}
 
-返回：request 头信息 + `items[]`（每项 kind/ref/source/decision/reason/score）+ agent 输出摘要（若有）。供 Debugger UI（Sprint 6）与 `scripts/export_audit.py` 使用。仅 management 部门或本人可查（过 Permission Engine）。
+Returns the trace for a context request (context_requests + context_items rows).
+
+Per ADR-004 PermissionScope: only the owner (`user_ref`) can view their own traces.
+
+请求:
+
+```
+GET /api/v1/audit/context/{request_id}
+X-User-Id: demo-user-procurement
+```
+
+响应 `200`:
+
+```json
+{
+  "request_id": "ctx_abc123...",
+  "user_ref": "demo-user-procurement",
+  "intent": "evaluate_purchase_request",
+  "status": "ok",
+  "counts": {"entities": 5, "relationships": 4, "denied": 1, "documents": 0},
+  "items": [
+    {
+      "seq": 0,
+      "item_kind": "entity",
+      "ref": "PR001",
+      "decision": "allowed",
+      "reason": "spec:root",
+      "source": {"system": "demo:demo", "record_id": "..."}
+    }
+  ],
+  "latency_ms": 87,
+  "created_at": "2026-09-15T00:00:00+00:00"
+}
+```
+
+错误：`400` 缺 `X-User-Id` 头；`403` 非 owner 调用；`404` request_id 不存在。
+
+### GET /debug/context/{request_id}
+
+Server-rendered HTML trace page (per ECE/CLAUDE.md: no SPA framework)。
+
+仅当 `ECE_DEPLOYMENT_MODE=local` 启用；production mode 返 `404`（per 私有化验收）。
+
+请求:
+
+```
+GET /debug/context/{request_id}
+X-User-Id: demo-user-procurement
+```
+
+响应 `200 text/html`：HTML 表格列出 metadata + items（与 /audit 一致但 HTML 渲染）。
+
+错误：`400` 缺 `X-User-Id`；`403` 非 owner；`404` request_id 不存在或 production mode。
 
 ## 9. 健康
 
