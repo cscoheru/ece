@@ -67,7 +67,7 @@ def test_export_json_basic(seed_traces: None, tmp_path: Path) -> None:
     assert exit_code == 0, stderr
     assert "Exported" in stdout
     data = json.loads(out.read_text())
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3  # cut-033 bumped to 3
     assert "exported_at" in data
     assert "requests" in data
 

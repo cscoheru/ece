@@ -2,7 +2,8 @@
 
 Cut-017 (v0.1): bulk JSON export with --user and --since filters.
 Cut-030 (v0.2): adds --org filter (multi-tenant), --until (date range end),
-and --format csv for compliance reporting.
+                 and --format csv (1 row per request).
+Cut-033 (v0.2): adds --format items-csv (1 row per item, per-resource).
 
 Usage:
     # JSON (default) — single file with nested items
@@ -14,8 +15,9 @@ Usage:
     uv run python scripts/export_audit.py --output audit.json --org org_a
     uv run python scripts/export_audit.py --output audit.json --since 2026-09-01 --until 2026-09-30
     uv run python scripts/export_audit.py --output audit.csv --format csv --org org_a
+    uv run python scripts/export_audit.py --output items.csv --format items-csv --org org_a
 
-Schema version: 2 (cut-030 adds org_id field; CSV format option).
+Schema version: 3 (cut-033 adds items-csv format option).
 """
 from __future__ import annotations
 
@@ -31,7 +33,7 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 
-SCHEMA_VERSION = 2  # cut-030: +org_id +csv format
+SCHEMA_VERSION = 3  # cut-033: +items-csv format
 
 
 def _build_where(
@@ -153,6 +155,54 @@ def _write_csv(
     print(f"Exported {len(requests_data)} context requests to {output} (CSV)")
 
 
+def _write_items_csv(
+    requests_data: list[dict[str, Any]], output: Path
+) -> None:
+    """Write items-csv output (one row per item, cut-033).
+
+    Useful for SIEM / compliance tools that want per-item granularity.
+    Each row contains request metadata + item fields.
+    """
+    fieldnames = [
+        "request_id",
+        "user_ref",
+        "org_id",
+        "intent",
+        "status",
+        "latency_ms",
+        "created_at",
+        "item_seq",
+        "item_kind",
+        "item_ref",
+        "item_decision",
+        "item_reason",
+        "item_source",
+    ]
+    with output.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for r in requests_data:
+            base = {k: r.get(k) for k in [
+                "request_id", "user_ref", "org_id", "intent",
+                "status", "latency_ms", "created_at",
+            ]}
+            for item in r.get("items", []):
+                row = dict(base)
+                row["item_seq"] = item.get("seq")
+                row["item_kind"] = item.get("item_kind")
+                row["item_ref"] = item.get("ref")
+                row["item_decision"] = item.get("decision")
+                row["item_reason"] = item.get("reason")
+                src = item.get("source", {})
+                row["item_source"] = json.dumps(src, ensure_ascii=False)
+                writer.writerow(row)
+    total_items = sum(len(r.get("items", [])) for r in requests_data)
+    print(
+        f"Exported {total_items} items across {len(requests_data)} "
+        f"context requests to {output} (items-csv)"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Export context_requests + context_items (per docs/API.md §8)"
@@ -174,8 +224,8 @@ def main() -> int:
         "--until", help="Filter by created_at <= date (YYYY-MM-DD)",
     )
     parser.add_argument(
-        "--format", "-f", choices=["json", "csv"], default="json",
-        help="Output format (default: json)",
+        "--format", "-f", choices=["json", "csv", "items-csv"], default="json",
+        help="Output format (default: json; csv=1row/rq; items-csv=1row/item, cut-033)",
     )
     args = parser.parse_args()
 
@@ -185,6 +235,8 @@ def main() -> int:
 
     if args.format == "csv":
         _write_csv(requests_data, args.output)
+    elif args.format == "items-csv":
+        _write_items_csv(requests_data, args.output)
     else:
         _write_json(requests_data, args, args.output)
     return 0
