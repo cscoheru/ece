@@ -107,15 +107,47 @@ def check_org_quota(org_id: str | None) -> tuple[bool, str, float]:
 def _check_quota_redis(
     client, org_id: str, n: int, period_sec: float
 ) -> tuple[bool, str, float]:
-    """Redis-backed quota check."""
+    """Redis-backed quota check (cut-029).
+
+    Uses Lua script (cut-031) for atomic single-round-trip.
+    Falls back to 2-op pattern if EVAL fails.
+    """
     quota_key = f"ece:quota:{org_id}"
-    client.set(quota_key, 0, ex=int(period_sec), nx=True)
-    count = client.incr(quota_key)
-    if count > n:
-        ttl = client.ttl(quota_key)
-        retry_after = float(ttl) if ttl > 0 else period_sec
+    try:
+        result = client.eval(
+            _QUOTA_LUA_SCRIPT,
+            1,
+            quota_key,
+            int(period_sec),
+            n,
+        )
+        allowed, retry_after = int(result[0]), float(result[1])
+        if allowed == 1:
+            return True, "ok", 0.0
         return False, "quota_exceeded", retry_after
-    return True, "ok", 0.0
+    except Exception:
+        # Fallback to 2-op pattern (cut-029 original)
+        client.set(quota_key, 0, ex=int(period_sec), nx=True)
+        count = client.incr(quota_key)
+        if count > n:
+            ttl = client.ttl(quota_key)
+            retry_after = float(ttl) if ttl > 0 else period_sec
+            return False, "quota_exceeded", retry_after
+        return True, "ok", 0.0
+
+
+# Lua script for atomic quota check (cut-031): same pattern as rate-limit
+_QUOTA_LUA_SCRIPT = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+if count > tonumber(ARGV[2]) then
+    return {0, ttl}
+end
+return {1, 0}
+"""
 
 
 def _check_quota_inmemory(

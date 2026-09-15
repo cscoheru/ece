@@ -157,20 +157,51 @@ def _check_rate_limit_redis(
 ) -> tuple[bool, str, float]:
     """Redis-backed rate limit check (cut-026).
 
-    Atomic INCR with SET NX EX (init key with TTL on first request).
-    Fixed-window counter shared across processes.
+    Uses Lua script (cut-031) for atomic single-round-trip counter
+    increment with TTL init. Falls back to 2-op pattern if EVAL fails
+    (e.g., Redis < 2.6 without Lua support).
     """
     bucket_key = f"ece:rl:{org_id}"
-    # Initialize key with TTL on first request (SET NX EX)
-    client.set(bucket_key, 0, ex=int(period_sec), nx=True)
-    # INCR returns new count
-    count = client.incr(bucket_key)
-    if count > n:
-        # Rate limited; get TTL for retry-after
-        ttl = client.ttl(bucket_key)
-        retry_after = float(ttl) if ttl > 0 else period_sec
+    try:
+        # Lua script: atomic INCR + EXPIRE-on-first + check
+        result = client.eval(
+            _RATE_LIMIT_LUA_SCRIPT,
+            1,
+            bucket_key,
+            int(period_sec),
+            n,
+        )
+        allowed, retry_after = int(result[0]), float(result[1])
+        if allowed == 1:
+            return True, "ok", 0.0
         return False, "rate_limited", retry_after
-    return True, "ok", 0.0
+    except Exception:
+        # Fallback to 2-op pattern (cut-026 original)
+        client.set(bucket_key, 0, ex=int(period_sec), nx=True)
+        count = client.incr(bucket_key)
+        if count > n:
+            ttl = client.ttl(bucket_key)
+            retry_after = float(ttl) if ttl > 0 else period_sec
+            return False, "rate_limited", retry_after
+        return True, "ok", 0.0
+
+
+# Lua script for atomic rate-limit check (cut-031):
+#   KEYS[1] = bucket key (e.g. ece:rl:org_a)
+#   ARGV[1] = period_sec (TTL on first request)
+#   ARGV[2] = max N (limit threshold)
+# Returns: {allowed (1/0), retry_after_seconds}
+_RATE_LIMIT_LUA_SCRIPT = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+if count > tonumber(ARGV[2]) then
+    return {0, ttl}
+end
+return {1, 0}
+"""
 
 
 def _check_rate_limit_inmemory(
