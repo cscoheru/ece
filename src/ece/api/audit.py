@@ -19,6 +19,7 @@ from ece.api.delegation import (
     user_can_access,
 )
 from ece.api.org import check_org_access
+from ece.api.rate_limit import check_rate_limit
 from ece.audit.trace import get_context_trace
 from ece.db import get_engine
 
@@ -123,6 +124,19 @@ def get_context_audit(
                     "message": "cross-org access denied",
                 },
             )
+
+    # Per cut-023 (org rate limit): check ECE_ORG_RATE_LIMITS for caller's org
+    rate_allowed, rate_error, retry_after = check_rate_limit(x_org_id)
+    if not rate_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "message": "org rate limit exceeded",
+                "retry_after_seconds": retry_after,
+            },
+            headers={"Retry-After": str(int(retry_after) + 1)},
+        )
 
     return AuditTraceResponse(
         request_id=trace["request_id"],
