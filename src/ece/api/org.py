@@ -89,7 +89,14 @@ def check_org_access(
 
     # Cross-org delegation via ECE_DELEGATION_ORG_TOKENS (cut-021)
     if x_delegation_token:
-        from ece.api.delegation import parse_org_delegation_tokens
+        from ece.api.delegation import (
+            is_token_revoked,
+            parse_org_delegation_tokens,
+        )
+
+        # cut-024: revoked tokens grant no access at all
+        if is_token_revoked(x_delegation_token):
+            return False, "token_revoked"
 
         org_tokens = parse_org_delegation_tokens()
         if x_delegation_token in org_tokens:

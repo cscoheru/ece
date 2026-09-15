@@ -1,4 +1,4 @@
-"""Multi-user PermissionScope delegation (v0.1 deployment cut-018b + cut-021 + cut-022).
+"""Multi-user PermissionScope delegation (v0.1 deployment cut-018b + cut-021 + cut-022 + cut-024).
 
 Allow manager / team-lead / shared-service to view another user's trace
 via `X-Delegation-Token` header (instead of impersonating via X-User-Id).
@@ -23,6 +23,14 @@ Env format (v0.2 cut-022, per-RESOURCE):
 Each `token:req_abc,req_xyz` entry grants the bearer access to SPECIFIC
 request_ids, regardless of ownership or org. Used by external auditors
 given specific case IDs to investigate.
+
+Env format (v0.2 cut-024, REVOCATION):
+    ECE_REVOKED_TOKENS = "compromised_tok_1,leaked_tok_2"
+
+Comma-separated list of tokens to revoke. Revoked tokens are treated
+as no token — they grant no access (per-user, per-org, per-resource).
+Owner access via X-User-Id still works. Used to invalidate compromised
+tokens without env restart.
 """
 from __future__ import annotations
 
@@ -92,6 +100,28 @@ def _user_refs_in_orgs(org_ids: list[str]) -> list[str]:
     return [u for u, org in user_orgs.items() if org in org_ids]
 
 
+def parse_revoked_tokens() -> set[str]:
+    """Parse ECE_REVOKED_TOKENS env into set of revoked token strings.
+
+    Format: "compromised_tok_1,leaked_tok_2"
+    Whitespace tolerant. Empty entries skipped.
+    """
+    raw = os.environ.get("ECE_REVOKED_TOKENS", "")
+    return {t.strip() for t in raw.split(",") if t.strip()}
+
+
+def is_token_revoked(token: str | None) -> bool:
+    """True if token is in ECE_REVOKED_TOKENS revocation list (cut-024).
+
+    Revoked tokens are treated as no token at all — they grant NO access
+    via per-user / per-org / per-resource paths. Owner access via
+    X-User-Id still works (revocation only disables delegation grants).
+    """
+    if not token:
+        return False
+    return token in parse_revoked_tokens()
+
+
 def parse_request_id_delegation_tokens() -> dict[str, list[str]]:
     """Parse ECE_AUDIT_TOKEN_REQUEST_IDS env into {token: [request_ids]} dict.
 
@@ -126,9 +156,11 @@ def request_id_can_access(
 
     Per-resource scope (cut-022): independent of owner / per-user / per-org
     checks. Token bearer can access the listed request_ids regardless of
-    ownership or org. Returns False if token absent or token has no
-    per-resource entries.
+    ownership or org. Returns False if token absent, token has no
+    per-resource entries, or token is revoked (cut-024).
     """
+    if is_token_revoked(x_delegation_token):
+        return False
     if not x_delegation_token or not request_id:
         return False
     rq_tokens = parse_request_id_delegation_tokens()
@@ -151,7 +183,12 @@ def resolve_user_refs(
     4. Empty (caller should 400)
 
     For v0.1: union of (1) and (3). For v0.2 cut-021: union of (1), (2), (3).
+    cut-024: revoked tokens are treated as no token (skipped entirely).
     """
+    # cut-024: revoked tokens are treated as no token
+    if is_token_revoked(x_delegation_token):
+        x_delegation_token = None
+
     user_refs: list[str] = []
 
     # Per-USER delegation tokens (cut-018b)
@@ -184,6 +221,7 @@ def user_can_access(
 
     Per ADR-004: only owner can view. With delegation, token-bearer can
     view if trace_user_ref is in their allowed list (per-user or per-org).
+    cut-024: revoked tokens grant nothing.
     """
     if x_user_id == trace_user_ref:
         return True
