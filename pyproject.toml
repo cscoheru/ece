@@ -13,6 +13,7 @@ dependencies = [
     "uvicorn>=0.30",
     "pyyaml>=6.0",  # required by S3.1 Context Spec loader (cut-007)
     "mcp>=1.0",  # required by S4.5 MCP Tool Layer (cut-011) — search/get_record/create_task/send_message
+    "redis>=5.0",  # required by cut-026 — Redis-backed rate limit (multi-process correctness)
     # NOTE: mcp 故意不在 S0.1 依赖（Sprint 4 S4.5 MCP Tool Layer 动工时引入，per ADR-004）。
     # NOTE: openai SDK 不在 S0.1 — LLM 客户端在 Sprint 5（Procurement Agent）加入。
 ]
@@ -26,6 +27,7 @@ dev = [
     "import-linter>=2.15",
     "httpx>=0.27",  # required by fastapi.testclient
     "requests>=2.31",  # required by scripts/run_e2_permission.py
+    "fakeredis>=2.0",  # required by cut-026 — Redis-backed rate limit tests
 ]
 
 [tool.ruff]

@@ -1,4 +1,4 @@
-"""Org-level rate limiting (cut-023 — v0.2 hardening).
+"""Org-level rate limiting (cut-023 + cut-026 — v0.2 hardening).
 
 Per-org fixed-window rate limit for /audit + /debug endpoints.
 Prevents runaway scripts / audit storms from a single org consuming
@@ -11,15 +11,16 @@ Env format:
 
 When rate limit exceeded: endpoint returns 429 with Retry-After header.
 
-Algorithm: fixed-window counter. Each org starts with N tokens. Each
-request consumes 1 token. After `period` seconds, bucket refills to N.
+Backend (cut-026):
+- If ECE_REDIS_URL is set: Redis-backed counter (multi-process correct)
+- Else: in-memory dict (single-process only)
 
-For multi-process deployments, the in-memory bucket is per-process. Use
-Redis or similar for shared state (cut-024+).
+Algorithm: fixed-window counter with TTL. Each org starts with N tokens.
+Each request consumes 1 token. After `period` seconds, key expires
+(bucket refills to N).
 
-Per ECE/CLAUDE.md 私有化 acceptance: rate limit is per-org (X-Org-Id
-header), not per-IP. Single-tenant deployments (ECE_USER_ORGS unset)
-skip rate limiting entirely.
+For multi-process deployments, Redis is required (in-memory bucket is
+per-process, so N workers effectively gives N× the limit).
 """
 from __future__ import annotations
 
@@ -27,9 +28,22 @@ import os
 import threading
 import time
 
-# Per-org bucket state: {org_id: (count, last_refill_monotonic_ts)}
+# Optional Redis dependency (cut-026). Import at module level so tests
+# can monkeypatch ece.api.rate_limit._redis_lib if needed.
+_redis_lib = None
+try:
+    import redis as _redis_lib  # type: ignore[assignment]
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _REDIS_AVAILABLE = False
+
+
+# Per-org in-memory bucket state: {org_id: (count, last_refill_monotonic_ts)}
 _buckets: dict[str, tuple[float, float]] = {}
 _lock = threading.Lock()
+
+# Lazily-initialized Redis client (cut-026)
+_redis_client = None
 
 
 def parse_org_rate_limits() -> dict[str, tuple[int, float]]:
@@ -79,8 +93,40 @@ def _period_to_seconds(period: str) -> float | None:
     return None
 
 
+def _get_redis_client():
+    """Lazy-init Redis client from ECE_REDIS_URL env (cut-026).
+
+    Returns None if ECE_REDIS_URL not set, redis lib unavailable, or
+    client cannot be created. Callers fall back to in-memory.
+    """
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    if not _REDIS_AVAILABLE:
+        return None
+    url = os.environ.get("ECE_REDIS_URL")
+    if not url:
+        return None
+    try:
+        _redis_client = _redis_lib.Redis.from_url(url, decode_responses=True)
+        # Probe to verify connection (lazy)
+        _redis_client.ping()
+    except Exception:  # connection error, bad URL, etc.
+        _redis_client = None
+    return _redis_client
+
+
+def reset_redis_client() -> None:
+    """Reset Redis client (for testing)."""
+    global _redis_client
+    _redis_client = None
+
+
 def check_rate_limit(org_id: str | None) -> tuple[bool, str, float]:
     """Check if request is allowed under org's rate limit.
+
+    cut-026: dispatches to Redis backend if ECE_REDIS_URL is set,
+    else in-memory backend.
 
     Args:
         org_id: org_id from X-Org-Id header (or None for no limit)
@@ -99,8 +145,39 @@ def check_rate_limit(org_id: str | None) -> tuple[bool, str, float]:
         return True, "no_limit", 0.0
 
     n, period_sec = limits[org_id]
-    now = time.monotonic()
 
+    redis_client = _get_redis_client()
+    if redis_client is not None:
+        return _check_rate_limit_redis(redis_client, org_id, n, period_sec)
+    return _check_rate_limit_inmemory(org_id, n, period_sec)
+
+
+def _check_rate_limit_redis(
+    client, org_id: str, n: int, period_sec: float
+) -> tuple[bool, str, float]:
+    """Redis-backed rate limit check (cut-026).
+
+    Atomic INCR with SET NX EX (init key with TTL on first request).
+    Fixed-window counter shared across processes.
+    """
+    bucket_key = f"ece:rl:{org_id}"
+    # Initialize key with TTL on first request (SET NX EX)
+    client.set(bucket_key, 0, ex=int(period_sec), nx=True)
+    # INCR returns new count
+    count = client.incr(bucket_key)
+    if count > n:
+        # Rate limited; get TTL for retry-after
+        ttl = client.ttl(bucket_key)
+        retry_after = float(ttl) if ttl > 0 else period_sec
+        return False, "rate_limited", retry_after
+    return True, "ok", 0.0
+
+
+def _check_rate_limit_inmemory(
+    org_id: str, n: int, period_sec: float
+) -> tuple[bool, str, float]:
+    """In-memory rate limit check (single-process)."""
+    now = time.monotonic()
     with _lock:
         if org_id not in _buckets:
             # First request: initialize to full bucket, consume 1
