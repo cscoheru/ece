@@ -21,6 +21,7 @@ from ece.api.delegation import request_id_can_access, user_can_access
 from ece.api.org import check_org_access
 from ece.api.rate_limit import check_rate_limit
 from ece.audit.trace import get_context_trace
+from ece.auth.jwt import resolve_caller_user_ref
 from ece.db import get_engine
 
 router = APIRouter(prefix="/debug", tags=["debug"])
@@ -128,6 +129,7 @@ def get_debug_context(
     x_user_id: str | None = Header(None, alias="X-User-Id"),
     x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
     x_org_id: str | None = Header(None, alias="X-Org-Id"),
+    authorization: str | None = Header(None, alias="Authorization"),
 ) -> str:
     """Debugger UI: server-rendered HTML trace page.
 
@@ -138,7 +140,12 @@ def get_debug_context(
 
     Per ADR-004 (extended cut-018b): owner OR delegated user (X-Delegation-Token).
     Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id.
+    Per cut-022 (per-resource): token grants specific request_id access.
+    Per cut-027 (JWT): Authorization: Bearer <jwt> preferred over X-User-Id.
     """
+    # cut-027: prefer JWT over X-User-Id
+    resolved_user_id = resolve_caller_user_ref(authorization, x_user_id)
+
     if not _is_private_deployment():
         raise HTTPException(
             status_code=404,
@@ -162,7 +169,7 @@ def get_debug_context(
             },
         )
 
-    if not x_user_id and not x_delegation_token:
+    if not resolved_user_id and not x_delegation_token:
         raise HTTPException(
             status_code=400,
             detail={
@@ -185,7 +192,7 @@ def get_debug_context(
     # independently of ownership / org checks.
     if not request_id_can_access(x_delegation_token, request_id):
         # Per ADR-004 (extended cut-018b): owner OR delegated user
-        if not user_can_access(x_user_id, x_delegation_token, trace["user_ref"]):
+        if not user_can_access(resolved_user_id, x_delegation_token, trace["user_ref"]):
             raise HTTPException(
                 status_code=403,
                 detail={

@@ -21,6 +21,7 @@ from ece.api.delegation import (
 from ece.api.org import check_org_access
 from ece.api.rate_limit import check_rate_limit
 from ece.audit.trace import get_context_trace
+from ece.auth.jwt import resolve_caller_user_ref
 from ece.db import get_engine
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
@@ -60,6 +61,7 @@ def get_context_audit(
     x_user_id: str | None = Header(None, alias="X-User-Id"),
     x_delegation_token: str | None = Header(None, alias="X-Delegation-Token"),
     x_org_id: str | None = Header(None, alias="X-Org-Id"),
+    authorization: str | None = Header(None, alias="Authorization"),
 ) -> AuditTraceResponse:
     """Get audit trace for a context_requests row.
 
@@ -68,13 +70,17 @@ def get_context_audit(
 
     cut-018b: extended via X-Delegation-Token (multi-user sharing).
     cut-019: extended via X-Org-Id (multi-tenant cross-org isolation).
+    cut-027: extended via Authorization: Bearer <jwt> (SSO-friendly).
 
     Raises:
         400: missing X-User-Id/X-Delegation-Token, or X-Org-Id in multi-tenant mode
         403: caller is not the owner, or cross-org access (multi-tenant mode)
         404: request_id not found
     """
-    if not resolve_user_refs(x_user_id, x_delegation_token):
+    # cut-027: prefer JWT (Authorization header) over X-User-Id
+    resolved_user_id = resolve_caller_user_ref(authorization, x_user_id)
+
+    if not resolve_user_refs(resolved_user_id, x_delegation_token):
         raise HTTPException(
             status_code=400,
             detail={"code": "bad_request", "message": "X-User-Id header or valid X-Delegation-Token required"},
@@ -94,7 +100,7 @@ def get_context_audit(
     # independently of ownership / org checks. If granted, skip owner and org checks.
     if not request_id_can_access(x_delegation_token, request_id):
         # Per ADR-004 (extended cut-018b): owner OR delegated user
-        if not user_can_access(x_user_id, x_delegation_token, trace["user_ref"]):
+        if not user_can_access(resolved_user_id, x_delegation_token, trace["user_ref"]):
             raise HTTPException(
                 status_code=403,
                 detail={
