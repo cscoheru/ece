@@ -1,16 +1,26 @@
-"""Export context_requests + context_items to JSON for audit review (cut-017).
+"""Export context_requests + context_items for audit/compliance review.
 
-Per docs/API.md §8: "供 Debugger UI 与 `scripts/export_audit.py` 使用".
-v0.1 release prep: bulk export for compliance/audit review.
+Cut-017 (v0.1): bulk JSON export with --user and --since filters.
+Cut-030 (v0.2): adds --org filter (multi-tenant), --until (date range end),
+and --format csv for compliance reporting.
 
 Usage:
+    # JSON (default) — single file with nested items
     uv run python scripts/export_audit.py --output audit.json
     uv run python scripts/export_audit.py --output audit.json --user demo-user-procurement
     uv run python scripts/export_audit.py --output audit.json --since 2026-09-01
+
+    # v0.2 additions
+    uv run python scripts/export_audit.py --output audit.json --org org_a
+    uv run python scripts/export_audit.py --output audit.json --since 2026-09-01 --until 2026-09-30
+    uv run python scripts/export_audit.py --output audit.csv --format csv --org org_a
+
+Schema version: 2 (cut-030 adds org_id field; CSV format option).
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from datetime import datetime
@@ -21,40 +31,40 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 
+SCHEMA_VERSION = 2  # cut-030: +org_id +csv format
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Export context_requests + context_items to JSON (per docs/API.md §8)"
-    )
-    parser.add_argument(
-        "--output", "-o", type=Path, default=Path("audit.json"),
-        help="Output file path (default: audit.json)",
-    )
-    parser.add_argument(
-        "--user", help="Filter by user_ref (X-User-Id value)",
-    )
-    parser.add_argument(
-        "--since", help="Filter by created_at >= date (YYYY-MM-DD)",
-    )
-    args = parser.parse_args()
 
-    engine = get_engine()
-
+def _build_where(
+    args: argparse.Namespace,
+) -> tuple[str, dict[str, Any]]:
+    """Build WHERE clause + params from args."""
     where_clauses: list[str] = []
     params: dict[str, Any] = {}
     if args.user:
         where_clauses.append("user_ref = :user")
         params["user"] = args.user
+    if args.org:
+        where_clauses.append("org_id = :org")
+        params["org"] = args.org
     if args.since:
         where_clauses.append("created_at >= :since")
         params["since"] = args.since
+    if args.until:
+        where_clauses.append("created_at <= :until")
+        params["until"] = args.until
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    return where_sql, params
 
+
+def _fetch_requests(
+    engine: Any, where_sql: str, params: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Fetch context_requests + items matching filter."""
     with engine.connect() as conn:
         req_rows = conn.execute(
             text(f"""
                 SELECT request_id, user_ref, intent, status, counts,
-                       latency_ms, created_at
+                       latency_ms, created_at, org_id
                 FROM context_requests
                 {where_sql}
                 ORDER BY created_at
@@ -81,6 +91,7 @@ def main() -> int:
                 "counts": r[4] if isinstance(r[4], dict) else {},
                 "latency_ms": r[5],
                 "created_at": r[6].isoformat() if r[6] else "",
+                "org_id": r[7],
                 "items": [
                     {
                         "seq": i[0],
@@ -93,16 +104,89 @@ def main() -> int:
                     for i in item_rows
                 ],
             })
+    return requests_data
 
-    output = {
+
+def _write_json(
+    requests_data: list[dict[str, Any]], args: argparse.Namespace, output: Path
+) -> None:
+    """Write JSON output with metadata."""
+    out = {
+        "schema_version": SCHEMA_VERSION,
         "exported_at": datetime.now().isoformat(),
         "total_requests": len(requests_data),
-        "filter": {"user": args.user, "since": args.since},
+        "filter": {
+            "user": args.user,
+            "org": args.org,
+            "since": args.since,
+            "until": args.until,
+        },
         "requests": requests_data,
     }
+    output.write_text(json.dumps(out, ensure_ascii=False, indent=2))
+    print(f"Exported {len(requests_data)} context requests to {output} (JSON)")
 
-    args.output.write_text(json.dumps(output, ensure_ascii=False, indent=2))
-    print(f"Exported {len(requests_data)} context requests to {args.output}")
+
+def _write_csv(
+    requests_data: list[dict[str, Any]], output: Path
+) -> None:
+    """Write CSV output (one row per request, items flattened to JSON cell)."""
+    fieldnames = [
+        "request_id",
+        "user_ref",
+        "org_id",
+        "intent",
+        "status",
+        "latency_ms",
+        "created_at",
+        "counts",
+        "items",
+    ]
+    with output.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for r in requests_data:
+            row = {k: r.get(k) for k in fieldnames}
+            row["counts"] = json.dumps(r["counts"], ensure_ascii=False)
+            row["items"] = json.dumps(r["items"], ensure_ascii=False)
+            writer.writerow(row)
+    print(f"Exported {len(requests_data)} context requests to {output} (CSV)")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Export context_requests + context_items (per docs/API.md §8)"
+    )
+    parser.add_argument(
+        "--output", "-o", type=Path, default=Path("audit.json"),
+        help="Output file path (default: audit.json)",
+    )
+    parser.add_argument(
+        "--user", help="Filter by user_ref (X-User-Id value)",
+    )
+    parser.add_argument(
+        "--org", help="Filter by org_id (multi-tenant, cut-019)",
+    )
+    parser.add_argument(
+        "--since", help="Filter by created_at >= date (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--until", help="Filter by created_at <= date (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--format", "-f", choices=["json", "csv"], default="json",
+        help="Output format (default: json)",
+    )
+    args = parser.parse_args()
+
+    engine = get_engine()
+    where_sql, params = _build_where(args)
+    requests_data = _fetch_requests(engine, where_sql, params)
+
+    if args.format == "csv":
+        _write_csv(requests_data, args.output)
+    else:
+        _write_json(requests_data, args, args.output)
     return 0
 
 
