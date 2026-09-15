@@ -14,7 +14,7 @@ import html
 import os
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from ece.audit.trace import get_context_trace
@@ -30,6 +30,29 @@ def _is_private_deployment() -> bool:
     ECE_DEPLOYMENT_MODE=production hides Debugger UI (returns 404).
     """
     return os.environ.get("ECE_DEPLOYMENT_MODE", "local") == "local"
+
+
+def _is_localhost(request: Request) -> bool:
+    """True if request.client.host is in DEBUG_ALLOWED_HOSTS allowlist.
+
+    Per v0.1 deployment (cut-018a): /debug/* is restricted to localhost
+    only (127.0.0.1, ::1). Override via env DEBUG_ALLOWED_HOSTS
+    (comma-separated). TestClient uses 'testclient' as default host (also
+    allowed by default for test compatibility).
+
+    Wildcard "*" allows all hosts (e.g., for internal proxy / load
+    balancer in front of /debug/* endpoint).
+    """
+    client_host = request.client.host if request.client else ""
+    allowed_str = os.environ.get(
+        "DEBUG_ALLOWED_HOSTS",
+        "127.0.0.1,::1,localhost,testclient",
+    )
+    allowed = set(allowed_str.split(","))
+    # Wildcard "*" allows all hosts
+    if "*" in allowed:
+        return True
+    return client_host in allowed
 
 
 def _render_trace_html(trace: dict[str, Any]) -> str:
@@ -98,12 +121,15 @@ def _render_trace_html(trace: dict[str, Any]) -> str:
 @router.get("/context/{request_id}", response_class=HTMLResponse)
 def get_debug_context(
     request_id: str,
+    request: Request,
     x_user_id: str | None = Header(None, alias="X-User-Id"),
 ) -> str:
     """Debugger UI: server-rendered HTML trace page.
 
-    Private deployment only (ECE_DEPLOYMENT_MODE=local). In production,
-    returns 404 (UI hidden, per 私有化 acceptance).
+    Private deployment + localhost-only (per v0.1 deployment cut-018a):
+    - ECE_DEPLOYMENT_MODE=production → 404 (UI hidden)
+    - Non-localhost request → 403 (anti-exposure: prevent audit trace leak)
+    - Override allowlist via env DEBUG_ALLOWED_HOSTS="host1,host2,..."
 
     Per ADR-004: same permission check as /audit/context — only owner.
     """
@@ -113,6 +139,20 @@ def get_debug_context(
             detail={
                 "code": "not_found",
                 "message": "debug UI not available in production",
+            },
+        )
+
+    if not _is_localhost(request):
+        client_host = request.client.host if request.client else "unknown"
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": (
+                    f"debug UI only available from localhost; "
+                    f"got {client_host}. "
+                    f"Override via env DEBUG_ALLOWED_HOSTS."
+                ),
             },
         )
 

@@ -284,7 +284,16 @@ X-User-Id: demo-user-procurement
 
 响应 `200 text/html`：HTML 表格列出 metadata + items（与 /audit 一致但 HTML 渲染）。
 
-错误：`400` 缺 `X-User-Id`；`403` 非 owner；`404` request_id 不存在或 production mode。
+错误：
+- `400` 缺 `X-User-Id`
+- `403` 非 owner **或非 localhost 访问**
+- `404` request_id 不存在或 production mode (`ECE_DEPLOYMENT_MODE=production`)
+
+**安全限制（v0.1 deployment cut-018a）**:
+- `/debug/*` 仅允许 localhost 访问（per ECE/CLAUDE.md 私有化验收 → 防止 audit trace 泄漏到外网）
+- 默认允许 host: `127.0.0.1`, `::1`, `localhost`, `testclient` (test client)
+- 覆盖: `DEBUG_ALLOWED_HOSTS="host1,host2,..."` 环境变量
+- 生产部署建议: `DEBUG_ALLOWED_HOSTS=""` (empty → 只有 127.0.0.1/::1 显式允许)
 
 ## 9. 健康
 
