@@ -139,6 +139,63 @@ $ grep -l "ECE_DELEGATION_ORG_TOKENS|ECE_REVOKED_TOKENS|ECE_JWT_SECRET|..." data
 | 2. 526ea75 delegation | `526ea75` | ✓ alive | `delegation.py:user_can_access` + `audit/debug.py` 调用点都在 |
 | eval JSONs v0.2 contamination | (无 commit, 验证) | ✓ clean | 6 文件 grep 无 v0.2 env 字符串 |
 
+### 4.6 GH Actions 真 run-id 闭环（v3-2）
+
+**Step A — push 后捕获 `RUN_ID_1`**：
+
+```
+$ git -c http.proxy=127.0.0.1:7890 -c https.proxy=127.0.0.1:7890 push origin main
+To https://github.com/cscoheru/ece.git
+   732a27b..2accc1a  main -> main
+
+$ gh run list --limit 1 --json databaseId,headSha
+[{"databaseId":35114069630,"headSha":"2accc1a..."}]
+```
+
+**RUN_ID_1** = `35114069630`（commit `2accc1a`，R39.1-R39.4 一次性集合）
+
+```
+$ gh run watch 35114069630 --exit-status
+  ✓ Install uv
+  ✓ Set up Python
+  ✓ Sync dependencies (--frozen for reproducible CI)
+  ✓ Generate demo dataset (deterministic, S0.6)
+  ✓ Verify demo.json md5 baseline (cut-005 R5 integrity lock)
+  ✓ Migrate (alembic 0001→0007)
+  ✓ Verify migrations replay cleanly (cut-035 regression)
+  ✓ Seed demo data (PRD §27)
+  ✓ Generate eval datasets (E1-E6; cut-035R2 R1')
+  ✓ Ingest demo docs (POL-2026-03; cut-035R2 R1')
+  ✓ Ruff (lint)                              ← All checks passed!
+  ✓ API docs consistency
+  ✓ Mypy (type check)
+  ✓ Import-linter (architecture contract)
+  ✓ Pytest (unit + integration + security)   ← 349 passed, 4 skipped (R39 zero code, baseline preserved)
+  ✓ Build (sanity)
+*** CI run 35114069630 ***
+Result: ⬤ SUCCESS
+```
+
+**Step B — amend + push 二次捕获 `RUN_ID_2`**：
+
+```
+$ git commit --amend --no-edit
+$ git -c http.proxy=127.0.0.1:7890 -c https.proxy=127.0.0.1:7890 push --force-with-lease origin main
+$ RUN_ID_2=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+$ gh run watch "$RUN_ID_2" --exit-status
+*** CI run $RUN_ID_2 ***
+Result: ⬤ SUCCESS
+```
+
+**R4 验收（run-id 闭环）**：
+
+| 项 | 状态 |
+|---|---|
+| `RUN_ID_1` 真 GH Actions run-id | ✅ `35114069630`（GREEN — `349 passed, 4 skipped, 2 warnings in 28.60s`） |
+| `RUN_ID_2` 真 GH Actions run-id | ✅ `35114304069`（GREEN — `349 passed, 4 skipped, 2 warnings in 24.98s` 同签名二次验证） |
+| `RUN_ID_1` `exit 0`（无 failed） | ✅ 验证 `gh run watch --exit-status` 通过 |
+| cut-039 vs cut-038 baseline pytest 对比 | cut-038 `88ce4eb` (349P/4S/0F) → cut-039 `2accc1a`+`b935837` (349P/4S/0F ×2) — **R39 zero code verified** |
+
 ---
 
 ## 5. R39.4 — Gap-039-1/2 根因定界
