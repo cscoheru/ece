@@ -245,13 +245,16 @@ def _seed_entity_departments(engine) -> int:
     total = 0
     with engine.begin() as conn:
         for entity_type, dept in dept_by_entity.items():
+            # COALESCE wraps attributes->>'department' so postgres can
+            # determine the type even when attributes is empty jsonb `{}`
+            # (raw `IS NULL` on `->>` of empty jsonb raises IndeterminateDatatype).
             result = conn.execute(
                 text(
                     """
                     UPDATE entities
                     SET attributes = attributes || jsonb_build_object('department', :dept)
                     WHERE entity_type = :etype
-                      AND attributes->>'department' IS NULL
+                      AND COALESCE(attributes->>'department', '') = ''
                     """
                 ),
                 {"etype": entity_type, "dept": dept},
