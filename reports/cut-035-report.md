@@ -192,6 +192,38 @@ Always verify against HEAD before cut when investigating "new"
 failures. If they exist before your changes, they are NOT in your
 scope.
 
+## 9. 红队审验结论（Cline，2026-09-15）
+
+**裁定：❌ 不通过 → 签发刀 035R**（同刀范围内小返工，≤半天量）。
+
+### 9.1 实证通过项（Cline 亲跑）
+
+| 项 | 证据 |
+|---|---|
+| **P0-2 迁移脊柱真修通** | Cline 在 wiped 库（`down -v`+删 pgdata）亲跑：`upgrade head` ✅ → `downgrade base` ✅ → `upgrade head` ✅，13 表、head=0007。0001 去重方案（sole owner 0005）正确 |
+| P1-3 uv.lock | +37 行补齐 pyjwt/redis/fakeredis 根依赖边，`uv sync --frozen` 可用 |
+| ci.yml 脊柱 | frozen sync + replay 验证步 + seed 步 + step 改名，四项皆真 |
+| 报告诚实度 | 如实披露 3 个本地失败并定性 pre-existing；§6–§7 教训部分质量好（迁移不可回炉、lock 属于依赖契约） |
+
+### 9.2 阻断项：closure 声明与 CI 事实不符（违反循环规则 v3-2）
+
+1. **CI 在 closure commit `451d81c` 上仍然红**（`139466f` 同红）。报告 §1 自称 scope 含 "CI workflow green path"、§6.4 自称 "This is what cut-035 establishes"——但**通篇无 run-id**（v3-2 要求 `gh run watch --exit-status` 留证），说明闭包声明前没有看 CI。
+2. **CI 实际死因（Linux runner，11 个测试 ERROR/FAILED）**：
+   - `test_s4_5_temporal.py` **整模块 5 测全灭**——line 45 硬编码 `cwd="/Users/kjonekong/..."`（cut-013 埋雷，此前 CI 永远死在 Migrate 步骤到不了 Pytest，故从未暴露；刀 35 修通迁移后才首次撞上）；
+   - `test_s4_1_docs` ×3、`test_e2e_smoke` ×1、`test_e2_permission` ×1 ——CI 独有失败，疑同类路径/数据文件问题，待 035R 定位；
+   - `test_s4_2_vector::invalid_embedding_length` ——本地 fresh 库同样失败（见下）。
+3. **套件非封闭（hermeticity）实锤**：同一 HEAD `754419b`，Cline 今晨在旧 volume 上 `make test` = **329 全绿**；CC 在其库上 = 3 failed；Cline 在 fresh replay+seed 库上 = **1 failed**（仅 s4_2_vector，CC 报告的 2 个 s4_5 失败在 fresh+seed 下不复现）；CI = 11 错。**四个环境四种结果**——测试依赖 db 历史状态（test_s14 删 demo:* 实体会破坏后续模块，fixture 注释自己承认）。s4_2_vector 在一切 fresh 库路径上都红＝被旧 volume 掩盖的真实 bug。
+
+### 9.3 刀 035R 范围（目标只有一个：CI 真绿）
+
+- **R1** `test_s4_5_temporal.py:45` 硬编码 cwd → `Path(__file__).resolve().parents[2]`（或去 cwd 用仓库根相对），`uv` 一并检查 CI 可用性
+- **R2** 定位并修复 4 个 CI 独有失败（s4_1_docs ×3 / e2e_smoke / e2_permission——疑硬编码路径或数据文件缺失，逐一贴根因）
+- **R3** `test_s4_2_vector` fresh 库失败＝真 bug（cut-010 era vector search 被 volume 掩盖），修复或降级为显式 skip+登记
+- **R4** hermeticity 最小整改：test_s14 的跨模块数据破坏（删 demo:* 后不恢复）改为自清理/恢复；在 TASKS 附录登记"测试不得依赖库历史"规约
+- **R5** **CI 绿 + run-id 写入报告 §4**（v3-2 硬门槛；无 run-id 的 closure 一律打回——本刀即是先例）
+
+验收（Cline 亲跑）：wiped 库 seed + `make test` 全绿；`gh run watch <id> --exit-status` 绿且 run-id 在报告内。
+
 ## 8. Cut-036 preview
 
 Cline verdict next cut: **cut-036 止血·认证闸门**
