@@ -1,0 +1,23 @@
+=== E6 (MockLLM) ===
+Loaded 50 cases from data/eval/e6_agent.json
+
+=== E6 Agent 评测结果 ===
+Total:    50
+Correct:  0
+Wrong:    50
+Accuracy: 0.0%
+
+--- First 10 Failures ---
+  {'case': 'e6-001', 'expected_conclusion': 'reject', 'got_conclusion': '未发现明确问题', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-002', 'expected_conclusion': 'approve', 'got_conclusion': '无需比价', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-003', 'expected_conclusion': 'approve', 'got_conclusion': '无需比价', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-004', 'expected_conclusion': 'approve', 'got_conclusion': '未发现明确问题', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-005', 'expected_conclusion': 'approve', 'got_conclusion': '审批链完整', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-006', 'expected_conclusion': 'reject', 'got_conclusion': '审批链完整', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-007', 'expected_conclusion': 'reject', 'got_conclusion': '审批链完整', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-008', 'expected_conclusion': 'approve', 'got_conclusion': '审批链完整', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-009', 'expected_conclusion': 'reject', 'got_conclusion': '未发现明确问题', 'direction_match': False, 'evidence_match': True}
+  {'case': 'e6-010', 'expected_conclusion': 'approve', 'got_conclusion': '未发现明确问题', 'direction_match': False, 'evidence_match': True}
+
+*** UNDER 80% target: 0.0% (V0 baseline with MockLLM; expect ≥80% with real LLM) ***
+exit=0

@@ -1,0 +1,23 @@
+=== E1 ===
+Loaded 65 cases from data/eval/e1_resolution.json
+
+=== E1 Entity Resolution Results ===
+Total:    65
+Correct:  14
+Wrong:    0
+Accuracy: 21.5%
+
+--- First 10 Failures ---
+  [e1-005] {'case': 'e1-005', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-006] {'case': 'e1-006', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-007] {'case': 'e1-007', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-008] {'case': 'e1-008', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-009] {'case': 'e1-009', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-010] {'case': 'e1-010', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-011] {'case': 'e1-011', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-012] {'case': 'e1-012', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-013] {'case': 'e1-013', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+  [e1-014] {'case': 'e1-014', 'stage': 'request', 'error': "'latin-1' codec can't encode characters in position 0-2: ordinal not in range(256)"}
+
+*** UNDER 95% target: 21.5% (R3 acceptance: report under-target w/ gap analysis; do NOT claim pass) ***
+exit=0

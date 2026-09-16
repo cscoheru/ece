@@ -1,0 +1,23 @@
+=== E4 ===
+Loaded 30 cases from data/eval/e4_relationships.json
+
+=== E4 Relationships Results ===
+Total:    30
+Correct:  0
+Wrong:    30
+Accuracy: 0.0%
+
+--- First 10 Failures ---
+  {'case': 'e4-001', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-002', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-003', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-004', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-005', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-006', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-007', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-008', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-009', 'stage': 'http', 'error': 'status 404'}
+  {'case': 'e4-010', 'stage': 'http', 'error': 'status 404'}
+
+*** FAIL: 30 wrong relation count(s) ***
+exit=0

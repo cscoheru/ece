@@ -26,6 +26,23 @@ test:
 eval:
 	uv run pytest -m "eval or eval_llm"
 
+# cut-039 R39.1: 6-runner E1-E6 eval report (real stdout, 禁止编数).
+# Usage: make eval-report BASE_URL=http://127.0.0.1:8765
+# Default BASE_URL=http://127.0.0.1:8765. E6 real-LLM mode requires ECE_LLM_BASE_URL.
+# All output archived to reports/eval-archive/YYYYMMDD-cutNNNN/ (raw stdout per runner).
+eval-report:
+	@mkdir -p reports/eval-archive/$(shell date +%Y-%m-%d)
+	@BASE_URL=$${BASE_URL:-http://127.0.0.1:8765}; \
+	echo "ARCHIVE=reports/eval-archive/$(shell date +%Y-%m-%d)-cut039"; \
+	ARCHIVE=reports/eval-archive/$(shell date +%Y-%m-%d)-cut039; \
+	mkdir -p $$ARCHIVE; \
+	uv run python scripts/run_e1_resolution.py --data data/eval/e1_resolution.json --base-url $$BASE_URL 2>&1 | tee $$ARCHIVE/E1.txt; \
+	uv run python scripts/run_e2_permission.py --data data/eval/e2_permission.json --base-url $$BASE_URL 2>&1 | tee $$ARCHIVE/E2.txt; \
+	uv run python scripts/run_e3_context.py --data data/eval/e3_context.json --base-url $$BASE_URL 2>&1 | tee $$ARCHIVE/E3.txt; \
+	uv run python scripts/run_e4_relationships.py --data data/eval/e4_relationships.json --base-url $$BASE_URL 2>&1 | tee $$ARCHIVE/E4.txt; \
+	uv run python scripts/run_e5_temporal.py --data data/eval/e5_temporal.json --base-url $$BASE_URL 2>&1 | tee $$ARCHIVE/E5.txt; \
+	uv run python scripts/run_e6_agent.py --data data/eval/e6_agent.json 2>&1 | tee $$ARCHIVE/E6.txt
+
 demo:
 	uv run python -m ece.demo
 

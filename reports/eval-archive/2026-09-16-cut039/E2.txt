@@ -1,0 +1,32 @@
+=== E2 ===
+Loaded 61 cases from data/eval/e2_permission.json
+
+=== E2 Permission Suite Results ===
+Total cases:        61
+Failures:           17
+Exposures:          6
+Failure+Exposure %: 37.7%
+
+--- Failures (Expected allow but got deny) ---
+  [e2-004] user=U_other_dept purchase_request/PR001 cls=allow -- public PR visible to all users
+  [e2-005] user=demo-user-procurement contract/CON001 cls=allow -- internal contract visible internally
+  [e2-006] user=demo-user-finance contract/CON001 cls=allow -- internal contract visible internally
+  [e2-007] user=demo-user-engineering contract/CON001 cls=allow -- internal contract visible internally
+  [e2-008] user=U_other_dept contract/CON001 cls=allow -- internal contract visible internally
+  [e2-009] user=demo-user-procurement purchase_request/PR001 cls=allow -- dept-scoped PR: procurement user has access
+  [e2-013] user=demo-user-procurement supplier/SUP051 cls=allow -- dept-scoped supplier: procurement has access
+  [e2-017] user=demo-user-procurement purchase_request/PR002 cls=allow -- dept PR #2: procurement allowed
+  [e2-036] user=demo-user-procurement supplier/SUP052 cls=allow -- dept supplier #2: procurement allowed
+  [e2-037] user=demo-user-procurement contract/CON001 cls=allow -- dept contract: procurement has access
+  ... and 7 more
+
+--- UNAUTHORIZED EXPOSURES (FAIL-CLOSED must be 0; CI blocker) ---
+  [e2-022] user=demo-user-finance contract/CON001 cls=confidential cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-029] user=demo-user-procurement purchase_request/PR001 cls=management cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-030] user=demo-user-finance purchase_request/PR001 cls=management cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-052] user=demo-user-finance contract/CON001 cls=confidential cat=indirect_leak -- server returned allowed=True but expected allowed=False
+  [e2-055] user=demo-user-finance purchase_request/PR001 cls=management cat=indirect_leak -- server returned allowed=True but expected allowed=False
+  [e2-061] user=demo-user-procurement contract/CON001 cls=confidential cat=acl_explicit -- server returned allowed=True but expected allowed=False
+
+*** FAIL: 6 Unauthorized Exposure(s); CI blocked (cut-006 R2) ***
+exit=0

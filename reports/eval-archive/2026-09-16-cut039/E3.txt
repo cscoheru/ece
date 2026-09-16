@@ -1,0 +1,23 @@
+=== E3 ===
+Loaded 100 cases from data/eval/e3_context.json
+
+=== E3 Context Completeness Results ===
+Total:    100
+Correct:  0
+Wrong:    100
+Accuracy: 0.0%
+
+--- First 10 Failures ---
+  {'case': 'e3-001', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-002', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-003', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-004', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-005', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-006', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-007', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-008', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-009', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+  {'case': 'e3-010', 'stage': 'http', 'error': 'status 404: {"detail":"Not Found"}'}
+
+*** UNDER 90% target: 0.0% (R3: report under-target with gap analysis) ***
+exit=0
