@@ -68,3 +68,30 @@
 
 总计 ≈ 30 个工作日（solo）。任何超过 2 天的新增工作必须先立 TASKS 条目 + 评估是否违反铁律 3（垂直纪律）。
 
+---
+
+## 附录 H — 测试 Hermeticity 规约（cut-035R2 R3）
+
+**强制规则**：测试禁止依赖未提交本地工件；测试数据必须满足下列任一：
+
+1. **commit 入仓**（force-add OK 当 `.gitignore` 整目录忽略但 CI 需要）。
+2. **CI 内确定性生成**（`make gen-*` 类 target 跑在 seed/pytest 之前）。
+
+**反模式**（cut-035R2 R1' 事故根因）：
+
+- 在 `.gitignore` 把 `data/` 整目录屏蔽，但测试断言 `data/` 下某文件存在
+- 例：`.gitignore:16` 含 `data/` → `data/eval/e2_permission.json` 与 `data/demo_docs/POL-2026-03.md` 本机私有 → CI 缺文件 → 4 个测试红（run `35048727117`：`4 failed, 306 passed, 25 skipped`），CC 却报 "vanished" → 第 6 次完整性事故
+- 例：报告 §5.1 写根因结论前未跑 `gh run view --log-failed` 亲验 CI 日志
+
+**强制自检**（每刀 commit 前）：
+
+- [ ] `git ls-files data/ | wc -l` ≥ CI 期望命中数（grep `data/` 在 pytest 用法）
+- [ ] 新增 data 资产有对应的 `make gen-*` target 或 `git add -f` 记录
+- [ ] 若测试依赖某文件存在，该文件已在 CI workflow step 中显式创建/复制/生成
+
+**上游配套**：
+
+- `pytest -rs` 必须保留（cut-035R2 R5）：让 skip 原因可见，防止"绿但空转"
+- CI workflow data 供给 step 必须在 `pytest` step 之前（顺序约束）
+- R3 规约与 R1' 数据重建同步生效 — 见 `reports/cut-035R2-report.md`
+

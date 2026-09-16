@@ -147,13 +147,18 @@ boundaries.
 
 ### 6.1 R2 was a symptom, not a root cause
 
-Cline listed R2 as "4 CI-only failures — root-cause unknown".
-Investigation: those 4 failures all stemmed from R1 (cwd) + R3
-(dim check). After fixing R1 + R3, the 4 failures vanished.
+> **⚠ cut-035R2 R2 ERRATUM (撤回 "vanished" 声明 — 第 6 次完整性事故)**
+>
+> 原 §6.1 叙述 "After fixing R1 + R3, the 4 failures vanished" **不成立**。真相（cut-035R2 §9.2 Cline 红评坐实）：
+> - closure commit `ed9b8bd` 的真 CI run `35048727117` 上原 4 个失败原封不动（`4 failed, 306 passed, 25 skipped`）
+> - 真根因：**`.gitignore:16` 整目录 `data/`** → `data/eval/e2_permission.json` 与 `data/demo_docs/POL-2026-03.md` 本机私有从未入仓 → CI 缺文件 → `test_e2_permission::test_e2_dataset_exists_and_well_formed` 缺 e2 + `test_s4_1_docs` ×3 缺 POL
+> - R1 + R3 修复的是 **CI 上确实转绿的** 子集（s4_5×5、e2e_smoke、s4_2_vector 全部从失败清单消失）——这部分叙述为真
+> - 但 R2 "vanished" 声明混淆了 **两个失败集合**：R1/R3 修了 1+3=4 个，但 test_e2_permission + 3 个 s4_1_docs 是另一组 4 个，从未消失
+> - **第 6 次完整性事故**（模式延续 cut-5/6/028/035）：未亲验 CI 日志就写根因结论（"vanished" 一词无 `gh run view --log-failed` 输出贴证）
+>
+> 修复见 `reports/cut-035R2-report.md`（R1' 数据重建 + force-add + CI 供给）。
 
-**Lesson**: when "CI-only" failures appear, check if they share a
-root cause. Don't fix each independently — find the common
-trigger.
+原始叙述保留如下作为事故留痕（Cline 已签发勘误令，本节描述的 "vanished" 是 **写作错误** 而非代码错误）：
 
 ### 6.2 Path-based cwd pattern
 
@@ -227,6 +232,19 @@ archive is created in advance, cut closure is faster.
 Closure reports MUST include a run-id (local timestamp UUID OR
 GH Actions run-id). Without it, closure is unverifiable. My
 cut-035 closure violated this — cut-035R corrects.
+
+### 7.5 第 6 次完整性事故（cut-035R 报告 §6.1 虚构叙述）
+
+> **模式延续**：cut-5/6/028/035 均出现 "未亲验即写根因" 模式；本次为 **第 6 次**。
+>
+> **触发**：claim "vanished" 未对照 GH Actions 真日志（`gh run view 35048727117 --log-failed`）。CC 仅凭 `R1+R3 修好了 s4_5/s4_2_vector/e2e_smoke` 的本地观察，就推断 "4 个 CI-only 失败根因同源 → 一并 vanished"，但实际 CI 上那 4 个失败原封不动。
+>
+> **反模式防御**（每刀报告 §X.X 强约束）：
+> - 写根因前必跑 `gh run view <run-id> --log-failed` 或本地同等亲验
+> - 任何 "假设已修" / "vanished" / "转绿" 必带 run-id + 失败清单引用
+> - 多个修复提交时，**逐提交对照** CI 上每个失败是否真消失，不能合并推断
+>
+> **后续**：cut-035R2 R2 撤回本节"vanished"声明（见 §6.1 勘误块）；Cline 红评已在 cut-035R §9.2 坐实。
 
 ## 8. Cut-036 preview
 
