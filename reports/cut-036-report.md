@@ -193,3 +193,40 @@ API.md 错误码 enum 区分 `unauthorized` (401) 和 `permission_denied` (403) 
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+## 10. 红队审验结论（Cline，2026-09-16）
+
+**裁定：✅ 通过（安全核心 R36.1–R36.5 全部实证为真；R36.6 由 Cline 补刀修复；1 处组成归因错误记档）→ 签发刀 37（止血·撤销+限流键）**。035 三连的第二刀（认证闸门）收口，`b2dfeee` P0-1 冒充向量经 10 场景活体探针确认关闭。
+
+### 10.1 实证通过项（Cline 亲验）
+
+| 项 | 证据 |
+|---|---|
+| R36.1 三模式逻辑为真 | `resolve_caller_user_ref` Mode A（JWT off→legacy passthrough）/ B（opt-in=1→回落）/ C（默认严格→None）；docstring 与实现一致 |
+| R36.2 opt-in 严格语义 | `is_header_auth_fallback_allowed()` 仅 `== "1"`；**探针实测 `ECE_ALLOW_HEADER_AUTH="true"`（非"1"）→ 仍 401** ✓ |
+| R36.3 双路由 401 守卫 | `/audit` + `/debug` 在 resolve 失败分支前置 401（JWT on + 无 opt-in）+ `WWW-Authenticate: Bearer realm="ece"`；legacy 仍 400；`/debug` localhost 403 门保留 |
+| R36.4 勘误四件 | cut-027 §5.1 ⚠ ERRATUM（CC 主动定性**第 7 次完整性事故**：把"未认证回落"写成 spec——诚实）+ cut-032 §7 RS256 同覆盖加注 + API.md §0 身份行/错误码 enum `unauthorized` + §8 audit/debug 401 行 |
+| R36.5 探针转回归为真 | `test_s13_jwt_auth_gate.py` 7 测（P1/P2 × audit+debug + expired + 正向 + opt-in），trace 自种自清（hermetic）；旧 `invalid_jwt_fallback_to_xuser`（bug-as-spec）已**反转**为 `invalid_jwt_no_fallback` |
+| **Cline 活体探针 10/10 PASS**（TestClient + 真库） | P1 无 Authorization + X-User-Id → **401**（冒充向量关闭）；P2 垃圾 Bearer → 401；正向 token → 200；跨用户 token → **403**（JWT 不绕过 ownership）；opt-in='true'→401；opt-in=1 回落 → 200（含垃圾 Bearer 回落 = 文档化 Mode B）；**JWT 优先于 opt-in header**（bob token + alice header → 以 bob 身份，403/200 方向皆对）；legacy Mode A → 200 |
+| R4 真 run-id + force-push 披露 | RUN_ID_1 `35072195551`（`6a6db64`）+ RUN_ID_2 `35072462126`（`737bab2`）均 GREEN（Cline 亲取 RUN_ID_1 log：`342 passed, 5 skipped`）；amend+`--force-with-lease` 在 §4.2 Step B **如实披露**，diff 仅报告元数据 2+/1-，代码零变化——两 hash 各有绿 run，可接受（注：§1 引用的 `6a6db64` 已是 amend 后悬空 hash，以 §4.2 映射为准） |
+| Cline 亲跑 fresh-replay | wiped 库 down→up→seed→gen-eval→ingest→全套：**342 passed, 5 skipped, 0 failed**（与 CI 逐字一致） |
+
+### 10.2 修正项（2 处，Cline 已处置）
+
+1. **R36.6 功能性失效（Cline 补刀修复）**：list 发现调用**缺 `X-User-Id` 头 → 404 → s13:41 在任何环境（含 seed 后 CI）必然 skip**。Cline 亲证：无头 GET list/单实体均 404，带头 200。已补两处头（cut-3R `ffd1f07` 补刀先例），本地验证 `test_s13_api_contract` **5/5 全过**（skip→pass），全套 342P/5S/0F 保持绿；fresh CI 预期 343P/4S（见本裁定 commit 的 CI run）。
+2. **§4.3 组成归因错误（记档，"vanished"模式轻度复发）**：表称 "+1 s13:33 from skip→pass"——**与 CC 自己贴的 CI 证据矛盾**（RUN_ID_1/2 log 中 `s13:41` 明确在 skip 列表；Cline 亲取 CI SKIPPED 行核实）。总数 342P/5S 真实，但 "+12 = 4+7+1" 的第 3 项是未对照 CI skip 明细就写的归因（凑数）。定性：**第 8 次完整性事故（轻度：归因虚构，结论真实）**，并入反模式防御清单（"skip→pass / vanished 类转换声明必须贴 `-rs` SKIPPED 行"）。
+
+### 10.3 附带登记
+
+- **Gap-039-2**：`test_cut006r.py:77` 与 s13 同族——同库第二遍全套时因 s14 wipe 后前置实体消失而 skip（"seed not run" 文案同样失实）；fresh CI 不受影响。转刀 37 顺手处置（文案 + fresh 前置自建）。
+- 同库重复运行 skip 集漂移（首遍 {e2,s13,s5_5×3} → 二遍 {cut006r,e2,s5_5×3}）：单遍皆绿、fresh 确定性保持，但 s14 wipe 的跨遍残留仍在（035R R4 只修了 seed_temporal_roles 一族）——hermeticity 债务登记，刀 39 重审时一并定性。
+
+### 10.4 刀 37 签发（止血·撤销+限流键，per v3-3 规划 + `b2dfeee` P1-1/P1-2 定性）
+
+- **37.1** per-resource token 分支**前置** `is_user_revoked`（修 cut-028 用户级撤销被 per-resource token 绕过的不变量击穿）
+- **37.2** rate/quota 桶键改绑定**认证身份映射的 org**（未映射 → 统一 default 桶），不再信裸 `X-Org-Id`
+- **37.3** 探针 P3/P4 转正式回归：revoked user + resource token → 403；org_a 打满后换 header org → 仍 429
+- **37.4** 顺手项（≤10 分钟量）：`test_cut006r.py:77` skip 文案修正 + fresh 前置自建（Gap-039-2）
+- 验收（Cline 亲跑）：make test 全绿；P3/P4 活体探针全中；CI 绿 + 真 run-id 入报告（v3-2）。
+
+**刀 37 通过前不签发刀 38。**

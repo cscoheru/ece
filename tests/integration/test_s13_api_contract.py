@@ -36,11 +36,17 @@ def test_get_entity_found(client: TestClient) -> None:
     """
     # Discover a real seeded supplier ref via list endpoint (handles
     # display_id mapping drift between demo.json and seed pipeline).
-    list_r = client.get("/api/v1/entities?type=supplier&limit=1")
+    # cut-036 §10 Cline supplement: list endpoint requires X-User-Id
+    # (404/401 without it) — the headerless call skipped in EVERY
+    # environment incl. seeded CI (runs 35072195551/35072462126).
+    list_r = client.get(
+        "/api/v1/entities?type=supplier&limit=1",
+        headers={"X-User-Id": "demo-user-procurement"},
+    )
     if list_r.status_code != 200 or not list_r.json().get("items"):
         pytest.skip("no suppliers seeded; run 'make seed' first to populate suppliers")
     ref = list_r.json()["items"][0]["ref"]
-    r = client.get(f"/api/v1/entities/{ref}")
+    r = client.get(f"/api/v1/entities/{ref}", headers={"X-User-Id": "demo-user-procurement"})
     assert r.status_code == 200
     body = r.json()
     assert body["type"] == "supplier"
