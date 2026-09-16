@@ -115,4 +115,18 @@ unrelated reason). Refactored to use 3 keys: token signed with
 
 ---
 
+## 7. cut-036 R36.4 加注
+
+cut-032 RS256 路径同样存在静默回落漏洞（共享 `_get_verification_key()` +
+`resolve_caller_user_ref()`）。**cut-036 R36.1 修复同时覆盖 HS256 与 RS256 模式**：
+JWT mode 开启（`ECE_JWT_SECRET` 或 `ECE_JWT_PUBLIC_KEY` 任一）+ `ECE_ALLOW_HEADER_AUTH`
+未设 → 缺失/无效 Authorization → None（调用方抛 401）。
+
+新错误码 `unauthorized` 加入 API.md §0；`WWW-Authenticate: Bearer realm="ece"`
+header 跟 RFC 6750 §3。详细修复见 `reports/cut-036-report.md`。
+
+加注人：Claude，2026-09-16。
+
+---
+
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>

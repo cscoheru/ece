@@ -6,6 +6,7 @@
 
 - Base URL：`/api/v1`；内容类型 `application/json; charset=utf-8`。
 - **身份（v0）**：请求头 `X-User-Id: U001`（display_id）。生产级 SSO/OIDC 明确不在 v0 范围（ADR-001）。
+- **身份（v0.2+ cut-027/032, cut-036 收紧）**：当 `ECE_JWT_SECRET` 或 `ECE_JWT_PUBLIC_KEY` 配置时，JWT 模式开启。**默认强制** `Authorization: Bearer <jwt>`；缺失或无效 → **401** + `WWW-Authenticate: Bearer realm="ece"`。`X-User-Id` 仅当 `ECE_ALLOW_HEADER_AUTH=1` 显式 opt-in 时可用作回落（不推荐：JWT 模式下回落存在冒充风险，参见 cut-036 R36.1）。
 - **管理端点**：另需 `X-Admin-Token: $ECE_ADMIN_TOKEN`（/ingest、批量写）。
 - 错误模型（RFC 7807 简化）：
 
@@ -13,7 +14,8 @@
 {"error": {"code": "permission_denied", "message": "U002 无权访问 PR001", "request_id": "ctx_..."}}
 ```
 
-  code 枚举：`bad_request | not_found | permission_denied | resolution_ambiguous | insufficient_context | disabled_feature | internal`。
+  code 枚举：`bad_request | not_found | permission_denied | unauthorized | resolution_ambiguous | insufficient_context | disabled_feature | internal`。
+  - `unauthorized`（cut-036 新增）：JWT 模式开启 + 缺失/无效 Authorization（401）；区别于 `permission_denied`（403，资源级权限不足）。
 - 所有响应可含 `request_id`（关联 `context_requests` 审计）。
 - 时间：ISO-8601 UTC；日期（as_of/valid_from）为 `YYYY-MM-DD`。
 
@@ -280,6 +282,7 @@ X-Org-Id: org_a          # 仅当 ECE_USER_ORGS 配置时
 ```
 
 错误：
+- `401` JWT 模式开启 + 缺失/无效 Authorization（cut-036 R36.1）→ `code: unauthorized` + `WWW-Authenticate: Bearer realm="ece"`
 - `400` 缺 `X-User-Id`/`X-Delegation-Token`；多租户模式下缺 `X-Org-Id`
 - `403` 非 owner 调用 **或** 跨 org 访问 (`X-Org-Id != trace.org_id`)
 - `404` request_id 不存在
@@ -305,6 +308,7 @@ X-User-Id: demo-user-procurement
 响应 `200 text/html`：HTML 表格列出 metadata + items（与 /audit 一致但 HTML 渲染）。
 
 错误：
+- `401` JWT 模式开启 + 缺失/无效 Authorization（cut-036 R36.1）→ `code: unauthorized` + `WWW-Authenticate: Bearer realm="ece"`
 - `400` 缺 `X-User-Id`
 - `403` 非 owner **或非 localhost 访问**
 - `404` request_id 不存在或 production mode (`ECE_DEPLOYMENT_MODE=production`)

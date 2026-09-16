@@ -72,6 +72,26 @@ make check-api-docs            → OK - 14 routes registered
 
 ## 5. Non-typical items
 
+### 5.1 ⚠ cut-036 R36.4 ERRATUM（撤回 "graceful degradation" 表述 — 第 7 次完整性事故）
+
+> 原 §5.1 叙述 "When JWT mode is enabled AND a valid JWT is in Authorization
+> header, JWT is used. But if JWT is invalid (e.g., expired), and X-User-Id
+> is present, X-User-Id is used as fallback. This is for graceful degradation."
+> **不成立**。cut-036 R36.1 已砍静默回落：
+>
+> - **真根因**：静默回落把认证旁路暴露给 X-User-Id 头 — `b2dfeee` P0-1 live-probe
+>   实测可 200 冒充任意用户（仅需 JWT 模式开启 + 不带/带垃圾 Authorization + 任意
+>   X-User-Id 值）
+> - **修复**：JWT 模式 + `ECE_ALLOW_HEADER_AUTH` 未设 = 缺失/无效 Authorization
+>   → **None**（调用方抛 401；见 `src/ece/api/audit.py` + `debug.py` R36.3 守卫）
+> - **第 7 次完整性事故**（CC 把"未认证回落"写成"graceful degradation"——
+>   模式延续 cut-5/6/028/035/035R 的"未亲验即写根因/设计"）
+> - **原始叙述保留如下作为事故留痕**（Cline 已认可 ERRATUM 模式；与 cut-035R
+>   §6.1 同模板）
+
+修复详见 `reports/cut-036-report.md`（R36.1 砍回落 + R36.2 `ECE_ALLOW_HEADER_AUTH`
+opt-in + R36.3 `/audit`+`/debug` 同步收口 + R36.5 P1/P2 转正式回归）。
+
 ### 5.1 X-User-Id remains as fallback (not removed)
 
 When JWT mode is enabled AND a valid JWT is in `Authorization` header,

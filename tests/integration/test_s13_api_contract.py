@@ -27,10 +27,20 @@ def test_get_entity_404_uniform_envelope(client: TestClient) -> None:
 
 
 def test_get_entity_found(client: TestClient) -> None:
-    # Need a real entity; use supplier from prior seed
-    r = client.get("/api/v1/entities/SUP001")
-    if r.status_code == 404:
-        pytest.skip("seed not run; make seed first")
+    """Get a real seeded entity via the list endpoint, then fetch by display_id.
+
+    cut-036 R36.6: previous version hardcoded "SUP001" which doesn't exist in
+    demo.json (per Cline grep=0). Use list endpoint to discover a real ref,
+    then fetch by that ref. Falls back to skip with accurate message if no
+    suppliers have been seeded yet.
+    """
+    # Discover a real seeded supplier ref via list endpoint (handles
+    # display_id mapping drift between demo.json and seed pipeline).
+    list_r = client.get("/api/v1/entities?type=supplier&limit=1")
+    if list_r.status_code != 200 or not list_r.json().get("items"):
+        pytest.skip("no suppliers seeded; run 'make seed' first to populate suppliers")
+    ref = list_r.json()["items"][0]["ref"]
+    r = client.get(f"/api/v1/entities/{ref}")
     assert r.status_code == 200
     body = r.json()
     assert body["type"] == "supplier"

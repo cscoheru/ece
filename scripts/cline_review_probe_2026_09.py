@@ -5,6 +5,15 @@ Probes (in-process TestClient, env set at runtime since parsers read os.environ 
   P2  Invalid JWT silently downgrades to X-User-Id -> 200?
   P3  Revoked USER + valid per-resource token -> 200? (cut-028 says denied ALL access)
   P4  Rate-limit bucket rotation via unvalidated X-Org-Id header (single-tenant)
+
+cut-036 P1+P2 fix:
+  P1/P2 are now formalized as regression tests in
+  `tests/integration/test_s13_jwt_auth_gate.py`. Running this probe
+  directly (P1/P2) will still trigger the OLD behavior because env is
+  set BEFORE `ECE_ALLOW_HEADER_AUTH` is checked — but the regression
+  tests assert the NEW strict-mode 401 behavior. Probe preserved here
+  for historical + manual reproduction; P3/P4 (revoked-user + rate-limit
+  rotation) remain live-only invariants that are NOT formalized.
 """
 import os
 import uuid

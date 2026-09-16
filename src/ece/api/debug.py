@@ -22,7 +22,11 @@ from ece.api.org import check_org_access
 from ece.api.quota import check_org_quota
 from ece.api.rate_limit import check_rate_limit
 from ece.audit.trace import get_context_trace
-from ece.auth.jwt import resolve_caller_user_ref
+from ece.auth.jwt import (
+    is_header_auth_fallback_allowed,
+    is_jwt_mode_enabled,
+    resolve_caller_user_ref,
+)
 from ece.db import get_engine
 
 router = APIRouter(prefix="/debug", tags=["debug"])
@@ -143,6 +147,13 @@ def get_debug_context(
     Per cut-019 (multi-tenant): X-Org-Id must match trace.org_id.
     Per cut-022 (per-resource): token grants specific request_id access.
     Per cut-027 (JWT): Authorization: Bearer <jwt> preferred over X-User-Id.
+    Per cut-036 (R36.1): JWT mode + missing/invalid Authorization → 401.
+
+    Raises:
+        401: JWT mode ON + missing/invalid Authorization (cut-036 R36.1)
+        400: missing X-User-Id (legacy / JWT-disabled)
+        403: caller is not the owner / non-localhost access
+        404: request_id not found or production deployment mode
     """
     # cut-027: prefer JWT over X-User-Id
     resolved_user_id = resolve_caller_user_ref(authorization, x_user_id)
@@ -171,6 +182,17 @@ def get_debug_context(
         )
 
     if not resolved_user_id and not x_delegation_token:
+        # cut-036 R36.3: JWT mode + missing/invalid Authorization → 401
+        # (R36.1 mandate). Legacy / JWT-disabled still 400 for bad_request.
+        if is_jwt_mode_enabled() and not is_header_auth_fallback_allowed():
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "code": "unauthorized",
+                    "message": "JWT Bearer token required (cut-036 R36.1)",
+                },
+                headers={"WWW-Authenticate": 'Bearer realm="ece"'},
+            )
         raise HTTPException(
             status_code=400,
             detail={
