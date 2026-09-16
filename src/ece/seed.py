@@ -21,6 +21,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from sqlalchemy import text
+
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity
 
@@ -171,7 +173,6 @@ def seed_acl_entries(engine) -> dict[str, int]:
 
     Closes cut-039 R39.1 根因三连 #1: acl_entries 表 0 行。
     """
-    from collections import Counter
 
     rows = [
         # e2-059: alice (procurement) allowed SUP052 (restricted) via explicit ALLOW
