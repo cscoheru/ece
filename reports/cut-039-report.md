@@ -332,6 +332,48 @@ TASKS M1 显式只列 E2/E3/E5；Entity Resolution (E1) + Provenance (E6 evidenc
 
 **039 通过前不签发刀 40**。
 
+## 9. Cline 红队终审（verdict）
+
+**结论：✅ PASS（w/ 3 处轻度更正）→ 签发 cut-040。**
+
+**特别记录**：本报告是完整性事件序列（9 起）以来**最诚实的一份**——自曝 6/6 runner 不达标、raw stdout 全归档可审计、E6 real-LLM 如实 SKIPPED（"禁止编数"指令被执行）。所有关键数字 Cline 亲跑**逐字复现**。
+
+### 9.1 Cline 亲测证据（2026-09-16/17，独立取证）
+
+| 项 | 结果 |
+|---|---|
+| **E2 亲跑逐字复现** | 起 live server（uvicorn :8765，healthz ok）+ `run_e2_permission.py`：**6 exposures，case ID 全同**（e2-022/029/030/052/055/061）+ 17 failures + "Total cases: 61"——与归档 `E2.txt` 及报告 §2 逐字一致 |
+| **E2 第三重独立确认** | live-server 存活时 `test_e2_permission.py:50` wrapper 跑真 runner → exit 2 → **设计性 FAIL**（"E2 FAIL: Unauthorized Exposure detected"）——CI 永远看不到（无 server → exit 3 → skip），本地活体即拦截 |
+| **e2-022 手验（curl 直击）** | `POST /permissions/check {finance, contract/CON001, confidential}` → `{"allowed":true,"reason":"classification management","matched_rule":"classification-management"}`——引擎第 5 步矩阵放行，非 runner 幻觉 |
+| **E1 亲跑复现** | 21.5%（14/65）+ latin-1 request errors 同款逐字；E6-real 归档 = 74 字节 SKIPPED 声明（如实） |
+| **根因三连（Cline 挖掘，供刀 40）** | ① `acl_entries` 表 **0 行**（亲查 count=0——seed 从未填充 ACL；e2-061 期望的显式 DENY 行不存在 → 引擎规则 1 永不触发）；② `DEFAULT_CLASSIFICATION_MATRIX`：**confidential → allow_management**（与 management 同权，finance/procurement 用户带 management 身份即放行 6 exposures）；③ 实体 `attributes->>'department'` 为 NULL（亲查 CON001）→ `allow_dept` 分支 dept 匹配失败 → 17 个 expected-allow 反向 deny |
+| OpenAPI 亲取 | 8 路径（entities/entities/{id}/relationships/ingest/runs/ingest/runs/{id}/permissions/check/resolve/healthz），**无 `/api/v1/context`** ✓（E3/E4/E5 404 论断成立） |
+| PRD §35 亲读（docs/PRD.md:1869-1899） | 六项与 R39.2 对照表吻合：Context≥90% / EntityRes≥95% / Permission=0 硬门 / Provenance 100% / Temporal≥95% / Agent 定性——报告将 "≥80%" 正确归源 EVALUATION.md 而非 PRD ✓ |
+| fresh-replay | wiped-DB 全套 **349P/4S/0F**（31.44s）== CI 35114304069 逐字；skip 集 = {e2:50, s5_5×3}（**skip 表本次从亲跑 -rs 重新生成**，执行 038-C1 新规则） |
+| CI SKIPPED 真值（亲取 35114304069） | 4 行 = {e2:50, s5_5×3}，与 038 基线一致 |
+| R39.3 抽查 | SQL pushdown（entities.py:300 blame=00242e63 语义保留）+ delegation user_can_access 均在档 ✓；`grep v0.2-env data/eval/*.json` 无污染 ✓（报告 §4 与代码一致） |
+| zero-code 核验 | `b935837` = Makefile + 报告 + 7 归档文件，**无 src/ 无 tests/** ✓ |
+
+### 9.2 更正（3 处，轻度）
+
+1. **C1（披露缺口）**：Makefile 变更（新增 `eval-report` target：6-runner 串跑+归档，即本次归档的产生方式）未在报告正文披露——"zero code" 应限定为 "zero src/tests"。工具变更 benign 且提升可复现性，但按披露纪律应记录。
+2. **C2（元数据，第 3 次同模式）**：§1 主 commit 引用被 amend 掉的 `2accc1a`（终值 `b935837`）；"_pending" 行未回填。
+3. **C3（计数小疵）**：OpenAPI 实测 **8** 路径非 7（报告或未计 /healthz）；实质论断（无 /api/v1/context）成立。
+
+### 9.3 完整性核查
+
+**零新增事件（累计 9 不变）**——全部数字亲跑逐字复现；E6-real SKIPPED 如实；归档 raw stdout 与报告数字字段级一致。**趋势拐点**：连续两刀（038/039）总数与表格体系零偏差，且 039 在最不利情形（6/6 FAIL）下如实报告——循环纪律正在内化。
+
+### 9.4 签发 cut-040（缺口清偿·P0 优先）
+
+范围（per v3-3 规划表第 40 行 + 本刀 §6 + §9.1 根因三连精化）：
+- **R40.1（P0，硬门）**：E2 修到 **61/61（exposure=0 且 failures=0）**：(a) seed 填充 `acl_entries`（含 e2-061 期望的 ACL-DENY-TEST 显式 DENY 等全部 dataset 期望行）；(b) `DEFAULT_CLASSIFICATION_MATRIX` 语义对齐 PRD——confidential 不得等同 management（收紧至 owner/explicit-allow）；(c) seed/实体 attributes 补 department（修 17 个反向失败）。验收含 **live-server 下 `test_e2_permission` PASS**（wrapper 不再依赖 skip 躲避）
+- **R40.2**：E1 runner utf-8 修复（`data=json.dumps(..., ensure_ascii=False).encode('utf-8')` + charset header）+ 重跑出实数（≥95% 或如实差距报告）
+- **R40.3**：E3/E4/E5 测量路径落地——**方案 B 优先**：退役 stale runner 的 `/api/v1/context` 依赖，按 EVALUATION.md §3 pytest-marked 路径重写三套 eval 并出实数（如选方案 A 实现 endpoint，须先对照 PRD §22 规格）；无论 A/B 三套必须有可比实数
+- **R40.4**：TASKS M1 显式门对齐 PRD §35 六项
+- **R40.5**：E6 real-LLM env——**用户决策项**（提供 `ECE_LLM_BASE_URL` 或明确推迟至 cut-042 已知限制；"禁止编数"延续）
+- 验收（Cline 亲跑）：E2 61/61 实数 + E1 实数 + E3/E4/E5 可比实数；PRD §35 对照表更新；CI 绿 + 真 run-id（v3-2 双 run）；skip 表从本次 `-rs` 重新生成（038-C1 规则）
+
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
