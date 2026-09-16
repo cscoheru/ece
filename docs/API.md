@@ -246,7 +246,7 @@ Per ADR-004 PermissionScope: only the owner (`user_ref`) can view their own trac
 | `X-Delegation-Token` | one of these | 跨用户访问 (manager / shared service, cut-018b，可被 cut-024 撤销) |
 | `X-Delegation-Token` | 跨 org | 跨 org 访问 (cut-021 `ECE_DELEGATION_ORG_TOKENS`) |
 | `X-Delegation-Token` | per-resource | 特定 request_id 访问 (cut-022 `ECE_AUDIT_TOKEN_REQUEST_IDS`) |
-| `X-Org-Id` | 仅多租户模式 | 跨 org 隔离 (cut-019) + 速率限制 (cut-023) |
+| `X-Org-Id` | 仅多租户模式 | 跨 org 隔离 (cut-019) + **速率限制**（桶选择由 cut-037 R37.2 改绑 user_ref 映射，X-Org-Id **不参与**） |
 
 请求:
 
@@ -286,6 +286,12 @@ X-Org-Id: org_a          # 仅当 ECE_USER_ORGS 配置时
 - `400` 缺 `X-User-Id`/`X-Delegation-Token`；多租户模式下缺 `X-Org-Id`
 - `403` 非 owner 调用 **或** 跨 org 访问 (`X-Org-Id != trace.org_id`)
 - `404` request_id 不存在
+
+**速率桶绑定（cut-037 R37.2 + cut-038 R38.3 文档回锚）**：
+- 桶键 = `ECE_USER_ORGS` 映射的 user_ref 的 org（未映射 → 固定字符串 `"default"`）
+- **X-Org-Id header 不再用于桶选择**（per "不再信裸 X-Org-Id" 指令，cut-037 R37.2）；X-Org-Id 仍用于跨 org 隔离（cut-019）和多租户 mode 的强制 header
+- **单租户部署**（`ECE_USER_ORGS` 未配置）：所有未映射 user 共用 `"default"` 桶；operator 必须按 `ECE_ORG_RATE_LIMITS="default:N/m"` 配置（**不能用 X-Org-Id segmentation**——rotation evasion 已关）
+- Quota 同理（`ECE_ORG_QUOTAS="default:Nd"`）
 
 **多租户隔离 (cut-019)**：当 `ECE_USER_ORGS="user1:org_a;user2:org_b"` 配置时，
 context_requests 行在 assemble_context 时记录 user 的 org_id；/audit 必须

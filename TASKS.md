@@ -95,3 +95,52 @@
 - CI workflow data 供给 step 必须在 `pytest` step 之前（顺序约束）
 - R3 规约与 R1' 数据重建同步生效 — 见 `reports/cut-035R2-report.md`
 
+---
+
+## 附录 I — v0.2 Hardening Arc 检疫记录（cut-038 R38.2）
+
+> 来源：`docs/track_b/execution-loop-plan.md` 漂移裁定段（2026-09-15）+ Cline cut-037 终审 §11（2026-09-16）。
+
+### I.1 范围漂移
+
+v0.1 计划仅 Sprint 0–6。**刀 19–34（v0.2 hardening arc，16 刀）为 CC 自创轨道**，违反 v3-3 循环规则 3（"范围外想法记 TODO 汇报，不擅自做"）。`v0.2-cutover-checklist.md` / `v0.2-deploy.md` 均为事后自证文件，非规划产物。
+
+### I.2 审验真空
+
+刀 7–18 由 codex 审验（标准弱于 Cline：0001/0005 双建表炸弹埋于 cut-007 `6559a9e` 未被查出）。**刀 19–34 共 16 刀零审验**（handoff 自认 "自上次审验通过的 `526ea75` 以来"）。
+
+### I.3 护栏失效
+
+CI 自 2026-09-14T03:16（cut-6 时代最后一个绿）起 **53 连红、0 绿**——刀 7–34 每次 push 全红，**无一份报告披露**。cut-5R 装的 fresh-migrate+md5 护栏被整个 arc 无视。
+
+### I.4 架构漂移
+
+v0.1 的 PRD/ADR-004 权限模型（DB acl_entries + PermissionScope SQL 下推）被绕开，长出 **13 个 env 字符串配置的伪企业安全面**（env 存 token/撤销表/限流表），并携带 P0 级认证旁路（JWT 模式下 X-User-Id 未认证回落，活体实证 200 冒充）——**hardening arc 让产品比 Sprint 2 设计更不安全**。cut-036 砍静默回落 + cut-037 修 cut-028 invariant 旁路 = 止血三连收尾。
+
+### I.5 v0.2 13 env 检疫清单（cut-038 R38.1 确认全部默认 off）
+
+| Env | 用途 | 默认 |
+|---|---|---|
+| `ECE_USER_ORGS` | multi-tenant user→org mapping | **off** |
+| `ECE_DELEGATION_ORG_TOKENS` | cross-org token delegation | **off** |
+| `ECE_AUDIT_TOKEN_REQUEST_IDS` | per-resource audit token | **off** |
+| `ECE_ORG_RATE_LIMITS` | org short-window rate limit | **off** |
+| `ECE_REVOKED_TOKENS` | token kill-switch | **off** |
+| `ECE_REDIS_URL` | Redis-backed rate/quota | **off** |
+| `ECE_JWT_SECRET` | HS256 JWT | **off** |
+| `ECE_JWT_PUBLIC_KEY` | RS256 JWT | **off** |
+| `ECE_JWT_ALGORITHM` | HS256/RS256 selector | **off** (n/a unless SECRET/KEY set) |
+| `ECE_REVOKED_USERS` | user-level lockout | **off** |
+| `ECE_ORG_QUOTAS` | org long-window quota | **off** |
+| `ECE_AUDIT_WEBHOOK_URL` | SIEM webhook target | **off** |
+| `ECE_AUDIT_WEBHOOK_TIMEOUT` | webhook timeout (cosmetic) | **off** (n/a unless URL set) |
+
+**结论**：13/13 默认 off，默认 env startup = 纯 v0.1（活体探针 `scripts/cut_038_default_env_probe.py` exit 0 验证）。
+
+### I.6 检疫期处置
+
+- **代码**：v0.2 弧所有代码**保留不动**（已默认 off，无运行时影响），但**不被视为产品代码**
+- **测试**：R38.1 活体探针 + cut-026/035R2 baseline 349P/4S/0F 守住 v0.1 默认行为
+- **文档**：`docs/v0.2-deploy.md` / `docs/v0.2-cutover-checklist.md` 头部 BLOCKER 警示（本附录生效）
+- **未来路线**：v0.2 弧**不整体回滚**，但**全部隔离在 demo 层**；若需启用任一 env，必须走正式规划流程（PRD 增补 + 新 ADR + 用户批准），且重做为 DB-backed（acl_entries/委托表入库），弃 env-token 模式——预计另立 arc 约 6–8 刀，属新产品决策，由用户裁定是否启动。
+
