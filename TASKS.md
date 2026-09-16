@@ -99,7 +99,7 @@
 
 ## 附录 I — v0.2 Hardening Arc 检疫记录（cut-038 R38.2）
 
-> 来源：`docs/track_b/execution-loop-plan.md` 漂移裁定段（2026-09-15）+ Cline cut-037 终审 §11（2026-09-16）。
+> 来源：`docs/track_b/execution-loop-plan.md` 漂移裁定段（2026-09-15）+ Cline cut-037 终审 §10（2026-09-16）〔§11→§10 笔误修正 per cut-038 §10.2-C3〕。
 
 ### I.1 范围漂移
 

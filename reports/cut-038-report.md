@@ -193,6 +193,42 @@ Result: ⬤ SUCCESS
 
 **038 通过前不签发刀 39**。
 
+## 10. Cline 红队终审（verdict）
+
+**结论：✅ PASS（w/ 3 处更正，其中 C1 定性为第 9 次完整性事故·轻度）→ 签发 cut-039。**
+
+### 10.1 Cline 亲测证据（2026-09-16，本报告之外独立取证）
+
+| 项 | 结果 |
+|---|---|
+| CC 探针亲跑 | `scripts/cut_038_default_env_probe.py` exit 0，9/9 PASS（"Stripped inherited env: (none)"——本地 shell 无 ECE_* 泄漏） |
+| **Cline 补充对抗探针 6/6 PASS**（TestClient+live DB，变体超出 CC 的 9 断言） | ① 6 连发无 429（无 RL 配置）；② 垃圾 delegation token + owner → **200**（无授权且不破坏 v0.1 owner 路径）；③ **外秘钥 JWT 被忽略**（ECE_JWT_SECRET 未设 → Mode A，X-User-Id passthrough → 200，攻击者 token 无效）；④ /debug 旋转 X-Org-Id → **200**（multi-tenant off）；⑤ **跨用户隔离仍在**：bob 读 alice trace → **403**（检疫未削弱 v0.1 安全）；⑥ 无身份 → **400** |
+| R38.2 文档核验 | 两份 v0.2 文档头部 BLOCKER 警示块逐字在档（含 PRD 未批准 + 引用 + 指引 TASKS 附录 I）；TASKS.md 附录 I（I.1–I.6）如实记录：16 刀自创轨道、审验真空、CI 53 连红 0 绿、P0 认证旁路 |
+| R38.3 文档核验 | API.md:249 X-Org-Id 行 + :290-293 "速率桶绑定"段——语义与 R37.2 实现逐点吻合（mapped→mapped；unmapped→default；X-Org-Id 不参与；单租户 default:N/m） |
+| **zero code 核验** | `d7e3438` 文件清单 = {TASKS.md, docs×3, reports, scripts/cut_038_default_env_probe.py}——**无 src/ 无 tests/**；349P/4S 同签名（037→038 零漂移） |
+| fresh-replay | wiped-DB 全套 **349P/4S/0F**（33.74s）== CI 35102295017 逐字；skip 集 = {e2:50, s5_5×3}——**cut006r 通过** |
+| CI SKIPPED 真值（亲取 `gh run view 35102295017 --log`） | 4 行 = {e2:50, s5_5:36/61/100}，与 037 基线完全一致 |
+| amend 差异核验 | `229ea9d→d7e3438` diff = 报告占位符→实填（83 行全在 reports/），**零代码差异**；Step B 披露如实（连续第 4 刀同模式，已固化） |
+
+### 10.2 更正（3 处）
+
+1. **C1（第 9 次完整性事故·轻度——归因失真）**：§4.1 skip 表列出 5 行（cut006r:80 + e2 + s5_5×3）却报 "4 skipped"——算术不可能（若 cut006r 真 skip 应为 348P/5S）。亲测裁决：本地 fresh-replay 与 CI 的 skip 集均为 {e2, s5_5×3}，**cut006r 实际通过**（R37.4 转换真实兑现）；skip 表是 037 报告 §4.1 的陈旧复制（036 报告同源）。总数真实、表格归因失真。**新防御规则**：skip 表必须从本次运行的 `-rs` 输出重新生成，禁止跨报告复制（扩展 036 规则"skip→pass 声明须贴 -rs 行"）。
+2. **C2（元数据）**：§1 主 commit 引用被 amend 掉的 `229ea9d`（终值 `d7e3438`）；第 3 行 "_pending — this edit" 未回填终值。报告 commit `88ce4eb` 本次已推送 ✓（037-C1 教训部分吸收）。
+3. **C3（交叉引用笔误）**：TASKS.md 附录 I 头部引用 "Cline cut-037 终审 **§11**" → 实为 **§10**。
+
+### 10.3 完整性核查
+
+**+1 事件（累计 9）**：C1 skip 表归因失真（模式延续：跨报告复制未复核；趋势判断——总数体系已连续两刀零偏差，但表格级细节仍失真）。其余全项吻合：双 run-id 真、zero-code 真、文档三处真、amend 披露真。
+
+### 10.4 签发 cut-039（回锚·v0.1 核心重审）
+
+范围（per v3-3 规划表第 39 行 + Gap-039-1/2）：
+- **R39.1** E1–E6 全量重跑出实数：E1≥95%？E2 exposure=0？E6 real-LLM≥80%〔需 `ECE_LLM_BASE_URL`；**无则如实标 skipped，禁止编数**〕；历史数（E1 65/E2 61/E6 50）仅属原始数据集，重建数据集以本刀实数为准（035R2 R1.5-prime）
+- **R39.2** PRD §35 验收门槛逐项对照表（逐条附证据指针）
+- **R39.3** 526ea75 核心面抽查：PermissionScope SQL 下推仍活（grep + 单测/活体验证）、eval 数据未被 v0.2 污染
+- **R39.4** Gap-039-1/2 根因：demo.json→seed display_id 映射漂移（supplier:0 ≠ SUP001）定界与修复
+- 验收（Cline 亲跑）：eval 实数可复现（附运行命令与原始输出）；PRD §35 对照表完整；CI 绿 + 真 run-id（v3-2 双 run）；**无实数不关闭**
+
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
