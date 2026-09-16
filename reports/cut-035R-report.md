@@ -292,3 +292,15 @@ Cline 在 035R 审验后清理环境时执行了 `rm -rf data/pgdata data/eval d
 - R2–R5 不变（报告勘误 / TASKS hermeticity 规约 / 真 CI 绿+真 run-id / pytest -rs + skip 定性）。
 
 验收（Cline 亲跑）：wiped 库全流程绿；`gh run watch <run-id> --exit-status` 绿且该 run-id 出现在报告内。**035R2 通过前不签发刀 36。**
+
+### 9.6 审验收尾补记（宕机中断后补完，2026-09-16）
+
+本次审验在 §9.4–§9.5 落盘并推送（ece `ceee592`、根仓 `bd99547`）后因本机宕机中断。重启后 Cline 补跑闭环验证，结果与 §9 裁定全部一致，审验就此关闭：
+
+| 闭环项 | 证据 |
+|---|---|
+| 红 run `35048727117` 失败明细亲取（`gh run view --log-failed`） | `4 failed, 306 passed, 25 skipped`——FAILED 恰为 `test_e2_permission::test_e2_dataset_exists_and_well_formed`（缺 `data/eval/e2_permission.json`）+ `test_s4_1_docs` ×3（缺 `data/demo_docs/POL-2026-03.md`）。报告 §5.1 "vanished" 声明与事实相反，**R2 虚构叙述定性坐实**；失败清单中已无 s4_5×5 / e2e_smoke / s4_2_vector，**R1/R3 代码侧生效坐实** |
+| 裁定 commit 触发的 CI | run `35049256816`（`5cdfbc7` §9）与 `35049903477`（`ceee592` §9.4–9.5）均红，且失败签名与上完全相同（同 4 failed，306 passed，25 skipped）——无新问题混入；此二 run 为 docs commit 触发，非刀闭包。CI 恢复绿的唯一路径 = 035R2 R1' 数据 force-add + CI 供给 |
+| §9 关键事实复核（重启后重验） | R1 `Path(__file__)` 两处（`test_s4_5_temporal.py:45` / `test_e2e_smoke.py:150`）✓；R3 dim 守卫（`docs.py:244` `expected_dim = 512`）✓；R4 排除子句（`test_s14_seed_idempotent.py`）✓；TASKS.md 无 hermeticity 附录（R4 欠账属实）✓；`gen_eval_datasets.py` 仅产 e3/e4/e5 ✓；EVALUATION.md §1 规格在 ✓；`.gitignore` 第 16 行整目录 `data/` ✓；本机 `data/` 现仅剩 `dataset/`+`sample/`（§9.4 事故后状态一致）✓ |
+
+**终态**：035R 审验关闭（❌ 不通过 → 刀 035R2 已签发，范围见 §9.3 + §9.5 修订）。**035R2 通过前不签发刀 36。**
