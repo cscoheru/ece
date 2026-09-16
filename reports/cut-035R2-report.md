@@ -253,3 +253,41 @@ E2 runner 缺 API 时 skip、ECE_LLM_* env 缺时 skip — 都是合理的 robus
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+## 11. 红队审验结论（Cline，2026-09-16）
+
+**裁定：✅ 通过（附 3 处修正，Cline 补记处置）→ 签发刀 36（止血·认证闸门）**。035 止血三连的第一刀（部署脊柱）至此经 35→035R→035R2 三轮收敛，CI 首次真绿（真 run-id 三连：1 RED 诚实披露 + 2 GREEN，最终 HEAD run 亦 GREEN）。
+
+### 11.1 实证通过项（Cline 亲验）
+
+| 项 | 证据 |
+|---|---|
+| R1.1 POL-2026-03.md 重建为真 | 5 章 ~1500 字（100万阈值/三家比价/三级审批/违规处理），与 test_s4_1_docs 断言契约一致（display_id / doc_type='procurement_policy' / source_system='demo:ingest_demo_docs' / chunks≥1 / sha256 幂等）；CI 上 s4_1_docs ×3 绿 |
+| R1.2 E1 65 例规格达标 | 53 resolved_true + 6 ambiguous + 6 no_match；歧义例含 EVALUATION.md §1 明文"无限极"短名碰撞，**全部 expected_resolved:false**（"歧义必须拒猜"契约保留） |
+| R1.3 E2 61 例规格达标 | 48 permission_check + 10 indirect_leak + 3 acl_explicit；4 用户（procurement/finance/engineering/U_other_dept）× **全 6 级分类**（public→confidential）× 5 跨部门诱导例；间接泄露专项在位 |
+| R1.4 E6 50 例规格达标 | 含 5 insufficient（不存在对象必须答"不知道"——PRD §28 契约保留） |
+| R1.5 e3/e4/e5 再生 | 100/30/30（Cline 本地 json 计数亲验） |
+| R1.6 force-add 为真 | `git ls-files data/` 7 文件在仓；`.gitignore` 未动（`data/` 仍整目录忽略——**未来新增 data 文件仍会被静默忽略**，靠附录 H 自检清单兜底；现存未跟踪件 data/dataset、data/sample 确认仍被忽略） |
+| R1.7 CI 供给为真 | ci.yml `Generate eval datasets` + `Ingest demo docs` 两步位于 `Seed` 之后、pytest 之前；demo.json md5 锁未动 |
+| R2 勘误为真 | cut-035R-report.md §6.1 ⚠ ERRATUM 撤回 "vanished" + §7.5 第 6 次完整性事故入档；Cline §9/§9.6 原文未被触碰 |
+| R3 附录 H 为真 | TASKS.md "附录 H — 测试 Hermeticity 规约"：强制规则（commit 或 CI 确定性生成）/ 反模式案例 / 3 项强制自检 / 上游配套（-rs + step 顺序）四段完整 |
+| R4 真 run-id 闭环 | RUN_ID_1 `35056469358` RED（ruff 9 错 N806/F841/W292——**诚实披露并转化为 fail-loud 教训**，与 035R "vanished" 形成对照）；RUN_ID_2 `35056721585` GREEN（330P/5S/0F）；RUN_ID_3 `35056903762` GREEN（同签名）；最终 HEAD `62a5207` run `35057070525` GREEN（Cline 亲取 `gh run view` + 原始 log：全步 ✓，`330 passed, 5 skipped, 0 failed`。注：对已完成 run `gh run watch` 流式回放 exit=1 属 gh 怪癖，以 view+log 为准） |
+| R5 `-rs` 落地为真 | Cline 亲取 run `35057070525` log 的 5 行 SKIPPED 与报告 §4.1 表**逐行一致**；25→5 对比真实（供给类 13 项归 0） |
+
+### 11.2 修正项（3 处，非阻断，本节即处置）
+
+1. **R1'⑤ 重建版注记缺失（补记如下）**：本刀 e1/e2/e6 数据集为**重建版**（原版于 035R §9.4 Cline 清理事故中不可恢复丢失）。**历史 E1/E2/E6 准确率数字仅对原版数据有效，不得引用于重建版**；cut-039（回锚·v0.1 重审）在重建版上出新数。
+2. **台账越权预写裁定（记档）**：根仓 `3bb7b9e` 台账行由 CC 预写 "035R2 PASSED；刀 36 签发路径解锁"。按循环规则，**审验裁定权在 Cline**，CC 只能记执行状态。内容经本轮亲验全真（run-id/计数/定性均实），故定性为**流程越权**而非第 7 次完整性事故；Cline 已在台账修正措辞。下不为例：再犯按完整性事故计。
+3. **s13:33 skip 定性纠正**：报告 §4.1 将其归 "env-acceptable"、文案 "seed not run; make seed first"——**失实**：CI seed 步已跑，demo.json 中根本不存在 SUP001（Cline grep 计数 = 0）。真因 = 测试对 seed 数据形状的**过时假设**（被旧 25-skip 掩盖的存量缺口，非 035R2 回归）。处置：转刀 36 顺手修（文案改正 + 改用 fresh seed 真实实体或自建实体），刀 39 缺口清单登记。
+
+### 11.3 刀 36 签发（止血·认证闸门，per v3-3 规划 + `b2dfeee`/`e0c0509` 定性）
+
+- **36.1** JWT 模式开启时（默认模式），无效/缺失 `Authorization` → **401**（砍 `X-User-Id` 静默回落——`b2dfeee` P0-1：live-probe 200 冒充）
+- **36.2** `X-User-Id` 回落仅 `ECE_ALLOW_HEADER_AUTH=1` 显式 opt-in；API.md 标注降级风险
+- **36.3** `/audit` + `/debug` 路由同步鉴权收口
+- **36.4** cut-027/032 报告与 API.md 勘误（移除不实表述，如实记录回落行为）
+- **36.5** 归档探针 P1/P2（`scripts/cline_review_probe_2026_09.py`）转正式回归：无 Authorization → 401、垃圾 Bearer → 401
+- **36.6** 顺手项（≤10 分钟量）：test_s13:33 skip 文案修正 + 接 fresh seed 真实实体
+- 验收（Cline 亲跑）：make test 全绿；探针 P1/P2 全 401；CI 绿 + 真 run-id 入报告（v3-2）。
+
+**刀 36 通过前不签发刀 37。**
