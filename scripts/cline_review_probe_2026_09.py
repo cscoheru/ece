@@ -12,8 +12,14 @@ cut-036 P1+P2 fix:
   directly (P1/P2) will still trigger the OLD behavior because env is
   set BEFORE `ECE_ALLOW_HEADER_AUTH` is checked — but the regression
   tests assert the NEW strict-mode 401 behavior. Probe preserved here
-  for historical + manual reproduction; P3/P4 (revoked-user + rate-limit
-  rotation) remain live-only invariants that are NOT formalized.
+  for historical + manual reproduction.
+
+cut-037 P3+P4 fix:
+  P3/P4 are now formalized as regression tests in
+  `tests/integration/test_s13_revocation_rate_gate.py`. P3 closes the
+  cut-028 invariant bypass (revoked user + per-resource token was
+  returning 200); P4 closes the rate-limit bucket rotation evasion
+  (X-Org-Id rotation was picking different buckets).
 """
 import os
 import uuid

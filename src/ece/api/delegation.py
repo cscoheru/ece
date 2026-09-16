@@ -180,14 +180,25 @@ def parse_request_id_delegation_tokens() -> dict[str, list[str]]:
 def request_id_can_access(
     x_delegation_token: str | None,
     request_id: str | None,
+    caller_user_ref: str | None = None,
 ) -> bool:
     """True if X-Delegation-Token grants access to this specific request_id.
 
     Per-resource scope (cut-022): independent of owner / per-user / per-org
     checks. Token bearer can access the listed request_ids regardless of
     ownership or org. Returns False if token absent, token has no
-    per-resource entries, or token is revoked (cut-024).
+    per-resource entries, token is revoked (cut-024), or caller_user_ref
+    is revoked (cut-037 R37.1).
+
+    cut-037 R37.1: caller_user_ref in ECE_REVOKED_USERS → denied even
+    with valid per-resource token. Closes P3a bypass (revoked user +
+    per-resource token was returning 200 because this function short-
+    circuited the `user_can_access` cut-028 check). Defense-in-depth: the
+    invariant lives here, not at caller sites.
     """
+    # cut-037 R37.1: revoked caller → deny before token check
+    if is_user_revoked(caller_user_ref):
+        return False
     if is_token_revoked(x_delegation_token):
         return False
     if not x_delegation_token or not request_id:

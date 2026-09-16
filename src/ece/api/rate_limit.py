@@ -122,34 +122,63 @@ def reset_redis_client() -> None:
     _redis_client = None
 
 
-def check_rate_limit(org_id: str | None) -> tuple[bool, str, float]:
-    """Check if request is allowed under org's rate limit.
+def _resolve_bucket_org_id(user_ref: str | None, x_org_id: str | None) -> str | None:
+    """cut-037 R37.2: Derive rate-limit bucket key from authenticated identity.
 
-    cut-026: dispatches to Redis backend if ECE_REDIS_URL is set,
-    else in-memory backend.
+    X-Org-Id header is NOT used to determine the bucket — per directive
+    "不再信裸 X-Org-Id". Bucket key resolution:
+
+    1. ECE_USER_ORGS mapping for user_ref (most authoritative — survives
+       any X-Org-Id header value)
+    2. "default" (catches all unmapped callers; cumulative bucket so
+       rotation-by-omission doesn't bypass rate limits)
+
+    Returns bucket key string. Never None.
+    """
+    from ece.api.org import get_user_org
+
+    mapped = get_user_org(user_ref)
+    if mapped:
+        return mapped
+    return "default"
+
+
+def check_rate_limit(
+    user_ref: str | None,
+    x_org_id: str | None,
+) -> tuple[bool, str, float]:
+    """Check if request is allowed under caller's rate-limit bucket.
+
+    cut-037 R37.2: bucket key is bound to the AUTHENTICATED user_ref's
+    mapped org (via ECE_USER_ORGS). The X-Org-Id header NO LONGER
+    determines the bucket. Closes P4 (probe: caller rotated X-Org-Id
+    from org_a to org_b after exhausting org_a bucket — was returning
+    200; should stay 429).
 
     Args:
-        org_id: org_id from X-Org-Id header (or None for no limit)
+        user_ref: authenticated user identity (from X-User-Id or JWT sub).
+        x_org_id: legacy X-Org-Id header — IGNORED by this function for
+                  bucket selection (still used by check_org_access for
+                  multi-tenant cross-org isolation).
 
     Returns:
         (allowed, error_code, retry_after_seconds)
-        - error_code 'no_limit': no rate limit configured (always allow)
+        - error_code 'no_limit': no rate limit configured for the bucket
         - error_code 'ok': allowed
-        - error_code 'rate_limited': 429 (org's bucket exhausted)
+        - error_code 'rate_limited': 429 (bucket exhausted)
     """
-    if not org_id:
-        return True, "no_limit", 0.0
+    bucket_org_id = _resolve_bucket_org_id(user_ref, x_org_id)
 
     limits = parse_org_rate_limits()
-    if org_id not in limits:
+    if bucket_org_id not in limits:
         return True, "no_limit", 0.0
 
-    n, period_sec = limits[org_id]
+    n, period_sec = limits[bucket_org_id]
 
     redis_client = _get_redis_client()
     if redis_client is not None:
-        return _check_rate_limit_redis(redis_client, org_id, n, period_sec)
-    return _check_rate_limit_inmemory(org_id, n, period_sec)
+        return _check_rate_limit_redis(redis_client, bucket_org_id, n, period_sec)
+    return _check_rate_limit_inmemory(bucket_org_id, n, period_sec)
 
 
 def _check_rate_limit_redis(

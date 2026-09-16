@@ -213,7 +213,9 @@ def get_debug_context(
 
     # Per cut-022 (per-resource scope): token grants specific request_id access
     # independently of ownership / org checks.
-    if not request_id_can_access(x_delegation_token, request_id):
+    # cut-037 R37.1: pass resolved_user_id for revoked-user defense-in-depth
+    # (request_id_can_access now refuses revoked callers regardless of token).
+    if not request_id_can_access(x_delegation_token, request_id, resolved_user_id):
         # Per ADR-004 (extended cut-018b): owner OR delegated user
         if not user_can_access(resolved_user_id, x_delegation_token, trace["user_ref"]):
             raise HTTPException(
@@ -247,7 +249,9 @@ def get_debug_context(
             )
 
     # Per cut-023 (org rate limit): check ECE_ORG_RATE_LIMITS for caller's org
-    rate_allowed, rate_error, retry_after = check_rate_limit(x_org_id)
+    # cut-037 R37.2: bucket bound to authenticated user_ref's mapped org,
+    # not raw X-Org-Id header. Prevents caller rotation evasion.
+    rate_allowed, rate_error, retry_after = check_rate_limit(resolved_user_id, x_org_id)
     if not rate_allowed:
         raise HTTPException(
             status_code=429,
@@ -260,7 +264,7 @@ def get_debug_context(
         )
 
     # Per cut-029 (org quota): check ECE_ORG_QUOTAS for caller's org
-    quota_allowed, quota_code, quota_retry = check_org_quota(x_org_id)
+    quota_allowed, quota_code, quota_retry = check_org_quota(resolved_user_id, x_org_id)
     if not quota_allowed:
         raise HTTPException(
             status_code=429,

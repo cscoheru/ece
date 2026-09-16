@@ -92,7 +92,7 @@ def test_parse_org_rate_limits_invalid_period() -> None:
 
 def test_check_rate_limit_no_org() -> None:
     """No org_id → always allow."""
-    allowed, code, retry = check_rate_limit(None)
+    allowed, code, retry = check_rate_limit(None, None)
     assert allowed is True
     assert code == "no_limit"
 
@@ -100,7 +100,7 @@ def test_check_rate_limit_no_org() -> None:
 def test_check_rate_limit_unconfigured_org() -> None:
     """Org not in ECE_ORG_RATE_LIMITS → always allow."""
     os.environ.pop("ECE_ORG_RATE_LIMITS", None)
-    allowed, code, retry = check_rate_limit("org_unknown")
+    allowed, code, retry = check_rate_limit(None, "org_unknown")
     assert allowed is True
     assert code == "no_limit"
 
@@ -108,9 +108,11 @@ def test_check_rate_limit_unconfigured_org() -> None:
 def test_check_rate_limit_first_request() -> None:
     """First request to configured org → allow."""
     saved = os.environ.get("ECE_ORG_RATE_LIMITS")
+    saved_uo = os.environ.get("ECE_USER_ORGS")
     os.environ["ECE_ORG_RATE_LIMITS"] = "org_test:5/m"
+    os.environ["ECE_USER_ORGS"] = "test_user:org_test"  # cut-037 R37.2 anchor
     try:
-        allowed, code, retry = check_rate_limit("org_test")
+        allowed, code, retry = check_rate_limit("test_user", "org_test")
         assert allowed is True
         assert code == "ok"
         assert retry == 0.0
@@ -119,19 +121,25 @@ def test_check_rate_limit_first_request() -> None:
             os.environ.pop("ECE_ORG_RATE_LIMITS", None)
         else:
             os.environ["ECE_ORG_RATE_LIMITS"] = saved
+        if saved_uo is None:
+            os.environ.pop("ECE_USER_ORGS", None)
+        else:
+            os.environ["ECE_USER_ORGS"] = saved_uo
 
 
 def test_check_rate_limit_exhaustion() -> None:
     """After N requests, bucket empty → 429 with retry_after."""
     saved = os.environ.get("ECE_ORG_RATE_LIMITS")
+    saved_uo = os.environ.get("ECE_USER_ORGS")
     os.environ["ECE_ORG_RATE_LIMITS"] = "org_test:3/m"
+    os.environ["ECE_USER_ORGS"] = "test_user:org_test"  # cut-037 R37.2 anchor
     try:
         # 3 requests succeed
         for i in range(3):
-            allowed, code, _ = check_rate_limit("org_test")
+            allowed, code, _ = check_rate_limit("test_user", "org_test")
             assert allowed is True, f"Request {i+1} should succeed"
         # 4th request fails
-        allowed, code, retry = check_rate_limit("org_test")
+        allowed, code, retry = check_rate_limit("test_user", "org_test")
         assert allowed is False
         assert code == "rate_limited"
         assert retry > 0.0  # has retry-after seconds
@@ -140,6 +148,10 @@ def test_check_rate_limit_exhaustion() -> None:
             os.environ.pop("ECE_ORG_RATE_LIMITS", None)
         else:
             os.environ["ECE_ORG_RATE_LIMITS"] = saved
+        if saved_uo is None:
+            os.environ.pop("ECE_USER_ORGS", None)
+        else:
+            os.environ["ECE_USER_ORGS"] = saved_uo
 
 
 def test_audit_rate_limit_429(
@@ -147,7 +159,9 @@ def test_audit_rate_limit_429(
 ) -> None:
     """/audit with exhausted rate limit → 429."""
     saved = os.environ.get("ECE_ORG_RATE_LIMITS")
+    saved_uo = os.environ.get("ECE_USER_ORGS")
     os.environ["ECE_ORG_RATE_LIMITS"] = "org_rl_test:2/m"
+    os.environ["ECE_USER_ORGS"] = f"{USER_OWNER}:org_rl_test"  # cut-037 R37.2
     try:
         # First 2 requests succeed
         for _ in range(2):
@@ -178,39 +192,72 @@ def test_audit_rate_limit_429(
             os.environ.pop("ECE_ORG_RATE_LIMITS", None)
         else:
             os.environ["ECE_ORG_RATE_LIMITS"] = saved
+        if saved_uo is None:
+            os.environ.pop("ECE_USER_ORGS", None)
+        else:
+            os.environ["ECE_USER_ORGS"] = saved_uo
         reset_buckets()
 
 
 def test_audit_rate_limit_per_org_isolation(
     client: TestClient, trace_id: str
 ) -> None:
-    """Different orgs have independent buckets."""
+    """R37.2: USER_OWNER (mapped to org_a) rotating X-Org-Id to org_b does
+    NOT escape the org_a bucket.
+
+    Pre-R37.2 premise was "different X-Org-Id values → independent buckets"
+    (test sent 3 different X-Org-Id values and expected each to have its
+    own quota). That premise is obsolete: X-Org-Id is now ignored for
+    bucket selection (per directive "不再信裸 X-Org-Id").
+
+    New assertion: USER_OWNER's bucket is anchored to ECE_USER_ORGS-mapped
+    org (org_a). Rotating X-Org-Id to org_b can only succeed via a
+    wildcard delegation token (which bypasses the multi-tenant org
+    mismatch check); even then the rate-limit bucket stays org_a.
+    """
     saved = os.environ.get("ECE_ORG_RATE_LIMITS")
-    os.environ["ECE_ORG_RATE_LIMITS"] = "org_a:1/m;org_b:5/m"
+    saved_uo = os.environ.get("ECE_USER_ORGS")
+    saved_dot = os.environ.get("ECE_DELEGATION_ORG_TOKENS")
+    os.environ["ECE_ORG_RATE_LIMITS"] = "org_a:1/m"
+    os.environ["ECE_USER_ORGS"] = f"{USER_OWNER}:org_a"
+    # Wildcard token lets USER_OWNER send X-Org-Id=org_b without 403
+    os.environ["ECE_DELEGATION_ORG_TOKENS"] = "wildcard:*"
     try:
-        # org_a: 1 request
+        # org_a bucket exhausted after 1 request
         r = client.get(
             f"/api/v1/audit/context/{trace_id}",
-            headers={"X-User-Id": USER_OWNER, "X-Org-Id": "org_a"},
+            headers={
+                "X-User-Id": USER_OWNER,
+                "X-Org-Id": "org_a",
+                "X-Delegation-Token": "wildcard",
+            },
         )
         assert r.status_code == 200
-        # org_a: 2nd request → 429
+        # 2nd request: rotate to org_b — bucket still org_a (mapped)
         r = client.get(
             f"/api/v1/audit/context/{trace_id}",
-            headers={"X-User-Id": USER_OWNER, "X-Org-Id": "org_a"},
+            headers={
+                "X-User-Id": USER_OWNER,
+                "X-Org-Id": "org_b",  # header rotation
+                "X-Delegation-Token": "wildcard",  # bypasses org check
+            },
         )
-        assert r.status_code == 429
-        # org_b: 1st request still works (independent bucket)
-        r = client.get(
-            f"/api/v1/audit/context/{trace_id}",
-            headers={"X-User-Id": USER_OWNER, "X-Org-Id": "org_b"},
+        assert r.status_code == 429, (
+            f"X-Org-Id rotation must not escape org_a bucket; got {r.status_code}"
         )
-        assert r.status_code == 200
     finally:
         if saved is None:
             os.environ.pop("ECE_ORG_RATE_LIMITS", None)
         else:
             os.environ["ECE_ORG_RATE_LIMITS"] = saved
+        if saved_uo is None:
+            os.environ.pop("ECE_USER_ORGS", None)
+        else:
+            os.environ["ECE_USER_ORGS"] = saved_uo
+        if saved_dot is None:
+            os.environ.pop("ECE_DELEGATION_ORG_TOKENS", None)
+        else:
+            os.environ["ECE_DELEGATION_ORG_TOKENS"] = saved_dot
         reset_buckets()
 
 
@@ -241,8 +288,10 @@ def test_debug_rate_limit_429(
     """/debug with exhausted rate limit → 429."""
     saved_rl = os.environ.get("ECE_ORG_RATE_LIMITS")
     saved_mode = os.environ.get("ECE_DEPLOYMENT_MODE")
+    saved_uo = os.environ.get("ECE_USER_ORGS")
     os.environ["ECE_ORG_RATE_LIMITS"] = "org_rl_debug:1/m"
     os.environ["ECE_DEPLOYMENT_MODE"] = "local"
+    os.environ["ECE_USER_ORGS"] = f"{USER_OWNER}:org_rl_debug"  # cut-037 R37.2
     try:
         # 1st succeeds
         r = client.get(
@@ -265,4 +314,8 @@ def test_debug_rate_limit_429(
             os.environ.pop("ECE_DEPLOYMENT_MODE", None)
         else:
             os.environ["ECE_DEPLOYMENT_MODE"] = saved_mode
+        if saved_uo is None:
+            os.environ.pop("ECE_USER_ORGS", None)
+        else:
+            os.environ["ECE_USER_ORGS"] = saved_uo
         reset_buckets()

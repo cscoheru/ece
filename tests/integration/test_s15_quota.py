@@ -75,7 +75,7 @@ def test_parse_org_quotas_short_period_rejected(monkeypatch: pytest.MonkeyPatch)
 
 def test_check_org_quota_no_org() -> None:
     """No org_id → always allow."""
-    allowed, code, _ = check_org_quota(None)
+    allowed, code, _ = check_org_quota(None, None)
     assert allowed is True
     assert code == "no_quota"
 
@@ -83,7 +83,7 @@ def test_check_org_quota_no_org() -> None:
 def test_check_org_quota_unconfigured_org(monkeypatch: pytest.MonkeyPatch) -> None:
     """Org not in ECE_ORG_QUOTAS → no quota (always allow)."""
     monkeypatch.delenv("ECE_ORG_QUOTAS", raising=False)
-    allowed, code, _ = check_org_quota("org_unknown")
+    allowed, code, _ = check_org_quota(None, "org_unknown")
     assert allowed is True
     assert code == "no_quota"
 
@@ -91,7 +91,8 @@ def test_check_org_quota_unconfigured_org(monkeypatch: pytest.MonkeyPatch) -> No
 def test_check_org_quota_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
     """First request to configured org → allow."""
     monkeypatch.setenv("ECE_ORG_QUOTAS", "org_test:5/d")
-    allowed, code, retry = check_org_quota("org_test")
+    monkeypatch.setenv("ECE_USER_ORGS", "test_user:org_test")  # cut-037 R37.2 anchor
+    allowed, code, retry = check_org_quota("test_user", "org_test")
     assert allowed is True
     assert code == "ok"
     assert retry == 0.0
@@ -102,12 +103,13 @@ def test_check_org_quota_exhaustion_returns_quota_exceeded(
 ) -> None:
     """After N requests, quota empty → 429 with 'quota_exceeded' code."""
     monkeypatch.setenv("ECE_ORG_QUOTAS", "org_test:3/d")
+    monkeypatch.setenv("ECE_USER_ORGS", "test_user:org_test")  # cut-037 R37.2 anchor
     # 3 requests succeed
     for i in range(3):
-        allowed, code, _ = check_org_quota("org_test")
+        allowed, code, _ = check_org_quota("test_user", "org_test")
         assert allowed is True, f"Request {i+1} should succeed"
     # 4th request fails with quota_exceeded
-    allowed, code, retry = check_org_quota("org_test")
+    allowed, code, retry = check_org_quota("test_user", "org_test")
     assert allowed is False
     assert code == "quota_exceeded"
     assert retry > 0.0  # has retry-after (until next day)
@@ -153,6 +155,7 @@ def test_quota_uses_redis_when_configured(monkeypatch: pytest.MonkeyPatch) -> No
     """check_org_quota dispatches to Redis backend when ECE_REDIS_URL is set."""
     fake = fakeredis.FakeRedis(decode_responses=True)
     monkeypatch.setenv("ECE_ORG_QUOTAS", "org_q:5/d")
+    monkeypatch.setenv("ECE_USER_ORGS", "test_user:org_q")  # cut-037 R37.2 anchor
     monkeypatch.setenv("ECE_REDIS_URL", "redis://fake:6379/0")
     from ece.api.rate_limit import reset_redis_client
 
@@ -160,7 +163,7 @@ def test_quota_uses_redis_when_configured(monkeypatch: pytest.MonkeyPatch) -> No
 
     with patch("ece.api.rate_limit._redis_lib") as mock_lib:
         mock_lib.Redis.from_url.return_value = fake
-        allowed, _, _ = check_org_quota("org_q")
+        allowed, _, _ = check_org_quota("test_user", "org_q")
         assert allowed is True
         # Verify Redis key was created
         assert fake.exists("ece:quota:org_q")

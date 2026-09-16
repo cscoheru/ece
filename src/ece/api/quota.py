@@ -77,31 +77,53 @@ def _period_to_seconds(period: str) -> float | None:
     return None
 
 
-def check_org_quota(org_id: str | None) -> tuple[bool, str, float]:
-    """Check if request is allowed under org's quota.
+def _resolve_bucket_org_id(user_ref: str | None, x_org_id: str | None) -> str | None:
+    """cut-037 R37.2: Mirror of rate_limit._resolve_bucket_org_id.
+
+    Bucket key = ECE_USER_ORGS-mapped org (if mapped) else "default".
+    X-Org-Id header is NOT used (per "不再信裸 X-Org-Id" directive).
+    """
+    from ece.api.org import get_user_org
+
+    mapped = get_user_org(user_ref)
+    if mapped:
+        return mapped
+    return "default"
+
+
+def check_org_quota(
+    user_ref: str | None,
+    x_org_id: str | None,
+) -> tuple[bool, str, float]:
+    """Check if request is allowed under caller's quota.
+
+    cut-037 R37.2: bucket key bound to authenticated user_ref's mapped org
+    (via ECE_USER_ORGS), not raw X-Org-Id header. X-Org-Id is NOT trusted
+    as bucket selector (still used by check_org_access for multi-tenant
+    isolation).
 
     Args:
-        org_id: org_id from X-Org-Id header (or None for no quota)
+        user_ref: authenticated user identity.
+        x_org_id: legacy X-Org-Id header — IGNORED for bucket selection.
 
     Returns:
         (allowed, error_code, retry_after_seconds)
-        - error_code 'no_quota': no quota configured (always allow)
+        - error_code 'no_quota': no quota configured for the bucket
         - error_code 'ok': allowed
-        - error_code 'quota_exceeded': 429 (org's quota exhausted)
+        - error_code 'quota_exceeded': 429 (quota exhausted)
     """
-    if not org_id:
-        return True, "no_quota", 0.0
+    bucket_org_id = _resolve_bucket_org_id(user_ref, x_org_id)
 
     quotas = parse_org_quotas()
-    if org_id not in quotas:
+    if bucket_org_id not in quotas:
         return True, "no_quota", 0.0
 
-    n, period_sec = quotas[org_id]
+    n, period_sec = quotas[bucket_org_id]
 
     redis_client: Any = _get_redis_client()
     if redis_client is not None:
-        return _check_quota_redis(redis_client, org_id, n, period_sec)
-    return _check_quota_inmemory(org_id, n, period_sec)
+        return _check_quota_redis(redis_client, bucket_org_id, n, period_sec)
+    return _check_quota_inmemory(bucket_org_id, n, period_sec)
 
 
 def _check_quota_redis(

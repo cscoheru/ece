@@ -68,13 +68,23 @@ def test_get_relationships_endpoint_contract(client: TestClient) -> None:
     """R5 s13: GET /entities/{id}/relationships contract test.
 
     Per cut-006R R1: X-User-Id header required (uniform 404 envelope on missing).
+    cut-037 R37.4: discover a real seeded entity via list endpoint
+    (per R36.6 fix pattern + Gap-039-2). Hardcoded "SUP001" was a stale
+    assumption; demo.json supplier display_ids start at supplier:0 which
+    may not map to SUP001.
     """
-    r = client.get(
-        "/api/v1/entities/SUP001/relationships",
+    # Discover a real seeded supplier ref via list endpoint
+    list_r = client.get(
+        "/api/v1/entities?type=supplier&limit=1",
         headers={"X-User-Id": "demo-user-procurement"},
     )
-    if r.status_code == 404:
-        pytest.skip("seed not run; make seed first")
+    if list_r.status_code != 200 or not list_r.json().get("items"):
+        pytest.skip("no suppliers seeded; run 'make seed' first to populate suppliers")
+    ref = list_r.json()["items"][0]["ref"]
+    r = client.get(
+        f"/api/v1/entities/{ref}/relationships",
+        headers={"X-User-Id": "demo-user-procurement"},
+    )
     assert r.status_code == 200, f"GET relationships contract failed: {r.status_code} {r.text}"
     body = r.json()
     assert "items" in body

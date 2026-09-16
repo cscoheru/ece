@@ -111,6 +111,7 @@ def test_check_rate_limit_uses_redis_when_configured(
     """check_rate_limit dispatches to Redis backend when ECE_REDIS_URL is set."""
     fake = fakeredis.FakeRedis(decode_responses=True)
     monkeypatch.setenv("ECE_ORG_RATE_LIMITS", "org_redis:5/m")
+    monkeypatch.setenv("ECE_USER_ORGS", "test_user:org_redis")  # cut-037 R37.2 anchor
     monkeypatch.setenv("ECE_REDIS_URL", "redis://fake:6379/0")
     reset_redis_client()
 
@@ -118,7 +119,7 @@ def test_check_rate_limit_uses_redis_when_configured(
         mock_lib.Redis.from_url.return_value = fake
 
         # First request → Redis backend
-        allowed, code, _ = check_rate_limit("org_redis")
+        allowed, code, _ = check_rate_limit("test_user", "org_redis")
         assert allowed is True
         assert code == "ok"
         # Verify Redis key was created
@@ -130,15 +131,16 @@ def test_check_rate_limit_falls_back_to_inmemory_when_no_redis(
 ) -> None:
     """Without ECE_REDIS_URL, in-memory backend is used."""
     monkeypatch.setenv("ECE_ORG_RATE_LIMITS", "org_inmem:3/m")
+    monkeypatch.setenv("ECE_USER_ORGS", "test_user:org_inmem")  # cut-037 R37.2 anchor
     monkeypatch.delenv("ECE_REDIS_URL", raising=False)
     reset_redis_client()
 
     # First 3 requests succeed
     for _ in range(3):
-        allowed, code, _ = check_rate_limit("org_inmem")
+        allowed, code, _ = check_rate_limit("test_user", "org_inmem")
         assert allowed is True
     # 4th request fails (in-memory bucket exhausted)
-    allowed, code, retry = check_rate_limit("org_inmem")
+    allowed, code, retry = check_rate_limit("test_user", "org_inmem")
     assert allowed is False
     assert code == "rate_limited"
     assert retry > 0.0
@@ -153,14 +155,14 @@ def test_check_rate_limit_unconfigured_org_allows_all(
 
     # 5 requests to org_b (not in config) → all succeed
     for _ in range(5):
-        allowed, code, _ = check_rate_limit("org_b")
+        allowed, code, _ = check_rate_limit(None, "org_b")
         assert allowed is True
         assert code == "no_limit"
 
 
 def test_check_rate_limit_no_org_id_allows_all() -> None:
     """No org_id → no limit."""
-    allowed, code, _ = check_rate_limit(None)
+    allowed, code, _ = check_rate_limit(None, None)
     assert allowed is True
     assert code == "no_limit"
 
