@@ -45,6 +45,11 @@ schema-check:
 gen-dataset:
 	uv run python scripts/gen_dataset.py --out data/dataset/demo.json
 
+# cut-035R2 R1': E1-E6 评测数据集生成(per EVALUATION.md §1; cut-006r §R2 + cut-015a 分布)
+# 必须在 make seed 之后跑(查询 entities 表获取 display_id)
+gen-eval-datasets:
+	uv run python scripts/gen_eval_datasets.py
+
 # R2 (cut-006 §7.3): E2 权限套件 runner — Unauthorized Exposure = 0 一票否决
 # 前置: make pull-db + docker compose up -d db + uv run alembic upgrade head + make seed
 e2-runner:

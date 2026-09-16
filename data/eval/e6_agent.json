@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "description": "E6 Agent end-to-end (cut-035R2 R1' rebuild; cut-015a distribution)",
+  "summary": {
+    "total": 50
+  },
+  "cases": [
+    {
+      "id": "e6-001",
+      "question": "PR001 金额 150万 是否符合采购政策 POL-2026-03?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "100万+ PR must trigger 三家比价 per policy"
+    },
+    {
+      "id": "e6-002",
+      "question": "PR004 超过 100万 触发三家比价了吗?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "high-value PR triggers comparison policy"
+    },
+    {
+      "id": "e6-003",
+      "question": "PR005 80万 需要比价吗?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "under 100万 → no comparison needed"
+    },
+    {
+      "id": "e6-004",
+      "question": "PR002 50万 采购是否合规?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "low-value PR is policy-compliant"
+    },
+    {
+      "id": "e6-005",
+      "question": "PR003 120万 是否需要财务总监审批?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "100万+ requires finance approval"
+    },
+    {
+      "id": "e6-006",
+      "question": "PR001 是否需要 CEO 审批?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "150万 < 500万 CEO threshold; not required"
+    },
+    {
+      "id": "e6-007",
+      "question": "PR004 200万 是否触发 CEO 审批?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "under 500万 CEO threshold"
+    },
+    {
+      "id": "e6-008",
+      "question": "PR002 审批流程是否完整?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "low-value PR has standard 3-tier approval"
+    },
+    {
+      "id": "e6-009",
+      "question": "PR003 是否符合化整为零政策?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "must verify no split-purchase pattern"
+    },
+    {
+      "id": "e6-010",
+      "question": "PR001 150万 是否符合价格偏离 ±10% 规则?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "verify historical price deviation"
+    },
+    {
+      "id": "e6-011",
+      "question": "PR005 是否在政策允许范围?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "low-value PR within policy bounds"
+    },
+    {
+      "id": "e6-012",
+      "question": "PR002 紧急采购是否需要事后补办?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "emergency PR needs post-facto compliance"
+    },
+    {
+      "id": "e6-013",
+      "question": "PR003 单一来源采购是否需要采购总监批准?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "single-source requires director approval"
+    },
+    {
+      "id": "e6-014",
+      "question": "PR001 是否需要三家供应商比价?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "150万 mandates 3-way comparison"
+    },
+    {
+      "id": "e6-015",
+      "question": "PR004 是否符合采购政策?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "policy_compliance",
+      "note": "high-value PR with full compliance check"
+    },
+    {
+      "id": "e6-016",
+      "question": "PR001 150万 价格是否合理?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "high-value PR price validation"
+    },
+    {
+      "id": "e6-017",
+      "question": "PR004 200万 与历史价比较如何?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "compare against historical average"
+    },
+    {
+      "id": "e6-018",
+      "question": "PR005 80万 价格偏离 ±10% 吗?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "low-value deviation check"
+    },
+    {
+      "id": "e6-019",
+      "question": "PR002 是否高于市场参考价?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "must flag if market deviation > 10%"
+    },
+    {
+      "id": "e6-020",
+      "question": "PR003 120万 价格趋势?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "trend analysis over 90 days"
+    },
+    {
+      "id": "e6-021",
+      "question": "PR001 比价结果?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "3-way comparison outcome"
+    },
+    {
+      "id": "e6-022",
+      "question": "PR004 200万 价格是否异常?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "anomaly detection"
+    },
+    {
+      "id": "e6-023",
+      "question": "PR005 价格 vs 供应商AC?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "supplier-specific pricing"
+    },
+    {
+      "id": "e6-024",
+      "question": "PR002 价格折扣空间?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "negotiation room estimate"
+    },
+    {
+      "id": "e6-025",
+      "question": "PR003 总额拆分是否合理?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "price_analysis",
+      "note": "total breakdown validation"
+    },
+    {
+      "id": "e6-026",
+      "question": "PR001 审批节点有哪些?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "list approval chain nodes"
+    },
+    {
+      "id": "e6-027",
+      "question": "PR004 是否经过财务总监?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "verify finance approval"
+    },
+    {
+      "id": "e6-028",
+      "question": "PR005 部门经理批准了吗?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "verify dept manager signoff"
+    },
+    {
+      "id": "e6-029",
+      "question": "PR002 审批是否完整无代签?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "no proxy signatures allowed"
+    },
+    {
+      "id": "e6-030",
+      "question": "PR003 审批链是否超时?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "SLA check on approval timing"
+    },
+    {
+      "id": "e6-031",
+      "question": "PR001 紧急口头批准是否补齐?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "24-hour post-facto written approval"
+    },
+    {
+      "id": "e6-032",
+      "question": "PR004 CEO 是否介入?",
+      "expected_conclusion": "reject",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "200万 < 500万 CEO threshold"
+    },
+    {
+      "id": "e6-033",
+      "question": "PR005 审批流程是否符合政策?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "policy compliance verification"
+    },
+    {
+      "id": "e6-034",
+      "question": "PR002 是否有越级审批?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "no level-skipping check"
+    },
+    {
+      "id": "e6-035",
+      "question": "PR003 审批记录是否归档?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "approval_chain",
+      "note": "audit trail completeness"
+    },
+    {
+      "id": "e6-036",
+      "question": "PR001 什么时候创建?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "creation timestamp query"
+    },
+    {
+      "id": "e6-037",
+      "question": "PR004 哪个部门发起的?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "origin department"
+    },
+    {
+      "id": "e6-038",
+      "question": "PR005 供应商是哪家?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "supplier reference"
+    },
+    {
+      "id": "e6-039",
+      "question": "PR002 关联哪些合同?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "contract linkage"
+    },
+    {
+      "id": "e6-040",
+      "question": "PR003 产品类别?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "product category"
+    },
+    {
+      "id": "e6-041",
+      "question": "PR001 状态如何?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "current status"
+    },
+    {
+      "id": "e6-042",
+      "question": "PR004 申请人是谁?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "requester identity"
+    },
+    {
+      "id": "e6-043",
+      "question": "PR005 是否包含培训费用?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "expense categorization"
+    },
+    {
+      "id": "e6-044",
+      "question": "PR002 历史类似采购?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "similar historical PRs"
+    },
+    {
+      "id": "e6-045",
+      "question": "PR003 风险评估?",
+      "expected_conclusion": "approve",
+      "expected_evidence_refs": [],
+      "category": "general_qa",
+      "note": "risk score breakdown"
+    },
+    {
+      "id": "e6-046",
+      "question": "PR_NONEXISTENT_001 是否存在?",
+      "expected_conclusion": "needs_info",
+      "expected_evidence_refs": [],
+      "category": "insufficient",
+      "note": "non-existent PR → agent must say 不知道"
+    },
+    {
+      "id": "e6-047",
+      "question": "CON_NONEXISTENT_007 内容?",
+      "expected_conclusion": "needs_info",
+      "expected_evidence_refs": [],
+      "category": "insufficient",
+      "note": "non-existent contract → must say 不知道"
+    },
+    {
+      "id": "e6-048",
+      "question": "SUP_NONEXISTENT_013 供应商?",
+      "expected_conclusion": "needs_info",
+      "expected_evidence_refs": [],
+      "category": "insufficient",
+      "note": "non-existent supplier → must say 不知道"
+    },
+    {
+      "id": "e6-049",
+      "question": "没有提供 PR ID，能否告诉我合规性?",
+      "expected_conclusion": "needs_info",
+      "expected_evidence_refs": [],
+      "category": "insufficient",
+      "note": "no root entity → agent must request input"
+    },
+    {
+      "id": "e6-050",
+      "question": "无任何上下文，能否给出审批建议?",
+      "expected_conclusion": "needs_info",
+      "expected_evidence_refs": [],
+      "category": "insufficient",
+      "note": "empty context package → agent must declare insufficient"
+    }
+  ]
+}

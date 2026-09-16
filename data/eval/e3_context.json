@@ -1,0 +1,1499 @@
+{
+  "schema_version": 1,
+  "description": "E3 Context Completeness (cut-008 §1.2)",
+  "summary": {
+    "total": 100
+  },
+  "cases": [
+    {
+      "id": "e3-001",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR001"
+      },
+      "required_refs": [
+        "PR001"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-002",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR002"
+      },
+      "required_refs": [
+        "PR002"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-003",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR003"
+      },
+      "required_refs": [
+        "PR003"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-004",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR004"
+      },
+      "required_refs": [
+        "PR004"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-005",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR005"
+      },
+      "required_refs": [
+        "PR005"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-006",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR006"
+      },
+      "required_refs": [
+        "PR006"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-007",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR007"
+      },
+      "required_refs": [
+        "PR007"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-008",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR008"
+      },
+      "required_refs": [
+        "PR008"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-009",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR009"
+      },
+      "required_refs": [
+        "PR009"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-010",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR010"
+      },
+      "required_refs": [
+        "PR010"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-011",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR011"
+      },
+      "required_refs": [
+        "PR011"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-012",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR012"
+      },
+      "required_refs": [
+        "PR012"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-013",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR013"
+      },
+      "required_refs": [
+        "PR013"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-014",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR014"
+      },
+      "required_refs": [
+        "PR014"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-015",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR015"
+      },
+      "required_refs": [
+        "PR015"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-016",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR016"
+      },
+      "required_refs": [
+        "PR016"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-017",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR017"
+      },
+      "required_refs": [
+        "PR017"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-018",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR018"
+      },
+      "required_refs": [
+        "PR018"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-019",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR019"
+      },
+      "required_refs": [
+        "PR019"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-020",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR020"
+      },
+      "required_refs": [
+        "PR020"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-021",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR021"
+      },
+      "required_refs": [
+        "PR021"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-022",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR022"
+      },
+      "required_refs": [
+        "PR022"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-023",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR023"
+      },
+      "required_refs": [
+        "PR023"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-024",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR024"
+      },
+      "required_refs": [
+        "PR024"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-025",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR025"
+      },
+      "required_refs": [
+        "PR025"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-026",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR026"
+      },
+      "required_refs": [
+        "PR026"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-027",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR027"
+      },
+      "required_refs": [
+        "PR027"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-028",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR028"
+      },
+      "required_refs": [
+        "PR028"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-029",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR029"
+      },
+      "required_refs": [
+        "PR029"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-030",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR030"
+      },
+      "required_refs": [
+        "PR030"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-031",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR031"
+      },
+      "required_refs": [
+        "PR031"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-032",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR032"
+      },
+      "required_refs": [
+        "PR032"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-033",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR033"
+      },
+      "required_refs": [
+        "PR033"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-034",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR034"
+      },
+      "required_refs": [
+        "PR034"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-035",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR035"
+      },
+      "required_refs": [
+        "PR035"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-036",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR036"
+      },
+      "required_refs": [
+        "PR036"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-037",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR037"
+      },
+      "required_refs": [
+        "PR037"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-038",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR038"
+      },
+      "required_refs": [
+        "PR038"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-039",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR039"
+      },
+      "required_refs": [
+        "PR039"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-040",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR040"
+      },
+      "required_refs": [
+        "PR040"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-041",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR041"
+      },
+      "required_refs": [
+        "PR041"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-042",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR042"
+      },
+      "required_refs": [
+        "PR042"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-043",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR043"
+      },
+      "required_refs": [
+        "PR043"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-044",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR044"
+      },
+      "required_refs": [
+        "PR044"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-045",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR045"
+      },
+      "required_refs": [
+        "PR045"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-046",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR046"
+      },
+      "required_refs": [
+        "PR046"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-047",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR047"
+      },
+      "required_refs": [
+        "PR047"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-048",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR048"
+      },
+      "required_refs": [
+        "PR048"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-049",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR049"
+      },
+      "required_refs": [
+        "PR049"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-050",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR050"
+      },
+      "required_refs": [
+        "PR050"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-051",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR051"
+      },
+      "required_refs": [
+        "PR051"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-052",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR052"
+      },
+      "required_refs": [
+        "PR052"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-053",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR053"
+      },
+      "required_refs": [
+        "PR053"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-054",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR054"
+      },
+      "required_refs": [
+        "PR054"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-055",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR055"
+      },
+      "required_refs": [
+        "PR055"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-056",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR056"
+      },
+      "required_refs": [
+        "PR056"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-057",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR057"
+      },
+      "required_refs": [
+        "PR057"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-058",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR058"
+      },
+      "required_refs": [
+        "PR058"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-059",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR059"
+      },
+      "required_refs": [
+        "PR059"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-060",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR060"
+      },
+      "required_refs": [
+        "PR060"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-061",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR061"
+      },
+      "required_refs": [
+        "PR061"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-062",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR062"
+      },
+      "required_refs": [
+        "PR062"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-063",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR063"
+      },
+      "required_refs": [
+        "PR063"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-064",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR064"
+      },
+      "required_refs": [
+        "PR064"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-065",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR065"
+      },
+      "required_refs": [
+        "PR065"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-066",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR066"
+      },
+      "required_refs": [
+        "PR066"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-067",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR067"
+      },
+      "required_refs": [
+        "PR067"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-068",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR068"
+      },
+      "required_refs": [
+        "PR068"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-069",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR069"
+      },
+      "required_refs": [
+        "PR069"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-070",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR070"
+      },
+      "required_refs": [
+        "PR070"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-071",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR071"
+      },
+      "required_refs": [
+        "PR071"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-072",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR072"
+      },
+      "required_refs": [
+        "PR072"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-073",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR073"
+      },
+      "required_refs": [
+        "PR073"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-074",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR074"
+      },
+      "required_refs": [
+        "PR074"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-075",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR075"
+      },
+      "required_refs": [
+        "PR075"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-076",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR076"
+      },
+      "required_refs": [
+        "PR076"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-077",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR077"
+      },
+      "required_refs": [
+        "PR077"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-078",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR078"
+      },
+      "required_refs": [
+        "PR078"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-079",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR079"
+      },
+      "required_refs": [
+        "PR079"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-080",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR080"
+      },
+      "required_refs": [
+        "PR080"
+      ],
+      "must_not_include": [],
+      "expect": "ok",
+      "note": "root entity must appear in package"
+    },
+    {
+      "id": "e3-081",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-082",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-083",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-084",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-085",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-086",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-087",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-088",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-089",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-090",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": ""
+      },
+      "required_refs": [],
+      "must_not_include": [],
+      "expect": "insufficient_context",
+      "note": "no root entities → insufficient_context"
+    },
+    {
+      "id": "e3-091",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR_NONEXISTENT_0"
+      },
+      "required_refs": [],
+      "must_not_include": [
+        "PR_NONEXISTENT_0"
+      ],
+      "expect": "insufficient_context",
+      "note": "non-existent entity → denied + insufficient"
+    },
+    {
+      "id": "e3-092",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR_NONEXISTENT_1"
+      },
+      "required_refs": [],
+      "must_not_include": [
+        "PR_NONEXISTENT_1"
+      ],
+      "expect": "insufficient_context",
+      "note": "non-existent entity → denied + insufficient"
+    },
+    {
+      "id": "e3-093",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR_NONEXISTENT_2"
+      },
+      "required_refs": [],
+      "must_not_include": [
+        "PR_NONEXISTENT_2"
+      ],
+      "expect": "insufficient_context",
+      "note": "non-existent entity → denied + insufficient"
+    },
+    {
+      "id": "e3-094",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR_NONEXISTENT_3"
+      },
+      "required_refs": [],
+      "must_not_include": [
+        "PR_NONEXISTENT_3"
+      ],
+      "expect": "insufficient_context",
+      "note": "non-existent entity → denied + insufficient"
+    },
+    {
+      "id": "e3-095",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR_NONEXISTENT_4"
+      },
+      "required_refs": [],
+      "must_not_include": [
+        "PR_NONEXISTENT_4"
+      ],
+      "expect": "insufficient_context",
+      "note": "non-existent entity → denied + insufficient"
+    },
+    {
+      "id": "e3-096",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR081"
+      },
+      "required_refs": [
+        "PR081"
+      ],
+      "must_not_include": [
+        "CON009"
+      ],
+      "expect": "ok",
+      "note": "ok with unrelated must_not_include (CON009 never related to this PR)"
+    },
+    {
+      "id": "e3-097",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR082"
+      },
+      "required_refs": [
+        "PR082"
+      ],
+      "must_not_include": [
+        "CON009"
+      ],
+      "expect": "ok",
+      "note": "ok with unrelated must_not_include (CON009 never related to this PR)"
+    },
+    {
+      "id": "e3-098",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR083"
+      },
+      "required_refs": [
+        "PR083"
+      ],
+      "must_not_include": [
+        "CON009"
+      ],
+      "expect": "ok",
+      "note": "ok with unrelated must_not_include (CON009 never related to this PR)"
+    },
+    {
+      "id": "e3-099",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR084"
+      },
+      "required_refs": [
+        "PR084"
+      ],
+      "must_not_include": [
+        "CON009"
+      ],
+      "expect": "ok",
+      "note": "ok with unrelated must_not_include (CON009 never related to this PR)"
+    },
+    {
+      "id": "e3-100",
+      "intent": "evaluate_purchase_request",
+      "user": "demo-user-procurement",
+      "root": {
+        "type": "purchase_request",
+        "id": "PR085"
+      },
+      "required_refs": [
+        "PR085"
+      ],
+      "must_not_include": [
+        "CON009"
+      ],
+      "expect": "ok",
+      "note": "ok with unrelated must_not_include (CON009 never related to this PR)"
+    }
+  ]
+}

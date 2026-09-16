@@ -1,0 +1,582 @@
+{
+  "schema_version": 1,
+  "description": "E1 Entity Resolution (cut-035R2 R1' rebuild)",
+  "summary": {
+    "total": 65
+  },
+  "cases": [
+    {
+      "id": "e1-001",
+      "mention": "无限极",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP001"
+    },
+    {
+      "id": "e1-002",
+      "mention": "无限极(中国)有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP002"
+    },
+    {
+      "id": "e1-003",
+      "mention": "供应商AC有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP003"
+    },
+    {
+      "id": "e1-004",
+      "mention": "供应商AD有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP004"
+    },
+    {
+      "id": "e1-005",
+      "mention": "供应商AE有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP005"
+    },
+    {
+      "id": "e1-006",
+      "mention": "供应商AF有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP006"
+    },
+    {
+      "id": "e1-007",
+      "mention": "供应商AG有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP007"
+    },
+    {
+      "id": "e1-008",
+      "mention": "供应商AH有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP008"
+    },
+    {
+      "id": "e1-009",
+      "mention": "供应商AI有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP009"
+    },
+    {
+      "id": "e1-010",
+      "mention": "供应商AJ有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP010"
+    },
+    {
+      "id": "e1-011",
+      "mention": "供应商AK有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP011"
+    },
+    {
+      "id": "e1-012",
+      "mention": "供应商AL有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP012"
+    },
+    {
+      "id": "e1-013",
+      "mention": "供应商AM有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP013"
+    },
+    {
+      "id": "e1-014",
+      "mention": "供应商AN有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP014"
+    },
+    {
+      "id": "e1-015",
+      "mention": "供应商AO有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP015"
+    },
+    {
+      "id": "e1-016",
+      "mention": "供应商AP有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP016"
+    },
+    {
+      "id": "e1-017",
+      "mention": "供应商AQ有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP017"
+    },
+    {
+      "id": "e1-018",
+      "mention": "供应商AR有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP018"
+    },
+    {
+      "id": "e1-019",
+      "mention": "供应商AS有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP019"
+    },
+    {
+      "id": "e1-020",
+      "mention": "供应商AT有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP020"
+    },
+    {
+      "id": "e1-021",
+      "mention": "供应商AU有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP021"
+    },
+    {
+      "id": "e1-022",
+      "mention": "供应商AV有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP022"
+    },
+    {
+      "id": "e1-023",
+      "mention": "供应商AW有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP023"
+    },
+    {
+      "id": "e1-024",
+      "mention": "供应商AX有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP024"
+    },
+    {
+      "id": "e1-025",
+      "mention": "供应商AY有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP025"
+    },
+    {
+      "id": "e1-026",
+      "mention": "供应商AZ有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP026"
+    },
+    {
+      "id": "e1-027",
+      "mention": "供应商BA有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP027"
+    },
+    {
+      "id": "e1-028",
+      "mention": "供应商BB有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP028"
+    },
+    {
+      "id": "e1-029",
+      "mention": "供应商BC有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP029"
+    },
+    {
+      "id": "e1-030",
+      "mention": "供应商BD有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP030"
+    },
+    {
+      "id": "e1-031",
+      "mention": "供应商BE有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP031"
+    },
+    {
+      "id": "e1-032",
+      "mention": "供应商BF有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP032"
+    },
+    {
+      "id": "e1-033",
+      "mention": "供应商BG有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP033"
+    },
+    {
+      "id": "e1-034",
+      "mention": "供应商BH有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP034"
+    },
+    {
+      "id": "e1-035",
+      "mention": "供应商BI有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP035"
+    },
+    {
+      "id": "e1-036",
+      "mention": "供应商BJ有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP036"
+    },
+    {
+      "id": "e1-037",
+      "mention": "供应商BK有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP037"
+    },
+    {
+      "id": "e1-038",
+      "mention": "供应商BL有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP038"
+    },
+    {
+      "id": "e1-039",
+      "mention": "供应商BM有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP039"
+    },
+    {
+      "id": "e1-040",
+      "mention": "供应商BN有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP040"
+    },
+    {
+      "id": "e1-041",
+      "mention": "供应商BO有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP041"
+    },
+    {
+      "id": "e1-042",
+      "mention": "供应商BP有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP042"
+    },
+    {
+      "id": "e1-043",
+      "mention": "供应商BQ有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP043"
+    },
+    {
+      "id": "e1-044",
+      "mention": "供应商BR有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP044"
+    },
+    {
+      "id": "e1-045",
+      "mention": "供应商BS有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP045"
+    },
+    {
+      "id": "e1-046",
+      "mention": "供应商BT有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP046"
+    },
+    {
+      "id": "e1-047",
+      "mention": "供应商BU有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP047"
+    },
+    {
+      "id": "e1-048",
+      "mention": "供应商BV有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP048"
+    },
+    {
+      "id": "e1-049",
+      "mention": "供应商BW有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP049"
+    },
+    {
+      "id": "e1-050",
+      "mention": "供应商BX有限公司",
+      "type_hint": "supplier",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "SUP",
+      "category": "resolved_true",
+      "note": "exact supplier name lookup → SUP050"
+    },
+    {
+      "id": "e1-051",
+      "mention": "Demo Procurement Manager",
+      "type_hint": "person",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "U",
+      "category": "resolved_true",
+      "note": "person name lookup → U001"
+    },
+    {
+      "id": "e1-052",
+      "mention": "Demo Finance Manager",
+      "type_hint": "person",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "U",
+      "category": "resolved_true",
+      "note": "person name lookup → U002"
+    },
+    {
+      "id": "e1-053",
+      "mention": "Demo Engineering Manager",
+      "type_hint": "person",
+      "expected_resolved": true,
+      "expected_chosen_startswith": "U",
+      "category": "resolved_true",
+      "note": "person name lookup → U003"
+    },
+    {
+      "id": "e1-054",
+      "mention": "无限极",
+      "type_hint": "supplier",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "short form collides with SUP001 无限极 and SUP002 无限极(中国)有限公司 — resolver must NOT silently pick one (per EVALUATION.md §1 ambiguous example)"
+    },
+    {
+      "id": "e1-055",
+      "mention": "供应商A",
+      "type_hint": "supplier",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "partial name prefix matches 供应商AC有限公司 + 供应商AD有限公司 + 供应商AE有限公司 + 供应商AF有限公司 (4-way ambiguity)"
+    },
+    {
+      "id": "e1-056",
+      "mention": "供应商B",
+      "type_hint": "supplier",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "partial name prefix matches 供应商BC..BG (5-way ambiguity)"
+    },
+    {
+      "id": "e1-057",
+      "mention": "供应商",
+      "type_hint": "supplier",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "common substring '供应商' matches all 50 demo suppliers (high ambiguity)"
+    },
+    {
+      "id": "e1-058",
+      "mention": "Demo",
+      "type_hint": "person",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "prefix matches all 3 demo test users (U001..U003) — resolver must not guess"
+    },
+    {
+      "id": "e1-059",
+      "mention": "Manager",
+      "type_hint": "person",
+      "expected_resolved": false,
+      "category": "ambiguous",
+      "note": "suffix matches all 3 demo test users (Demo Procurement/Finance/Engineering Manager)"
+    },
+    {
+      "id": "e1-060",
+      "mention": "X-NONEXISTENT-SUPPLIER-001",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    },
+    {
+      "id": "e1-061",
+      "mention": "X-NONEXISTENT-PERSON-002",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    },
+    {
+      "id": "e1-062",
+      "mention": "ZZZ-DOES-NOT-EXIST-003",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    },
+    {
+      "id": "e1-063",
+      "mention": "Phantom-User-99999",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    },
+    {
+      "id": "e1-064",
+      "mention": "虚构公司-无限极科技",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    },
+    {
+      "id": "e1-065",
+      "mention": "Unknown-Contractor-777",
+      "type_hint": null,
+      "expected_resolved": false,
+      "category": "no_match",
+      "note": "synthetic non-existent mention → resolved:false"
+    }
+  ]
+}

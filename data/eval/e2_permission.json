@@ -1,0 +1,619 @@
+{
+  "schema_version": 1,
+  "description": "E2 Permission Suite (cut-035R2 R1' rebuild; cut-006r §R2 distribution)",
+  "summary": {
+    "total": 61
+  },
+  "cases": [
+    {
+      "id": "e2-001",
+      "user_ref": "demo-user-procurement",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public PR visible to all users"
+    },
+    {
+      "id": "e2-002",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public PR visible to all users"
+    },
+    {
+      "id": "e2-003",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public PR visible to all users"
+    },
+    {
+      "id": "e2-004",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public PR visible to all users"
+    },
+    {
+      "id": "e2-005",
+      "user_ref": "demo-user-procurement",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal contract visible internally"
+    },
+    {
+      "id": "e2-006",
+      "user_ref": "demo-user-finance",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal contract visible internally"
+    },
+    {
+      "id": "e2-007",
+      "user_ref": "demo-user-engineering",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal contract visible internally"
+    },
+    {
+      "id": "e2-008",
+      "user_ref": "U_other_dept",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal contract visible internally"
+    },
+    {
+      "id": "e2-009",
+      "user_ref": "demo-user-procurement",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "dept-scoped PR: procurement user has access"
+    },
+    {
+      "id": "e2-010",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped PR: finance user denied (cross-dept induction)"
+    },
+    {
+      "id": "e2-011",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped PR: engineering/sales user denied"
+    },
+    {
+      "id": "e2-012",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped PR: other-dept user denied"
+    },
+    {
+      "id": "e2-013",
+      "user_ref": "demo-user-procurement",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "dept-scoped supplier: procurement has access"
+    },
+    {
+      "id": "e2-014",
+      "user_ref": "demo-user-finance",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped supplier: finance denied"
+    },
+    {
+      "id": "e2-015",
+      "user_ref": "demo-user-engineering",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped supplier: engineering denied"
+    },
+    {
+      "id": "e2-016",
+      "user_ref": "U_other_dept",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept-scoped supplier: other denied"
+    },
+    {
+      "id": "e2-017",
+      "user_ref": "demo-user-procurement",
+      "object_type": "purchase_request",
+      "object_ref": "PR002",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "dept PR #2: procurement allowed"
+    },
+    {
+      "id": "e2-018",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept PR #2: finance denied"
+    },
+    {
+      "id": "e2-019",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept PR #2: engineering denied"
+    },
+    {
+      "id": "e2-020",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept PR #2: other denied"
+    },
+    {
+      "id": "e2-021",
+      "user_ref": "demo-user-procurement",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "confidential contract: owner dept allowed"
+    },
+    {
+      "id": "e2-022",
+      "user_ref": "demo-user-finance",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "confidential contract: non-owner denied"
+    },
+    {
+      "id": "e2-023",
+      "user_ref": "demo-user-engineering",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "confidential contract: non-owner denied"
+    },
+    {
+      "id": "e2-024",
+      "user_ref": "U_other_dept",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "confidential contract: non-owner denied"
+    },
+    {
+      "id": "e2-025",
+      "user_ref": "demo-user-procurement",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "restricted PR: even dept denied"
+    },
+    {
+      "id": "e2-026",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "restricted PR: finance denied"
+    },
+    {
+      "id": "e2-027",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "restricted PR: engineering denied"
+    },
+    {
+      "id": "e2-028",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "restricted PR: other denied"
+    },
+    {
+      "id": "e2-029",
+      "user_ref": "demo-user-procurement",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "management-only: procurement manager has no mgmt role"
+    },
+    {
+      "id": "e2-030",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "management-only: finance manager has no mgmt role"
+    },
+    {
+      "id": "e2-031",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "management-only: engineering denied"
+    },
+    {
+      "id": "e2-032",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "management-only: other denied"
+    },
+    {
+      "id": "e2-033",
+      "user_ref": "demo-user-finance",
+      "object_type": "supplier",
+      "object_ref": "SUP002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "cross-dept: finance user denied for procurement supplier #2"
+    },
+    {
+      "id": "e2-034",
+      "user_ref": "demo-user-engineering",
+      "object_type": "supplier",
+      "object_ref": "SUP002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "cross-dept: engineering user denied for procurement supplier #2"
+    },
+    {
+      "id": "e2-035",
+      "user_ref": "U_other_dept",
+      "object_type": "supplier",
+      "object_ref": "SUP002",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "cross-dept: other user denied for procurement supplier #2"
+    },
+    {
+      "id": "e2-036",
+      "user_ref": "demo-user-procurement",
+      "object_type": "supplier",
+      "object_ref": "SUP002",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "dept supplier #2: procurement allowed"
+    },
+    {
+      "id": "e2-037",
+      "user_ref": "demo-user-procurement",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "dept contract: procurement has access"
+    },
+    {
+      "id": "e2-038",
+      "user_ref": "demo-user-finance",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept contract: finance denied"
+    },
+    {
+      "id": "e2-039",
+      "user_ref": "demo-user-engineering",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept contract: engineering denied"
+    },
+    {
+      "id": "e2-040",
+      "user_ref": "U_other_dept",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "permission_check",
+      "reason": "dept contract: other denied"
+    },
+    {
+      "id": "e2-041",
+      "user_ref": "demo-user-procurement",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public supplier: all users"
+    },
+    {
+      "id": "e2-042",
+      "user_ref": "demo-user-finance",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public supplier: all users"
+    },
+    {
+      "id": "e2-043",
+      "user_ref": "demo-user-engineering",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public supplier: all users"
+    },
+    {
+      "id": "e2-044",
+      "user_ref": "U_other_dept",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "public",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "public supplier: all users"
+    },
+    {
+      "id": "e2-045",
+      "user_ref": "demo-user-procurement",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal supplier: all users"
+    },
+    {
+      "id": "e2-046",
+      "user_ref": "demo-user-finance",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal supplier: all users"
+    },
+    {
+      "id": "e2-047",
+      "user_ref": "demo-user-engineering",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal supplier: all users"
+    },
+    {
+      "id": "e2-048",
+      "user_ref": "U_other_dept",
+      "object_type": "supplier",
+      "object_ref": "SUP001",
+      "classification": "internal",
+      "expected_allowed": true,
+      "category": "permission_check",
+      "reason": "internal supplier: all users"
+    },
+    {
+      "id": "e2-049",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "finance user probes existence/content of procurement PR — must NOT leak"
+    },
+    {
+      "id": "e2-050",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "engineering user probes procurement PR — must NOT leak"
+    },
+    {
+      "id": "e2-051",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "other-dept user probes procurement PR — must NOT leak"
+    },
+    {
+      "id": "e2-052",
+      "user_ref": "demo-user-finance",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "finance user probes confidential contract — must NOT leak"
+    },
+    {
+      "id": "e2-053",
+      "user_ref": "demo-user-engineering",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "engineering user probes confidential contract — must NOT leak"
+    },
+    {
+      "id": "e2-054",
+      "user_ref": "U_other_dept",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "other-dept user probes confidential contract — must NOT leak"
+    },
+    {
+      "id": "e2-055",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "finance probes management-classified PR — must NOT leak"
+    },
+    {
+      "id": "e2-056",
+      "user_ref": "demo-user-engineering",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "management",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "engineering probes management-classified PR — must NOT leak"
+    },
+    {
+      "id": "e2-057",
+      "user_ref": "U_other_dept",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "other-dept user probes restricted PR — must NOT leak"
+    },
+    {
+      "id": "e2-058",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR002",
+      "classification": "restricted",
+      "expected_allowed": false,
+      "category": "indirect_leak",
+      "reason": "finance user probes restricted PR #2 — must NOT leak"
+    },
+    {
+      "id": "e2-059",
+      "user_ref": "demo-user-procurement",
+      "object_type": "supplier",
+      "object_ref": "SUP002",
+      "classification": "restricted",
+      "expected_allowed": true,
+      "category": "acl_explicit",
+      "reason": "ACL-ALLOW-CROSS-DEPT: procurement user explicitly allowed restricted supplier #2"
+    },
+    {
+      "id": "e2-060",
+      "user_ref": "demo-user-finance",
+      "object_type": "purchase_request",
+      "object_ref": "PR001",
+      "classification": "department",
+      "expected_allowed": true,
+      "category": "acl_explicit",
+      "reason": "ACL-ALLOW-READONLY: finance explicitly granted read-only access to procurement PR"
+    },
+    {
+      "id": "e2-061",
+      "user_ref": "demo-user-procurement",
+      "object_type": "contract",
+      "object_ref": "CON001",
+      "classification": "confidential",
+      "expected_allowed": false,
+      "category": "acl_explicit",
+      "reason": "ACL-DENY-TEST: procurement explicitly denied access to this specific contract"
+    }
+  ]
+}
