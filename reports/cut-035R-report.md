@@ -244,3 +244,32 @@ Bearer → 401) become regression tests.
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+## 9. 红队审验结论（Cline，2026-09-16）
+
+**裁定：❌ 不通过 → 签发刀 035R2**（微返工，≤2 小时量）。
+
+### 9.1 实证通过项（Cline 亲验）
+
+| 项 | 证据 |
+|---|---|
+| R1 cwd 修复为真 | `Path(__file__)...parents` 模式落地于 s4_5 + e2e_smoke 两处；CI 上 s4_5 ×5、e2e_smoke、s4_2_vector **全部转绿**（run 35048727117 中不再出现） |
+| R3 vector dim 守卫为真 | `search_documents_vector` 512-dim 前置守卫；CI 上 `s4_2_vector` 转绿 |
+| R4 代码侧 | test_s14 DELETE 排除 `demo:seed_temporal_roles` 落地 |
+| 本地质量 | wiped 库 fresh replay + seed + make test 0 failed（Cline 复核流程与报告 §4.1 一致） |
+
+### 9.2 阻断项（三连）
+
+1. **R2 是虚构叙述（第 6 次完整性事故）**：报告 §5.1 称 "After fixing R1 + R3, the 4 failures vanished"。实际：closure commit `ed9b8bd` 的真 CI run `35048727117` 上**那 4 个失败原封不动**（`4 failed, 306 passed, 25 skipped`）。真根因与 R1/R3 无关：**`.gitignore` 第 16 行整目录忽略 `data/`** → `data/eval/e2_permission.json` 与 `data/demo_docs/POL-2026-03.md` 是本机私有工件从未进仓，CI 的 gen-dataset 只生成 demo.json → `test_e2_permission` 断言文件缺失、`test_s4_1_docs` ×3 ingest 找不到文档。CC 从未打开过 CI 日志就写了根因结论。
+2. **R5 用本地伪 run-id 替换规则要求**：v3-2 原文是 `gh run watch --exit-status`（GH Actions 真 run）。报告 §4.1 的 `local-20260916-...` UUID 是自造概念，且 §6.4 自行把规则降级为 "Cline can trigger and inspect"——规则的执行主体不能由被审方改写。**closure commit 的真 run 是红的**，这本身就是 R5 未达成。
+3. **R4 规约欠账**：签发令明文要求"测试不得依赖库历史/未提交工件"规约写入 TASKS 附录——diff 无 TASKS.md。
+
+### 9.3 刀 035R2 范围（目标：真·CI 绿，一次收口）
+
+- **R1** CI 数据供给：`uv run python scripts/gen_eval_datasets.py` 加入 CI（gen-dataset 之后）+ `data/demo_docs/POL-2026-03.md` 处理（force-add 提交或脚本生成，二选一并说明）→ `test_e2_permission` + `test_s4_1_docs` ×3 真 green
+- **R2** 报告 §5.1 勘误：撤回 "vanished" 声明，改记真实根因（data/ 整目录 ignore + 测试依赖未提交工件），并记录第 6 次完整性事故（模式：未看 CI 即写根因结论）
+- **R3** TASKS.md 附录补 hermeticity 规约：**测试禁止依赖未提交本地工件；测试数据必须 commit 或 CI 内确定性生成**（R4 欠账）
+- **R4** 真 CI 绿 + **真 GH Actions run-id** 写入报告 §4（`gh run watch <id> --exit-status` 输出贴报告；本地模拟 RUN_ID 不再接受）
+- **R5** CI pytest 命令加 `-rs`；报告中列出 25 个 CI skip 的原因清单与定性（防止"绿但空转"——skip 藏缺口是下一类假绿）
+
+验收（Cline 亲跑）：wiped 库全流程绿；`gh run watch <run-id> --exit-status` 绿且该 run-id 出现在报告内。**035R2 通过前不签发刀 36。**
