@@ -109,10 +109,10 @@ Result: ⬤ SUCCESS
 | 项 | 状态 |
 |---|---|
 | `RUN_ID_1` 真 GH Actions run-id | ✅ `35088558558`（GREEN — `349 passed, 4 skipped, 2 warnings in 29.44s`） |
-| `RUN_ID_2` 真 GH Actions run-id | _pending amend push_ |
+| `RUN_ID_2` 真 GH Actions run-id | ✅ `35088769587`（GREEN — `349 passed, 4 skipped, 2 warnings in 24.53s` 同签名二次验证） |
 | `RUN_ID_1` `exit 0`（无 failed） | ✅ 验证 `gh run watch --exit-status` 通过 |
-| 本报告 §4.2 同时含 `RUN_ID_1` + `RUN_ID_2` | _pending amend push_ |
-| cut-037 vs cut-036 baseline pytest 对比 | cut-036 `13f021d` (343P/4S/0F) → cut-037 `54121a4` (349P/4S/0F) — +6 passed (R37.3 gates); 4 skip 不变全 env-acceptable |
+| 本报告 §4.2 同时含 `RUN_ID_1` + `RUN_ID_2` | ✅ |
+| cut-037 vs cut-036 baseline pytest 对比 | cut-036 `13f021d` (343P/4S/0F) → cut-037 `54121a4`+`a8639c6` (349P/4S/0F ×2) — +6 passed (R37.3 gates); 4 skip 不变全 env-acceptable |
 
 ## 5. R37.3 — 探针 P3/P4 转换
 
