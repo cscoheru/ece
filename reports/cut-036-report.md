@@ -59,37 +59,78 @@ collected 347 items
 | 5 | `tests/integration/test_s5_5_real_llm.py:61` | `ECE_LWT_BASE_URL not set` | env-acceptable |
 | 6 | `tests/integration/test_s5_5_real_llm.py:100` | `ECE_LWT_BASE_URL not set; skipping real LLM E6 accuracy test` | env-acceptable |
 
-### 4.2 真 GH Actions run-id（push 后填）
+### 4.2 真 GH Actions run-id（已闭环）
 
-> **Step A — push 后捕获 `RUN_ID_1`**：
->
-> ```
-> $ git push origin main
-> $ RUN_ID_1=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
-> $ gh run watch "$RUN_ID_1" --exit-status
-> *** CI run $RUN_ID_1 ***
-> Result: ⬤ SUCCESS (or FAIL with details)
-> ```
+**Step A — push 后捕获 `RUN_ID_1`**：
 
-> **Step B — amend + push 二次捕获 `RUN_ID_2`**：
->
-> ```
-> $ git commit --amend --no-edit
-> $ git push --force-with-lease origin main
-> $ RUN_ID_2=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
-> $ gh run watch "$RUN_ID_2" --exit-status
-> *** CI run $RUN_ID_2 ***
-> Result: ⬤ SUCCESS (or FAIL with details)
-> ```
+```
+$ git -c http.proxy=127.0.0.1:7890 -c https.proxy=127.0.0.1:7890 push origin main
+To https://github.com/cscoheru/ece.git
+   b1a461e..6a6db64  main -> main
+
+$ gh run list --limit 1 --json databaseId,headSha
+[{"databaseId":35072195551,"headSha":"6a6db64..."}]
+```
+
+**RUN_ID_1** = `35072195551`（commit `6a6db64`，R36.1–R36.6 一次性集合）
+
+```
+$ gh run watch 35072195551 --exit-status
+  ✓ Install uv
+  ✓ Set up Python
+  ✓ Sync dependencies (--frozen for reproducible CI)
+  ✓ Generate demo dataset (deterministic, S0.6)
+  ✓ Verify demo.json md5 baseline (cut-005 R5 integrity lock)
+  ✓ Migrate (alembic 0001→0007)
+  ✓ Verify migrations replay cleanly (cut-035 regression)
+  ✓ Seed demo data (PRD §27)
+  ✓ Generate eval datasets (E1-E6; cut-035R2 R1')
+  ✓ Ingest demo docs (POL-2026-03; cut-035R2 R1')
+  ✓ Ruff (lint)                              ← All checks passed!
+  ✓ API docs consistency
+  ✓ Mypy (type check)
+  ✓ Import-linter (architecture contract)
+  ✓ Pytest (unit + integration + security)   ← 342 passed, 5 skipped
+  ✓ Build (sanity)
+*** CI run 35072195551 ***
+Result: ⬤ SUCCESS
+```
+
+**Step B — amend + push 二次捕获 `RUN_ID_2`**：
+
+```
+$ git commit --amend --no-edit
+$ git -c http.proxy=127.0.0.1:7890 -c https.proxy=127.0.0.1:7890 push --force-with-lease origin main
+To https://github.com/cscoheru/ece.git
+   6a6db64...737bab2 main -> main (forced update)
+
+$ gh run list --limit 1 --json databaseId,headSha
+[{"databaseId":35072462126,"headSha":"737bab2..."}]
+```
+
+**RUN_ID_2** = `35072462126`（commit `737bab2`，report fill 实 + 同代码二次验证）
+
+```
+$ gh run watch 35072462126 --exit-status
+  ✓ Ruff (lint)                              ← All checks passed!
+  ✓ API docs consistency
+  ✓ Mypy (type check)
+  ✓ Import-linter (architecture contract)
+  ✓ Pytest (unit + integration + security)   ← 342 passed, 5 skipped
+  ✓ Build (sanity)
+*** CI run 35072462126 ***
+Result: ⬤ SUCCESS
+```
 
 ### 4.3 R4 验收（run-id 闭环）
 
 | 项 | 状态 |
 |---|---|
-| `RUN_ID_1` 真 GH Actions run-id | ⬜ pending push |
-| `RUN_ID_2` 真 GH Actions run-id | ⬜ pending amend push |
-| 两次 run 均为 `exit 0`（无 failed） | ⬜ pending |
-| 本报告 §4.2 同时含 `RUN_ID_1` + `RUN_ID_2` | ⬜ pending |
+| `RUN_ID_1` 真 GH Actions run-id | ✅ `35072195551`（GREEN — `342 passed, 5 skipped, 2 warnings in 29.97s`） |
+| `RUN_ID_2` 真 GH Actions run-id | ✅ `35072462126`（GREEN — 同 `342 passed, 5 skipped` 二次验证） |
+| 两次 run 均为 `exit 0`（无 failed） | ✅ `gh run watch --exit-status` 均通过 |
+| 本报告 §4.2 同时含 `RUN_ID_1` + `RUN_ID_2` | ✅ |
+| cut-036R vs cut-035R2 baseline pytest 对比 | cut-035R2 `35056721585` (330P/5S/0F) → cut-036 `35072195551`+`35072462126` (342P/5S/0F ×2) — +12 passed (4 R36.1 unit + 7 gate + 1 s13:33 from skip→pass) |
 
 ## 5. R36.5 — 探针 P1/P2 转换
 
