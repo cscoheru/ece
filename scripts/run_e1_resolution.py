@@ -45,10 +45,17 @@ def main() -> int:
         }
         headers = {"X-User-Id": case.get("mention", "")}
         try:
+            # cut-040 R40.2: explicit UTF-8 encoding + Content-Type header.
+            # `requests.post(json=body)` defaults to ensure_ascii=True which
+            # escapes Chinese mentions to `无限极`; the /resolve
+            # tokenizer then breaks on these escape sequences. Pre-serialize
+            # to UTF-8 bytes + explicit charset header so server parses raw
+            # CJK bytes (e.g. "无限极" stays as 3 UTF-8 bytes, not 18 ASCII
+            # bytes of `\uXXXX`).
             r = requests.post(
                 f"{args.base_url}/api/v1/resolve",
-                json=body,
-                headers=headers,
+                data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                headers={**headers, "Content-Type": "application/json; charset=utf-8"},
                 timeout=5,
                 proxies={"http": None, "https": None},  # bypass HTTP_PROXY (Clash) for localhost
             )

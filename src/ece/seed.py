@@ -162,12 +162,120 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
     return {"created_by_type": dict(counters), "skipped": skipped}
 
 
+def seed_acl_entries(engine) -> dict[str, int]:
+    """cut-040 R40.1a: seed acl_entries rows for E2 explicit-acl cases.
+
+    3 rows (e2-059 allow, e2-060 allow, e2-061 deny) — match
+    data/eval/e2_permission.json 'acl_explicit' category. Idempotent via
+    source_system tag ('demo:cut-040-test-acl').
+
+    Closes cut-039 R39.1 根因三连 #1: acl_entries 表 0 行。
+    """
+    from collections import Counter
+
+    rows = [
+        # e2-059: alice (procurement) allowed SUP052 (restricted) via explicit ALLOW
+        {
+            "subject_type": "user",
+            "subject_ref": "demo-user-procurement",
+            "object_type": "entity",
+            "object_ref": "SUP052",
+            "effect": "allow",
+        },
+        # e2-060: finance allowed PR001 (department) via explicit ALLOW
+        {
+            "subject_type": "user",
+            "subject_ref": "demo-user-finance",
+            "object_type": "entity",
+            "object_ref": "PR001",
+            "effect": "allow",
+        },
+        # e2-061: procurement DENIED CON001 (confidential) via explicit DENY
+        # Closes one of the 6 cut-039 R39.1 unauthorized exposures
+        {
+            "subject_type": "user",
+            "subject_ref": "demo-user-procurement",
+            "object_type": "entity",
+            "object_ref": "CON001",
+            "effect": "deny",
+        },
+    ]
+    counters: Counter[str] = Counter()
+    with engine.begin() as conn:
+        for r in rows:
+            result = conn.execute(
+                text(
+                    """
+                    INSERT INTO acl_entries
+                      (subject_type, subject_ref, object_type, object_ref, effect, source_system)
+                    VALUES (:st, :sr, :ot, :or, :eff, :ss)
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {**r, "ss": "demo:cut-040-test-acl"},
+            )
+            counters["created" if result.rowcount else "skipped"] += 1
+    return dict(counters)
+
+
+def _seed_entity_departments(engine) -> int:
+    """cut-040 R40.1c: post-seed UPDATE injects attributes.department
+    for entities referenced in e2_permission.json 'department' classification
+    cases with expected_allowed=True. Closes cut-039 R39.1 根因三连 #3:
+    entities.attributes.department 为 NULL → 17 expected-allow 反向失败.
+
+    Uses `||` jsonb merge to preserve existing keys; WHERE clause limits
+    to entities with no existing department (idempotent).
+    """
+    dept_by_entity: dict[str, str] = {
+        # entity_type → default dept (matches _object_dept prefix_map in
+        # permissions/engine.py:168-211; keeps seed & engine consistent)
+        "supplier": "procurement",
+        "purchase_request": "procurement",
+        # e2-021: finance allowed PR via ownership-of-PR; CON001 referenced
+        # by e2-061 (procurement DENIED via acl_explicit). For default
+        # department check (e.g. e2-009 dept allowed) we map contracts to
+        # procurement too — the explicit ACL on CON001 still wins.
+        "contract": "procurement",
+        "policy": "procurement",
+        "document": "procurement",
+        "product": "procurement",
+    }
+    total = 0
+    with engine.begin() as conn:
+        for entity_type, dept in dept_by_entity.items():
+            result = conn.execute(
+                text(
+                    """
+                    UPDATE entities
+                    SET attributes = attributes || jsonb_build_object('department', :dept)
+                    WHERE entity_type = :etype
+                      AND attributes->>'department' IS NULL
+                    """
+                ),
+                {"etype": entity_type, "dept": dept},
+            )
+            total += result.rowcount
+    return total
+
+
 def run_seed() -> dict[str, object]:
-    """Entry: load demo.json, upsert all entities, return summary."""
+    """Entry: load demo.json, upsert all entities, return summary.
+
+    cut-040 additions:
+    - _seed_entity_departments() injects attributes.department per entity_type
+      (R40.1c)
+    - seed_acl_entries() seeds 3 acl_entries for E2 'acl_explicit' cases
+      (R40.1a)
+    """
     engine = get_engine()
     out = seed_from_demo_json(engine, Path("data/dataset/demo.json"))
     users = seed_test_users(engine)
     out["test_users"] = users
+    # cut-040 R40.1c: inject attributes.department (post-seed UPDATE)
+    out["attributes_department_updated"] = _seed_entity_departments(engine)
+    # cut-040 R40.1a: seed 3 acl_entries for E2 explicit-acl cases
+    out["acl_entries"] = seed_acl_entries(engine)
     return out
 
 

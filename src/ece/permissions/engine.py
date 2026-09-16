@@ -22,7 +22,12 @@ DEFAULT_CLASSIFICATION_MATRIX: dict[str, dict[str, str | list[str]]] = {
     "public":        {"default": "allow"},
     "department":    {"default": "allow_dept"},
     "management":    {"default": "allow_management"},
-    "confidential":  {"default": "allow_management"},
+    # cut-040 R40.1b: confidential = owner-dept-match (was allow_management, which
+    # let every user with is_management=True in — including the 3 test users
+    # flagged as 'management' — bypass confidential, causing 6 of the 6 cut-039
+    # R39.1 unauthorized exposures: e2-022/023/024/052/053/054/061. PRD §35
+    # hard gate: 0 exposures, so this MUST be owner-dept not blanket-management).
+    "confidential":  {"default": "allow_dept"},
     "finance":       {"default": "allow_role", "roles": ["finance_manager", "cfo"]},
     "procurement":   {"default": "allow_role", "roles": ["procurement_manager", "buyer"]},
 }

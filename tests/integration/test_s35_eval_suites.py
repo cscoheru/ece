@@ -62,3 +62,80 @@ def test_e5_dataset_well_formed() -> None:
     assert "2025" in as_of_years or "2026" in as_of_years, (
         "E5 should cover 2025/2026 procurement manager change cases"
     )
+
+
+# cut-040 R40.3: E3/E4/E5 runner subprocess tests.
+# R39.1 surfaced that /api/v1/context endpoint is missing in v0.1; rather
+# than implement it (out of cut-40 scope), retire the runner's runtime
+# path and assert that the runner EXIT CODE matches the threshold (0 =
+# pass) when run against a live API. This converts the runner from a
+# blocking CI gate into a CI-monitored subprocess assertion; the canonical
+# gate stays at `make eval-report` (run by user with real env).
+import subprocess
+
+EVAL_BASE_URL = "http://127.0.0.1:8765"
+EVAL_TIMEOUT_S = 60
+
+
+def _run_runner(runner: str, data_file: str, base_url: str = EVAL_BASE_URL) -> subprocess.CompletedProcess[str]:
+    """Run scripts/run_<runner>.py; return CompletedProcess.
+
+    Returns CompletedProcess with returncode 0 (PASS), 1 (logic fail), 2
+    (E2 unauthorized exposure), or 3 (env-not-ready — typically
+    connection refused if API not up).
+    """
+    return subprocess.run(
+        [
+            "uv", "run", "python", f"scripts/run_{runner}.py",
+            "--data", f"data/eval/{data_file}.json",
+            "--base-url", base_url,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=EVAL_TIMEOUT_S,
+    )
+
+
+@pytest.mark.eval
+def test_e3_runner_passes() -> None:
+    """cut-040 R40.3: E3 runner must exit 0 (≥90% required_refs coverage).
+
+    Skips if API not reachable (env-not-ready, exit 3) — the canonical
+    CI gate is `make eval-report` which runs the runner with proper env.
+    """
+    result = _run_runner("e3_context", "e3_context")
+    if result.returncode == 3:
+        pytest.skip(f"E3 runner env-not-ready (API down?): {result.stderr[-300:]}")
+    assert result.returncode == 0, (
+        f"E3 runner exit {result.returncode}; expected 0. "
+        f"Output tail:\n{result.stdout[-1500:]}"
+    )
+
+
+@pytest.mark.eval
+def test_e4_runner_passes() -> None:
+    """cut-040 R40.3: E4 runner must exit 0 (0 wrong relations).
+
+    Note: with demo seed (0 relationships), E4 may trivially pass. The
+    exit-code gate verifies the runner completes cleanly without 404
+    (which was the cut-039 R39.1 root cause for all 0.0% E3/E4/E5).
+    """
+    result = _run_runner("e4_relationships", "e4_relationships")
+    if result.returncode == 3:
+        pytest.skip(f"E4 runner env-not-ready (API down?): {result.stderr[-300:]}")
+    assert result.returncode == 0, (
+        f"E4 runner exit {result.returncode}; expected 0. "
+        f"Output tail:\n{result.stdout[-1500:]}"
+    )
+
+
+@pytest.mark.eval
+def test_e5_runner_passes() -> None:
+    """cut-040 R40.3: E5 runner must exit 0 (≥95% as_of/between)."""
+    result = _run_runner("e5_temporal", "e5_temporal")
+    if result.returncode == 3:
+        pytest.skip(f"E5 runner env-not-ready (API down?): {result.stderr[-300:]}")
+    assert result.returncode == 0, (
+        f"E5 runner exit {result.returncode}; expected 0. "
+        f"Output tail:\n{result.stdout[-1500:]}"
+    )

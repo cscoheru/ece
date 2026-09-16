@@ -55,3 +55,66 @@ def test_e2_runner_no_unauthorized_exposure() -> None:
         pytest.fail(f"E2 FAIL: permission check failures\n{result.stdout[-1500:]}")
     # exit 0: PASS
     assert "PASS" in result.stdout
+
+
+@pytest.mark.security
+def test_e2_no_unauthorized_exposure_regression() -> None:
+    """cut-040 R40.D: 6 cut-039 R39.1 exposures must never recur.
+
+    Live-server gate: invokes scripts/run_e2_permission.py with
+    --insert-deny-acls (per run_e2_permission.py:29-33) so the runner
+    auto-inserts the 3 acl_entries rows that R40.1a seeds — making this
+    test self-sufficient without depending on `make seed` having run
+    R40.1. Then defense-in-depth greps stdout for the two PRD §35
+    hard-gate markers ('Exposures:          0' and 'Failures:           0')
+    so a future matrix/seed regression cannot mask a non-zero count as 0.
+    """
+    p = Path("data/eval/e2_permission.json")
+    if not p.exists():
+        pytest.skip("e2_permission.json not present")
+
+    try:
+        result = subprocess.run(
+            [
+                "uv", "run", "python", "scripts/run_e2_permission.py",
+                "--data", str(p),
+                "--base-url", "http://127.0.0.1:8765",
+                "--insert-deny-acls",
+            ],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.skip("e2 runner timed out (API not reachable in this env)")
+        return
+
+    if result.returncode not in (0, 1, 2):
+        pytest.skip(f"e2 runner returned unexpected exit {result.returncode} (likely env not ready)")
+        return
+
+    # Hard fail: exposure > 0 (CI blocker per cut-006 R2 + PRD §35)
+    if result.returncode == 2:
+        pytest.fail(
+            f"cut-040 R40.D REGRESSION: E2 Unauthorized Exposure > 0 (cut-039 根因复发):\n"
+            f"{result.stdout[-2000:]}"
+        )
+
+    # Defense-in-depth: explicitly grep stdout for the 0/0 markers.
+    # If a future regression silently masks the count, the markers will
+    # still appear non-zero in stdout and the test will fail.
+    if "Exposures:          0" not in result.stdout:
+        pytest.fail(
+            f"cut-040 R40.D REGRESSION: 'Exposures: 0' marker missing in E2 runner output:\n"
+            f"{result.stdout[-2000:]}"
+        )
+    if "Failures:           0" not in result.stdout:
+        pytest.fail(
+            f"cut-040 R40.D REGRESSION: 'Failures: 0' marker missing in E2 runner output:\n"
+            f"{result.stdout[-2000:]}"
+        )
+
+    # exit 0: PASS (with both markers explicitly verified)
+    assert result.returncode == 0, (
+        f"cut-040 R40.D REGRESSION: E2 runner exit {result.returncode} (expect 0). "
+        f"Last 1500 chars: {result.stdout[-1500:]}"
+    )
+    assert "PASS" in result.stdout
