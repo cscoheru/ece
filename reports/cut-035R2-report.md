@@ -12,7 +12,8 @@
 | Commit (R1'+R5) | `f5fdc47` |
 | Commit (R2+R3+R4-scaffold+R5-report) | `2c76496` |
 | Commit (R4 lint-fix) | `c8600d4` |
-| Commit (R4 run-id closure) | _pending — this commit_ |
+| Commit (R4 run-id closure) | `3e956ef` |
+| Commit (R4 follow-up triple-green verify) | _pending — this edit (RUN_ID_3 logged) |
 | Branch | `main` |
 | Test delta | cut-035R 4 failed → **0 failed** on fresh DB (verified locally; CI run-id in §4) |
 
@@ -220,8 +221,9 @@ TASKS.md 末尾新增 Appendix H，包含：
 | 项 | 实测 |
 |---|---|
 | `RUN_ID_1`（first push） | `35056469358` — RED（lint 阻断 — fail-loud 价值） |
-| `RUN_ID_2`（second push after lint fix） | `35056721585` — **GREEN** |
-| 修复前后对比 | cut-035R `35048727117` (4F/306P/25S) → cut-035R2 `35056721585` (0F/330P/5S) |
+| `RUN_ID_2`（second push after lint fix） | `35056721585` — GREEN（`330 passed, 5 skipped, 2 warnings in 27.51s`） |
+| `RUN_ID_3`（closure push） | `35056903762` — GREEN（`330 passed, 5 skipped, 2 warnings in 21.78s`，同签名二次验证） |
+| 修复前后对比 | cut-035R `35048727117` (4F/306P/25S) → cut-035R2 `35056721585` + `35056903762` (0F/330P/5S ×2) |
 | skip 数对比 | 25 → 5（R1' 供给类 13 项归 0；余 5 项全 env-acceptable） |
 
 本报告 §4.2 含完整 `gh run watch --exit-status` 输出贴证。**035R2 通过条件达成**（v3-2 "CI 绿 + 真 run-id" 双门槛均满足）。
