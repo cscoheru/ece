@@ -191,6 +191,41 @@ R37.2 让 X-Org-Id 完全无效（单 tenant 模式下也走 default 桶）。�
 
 **037 通过前前不签发刀 38**。
 
+## 10. Cline 红队终审（verdict）
+
+**结论：✅ PASS（w/ 3 处轻度更正，均非阻断）→ 签发 cut-038。**
+
+### 10.1 Cline 亲测证据（2026-09-16，本报告之外独立取证）
+
+| 项 | 结果 |
+|---|---|
+| wiped-DB fresh-replay 全套 | **349P/4S/0F**（42.03s）== CI run 35088769587 逐字一致；本地 skip 集 = {e2:50, s5_5×3}（cut006r 本地亦转绿） |
+| CI SKIPPED 真值（亲取 `gh run view 35088769587 --log`） | 4 行 = {e2:50, s5_5:36/61/100}，**无 cut006r skip** → R37.4 转换在 CI 真实兑现 |
+| +6 归因核验 | 036 CI 343P/4S → 037 CI 349P/4S = +6（R37.3 六个 gate），skip 集不变；归因**本次正确**（无 036 式虚构） |
+| **Cline 活体探针（9/9 PASS，TestClient+live DB，含 CC 测试未覆盖的对抗变体）** | ① P3 legacy: revoked alice + X-User-Id + 资源 token → **403**；② P3 JWT: revoked alice 有效 JWT + 资源 token → **403**；③ 控制组：非撤销 bob + 资源 token → **200**（无过度阻断）；④ 无身份纯 bearer token → **400**（身份必需，语义正确）；⑤ P4: alice 1st/2nd 200 / 3rd **429**；⑥ P4 旋转: X-Org-Id→org_b → **仍 429**（桶锚 org_a）；⑦ unmapped charlie 耗尽 default 桶 → **429**；⑧ charlie 旋转 header→org_a → **仍 429**（rotation-by-omission 关闭）|
+| R37.1 代码核验 | `delegation.py:199-201` `is_user_revoked(caller_user_ref)` **前置**于 token 检查（invariant 下沉 helper 本体，非 caller 端）；调用点 `audit.py:120` / `debug.py:218` 均传 `resolved_user_id` |
+| R37.2 代码核验 | `rate_limit.py:125` + `quota.py:80` 双 `_resolve_bucket_org_id`：mapped→映射 org，unmapped→`'default'`，**永不读 X-Org-Id**；audit/debug 调用点均传 `(resolved_user_id, x_org_id)` |
+| R37.4 代码核验 | `test_cut006r.py:67-95` list-endpoint 发现 + **两次调用都带 X-User-Id**（R36.6 教训已吸收）；Gap-039-1/2 已在 §7 登记 |
+| amend 差异核验 | `54121a4→a8639c6` diff = 报告占位符→实填（run-id 闭环），**无代码差异**；Step B 披露如实 |
+
+### 10.2 更正（3 处，轻度）
+
+1. **C1（流程卫生）**：§1 元数据 `Commit | _pending push_` 未回填终值；且报告 commit `8e2237c` 在"closed"声明时**未推送**（local ahead 1；代码 commit `a8639c6` 已在 origin）。终值以本节为准：R37.1–R37.4 主 commit = `a8639c6`（amended from `54121a4`），报告 commit = `8e2237c`+本审 commit，随本审一并推送。不构成完整性事件（无虚假断言，run-id 均真）。
+2. **C2（文字）**：§9 "037 通过**前前**不签发刀 38" → "通过前不签发刀 38"。cosmetic，不另行修改正文。
+3. **C3（→ cut-038 范围合并）**：§8.3 指出 v0.1 单租户 operator 现必须按 `default` 桶配置限流（X-Org-Id segmentation 已失效）——**API.md §8 速率段回锚说明并入 cut-038 文档回锚范围**，不单独立刀。
+
+### 10.3 完整性核查
+
+本轮**零新增完整性事件**（累计仍为 8）：skip 归因、+6 计数、双 run-id、amend 披露全部与亲取原始数据吻合——为 035R2 以来首个零偏差刀。
+
+### 10.4 签发 cut-038（检疫·v0.2 默认关 + 文档回锚）
+
+范围（per v3-3 + 本节 C3）：
+- **R38.1** 13 个 v0.2 env 默认 off 核查与整改（逐项列清单：JWT/multi-tenant/rate/quota/revocation/delegation tokens/webhook 等 env，默认部署 = 纯 v0.1 行为；已默认 off 的仅登记）
+- **R38.2** `docs/v0.2-deploy.md` + `v0.2-cutover.md` 头部加 BLOCKER 警示（引用 PRD 未批准 v0.2 + cuts 019–034 检疫结论）；TASKS.md 增附录如实记录 v0.2 arc
+- **R38.3** API.md §8 速率段回锚（桶=认证身份映射 org；单租户 default 桶；X-Org-Id 不再用于 segmentation）
+- 验收（Cline 亲跑）：make test 全绿（349P/4S 基线）；默认 env 下活体探针（无任何 v0.2 env 时 /debug 开放性 = v0.1 行为、JWT 未启用、无 bucket 副作用）；CI 绿 + 真 run-id 入报告（v3-2 双 run）
+
 ---
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
