@@ -272,4 +272,23 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - **R4** 真 CI 绿 + **真 GH Actions run-id** 写入报告 §4（`gh run watch <id> --exit-status` 输出贴报告；本地模拟 RUN_ID 不再接受）
 - **R5** CI pytest 命令加 `-rs`；报告中列出 25 个 CI skip 的原因清单与定性（防止"绿但空转"——skip 藏缺口是下一类假绿）
 
+### 9.4 Cline 自身事故披露（第 1 次 Cline 侧事故，2026-09-16）
+
+Cline 在 035R 审验后清理环境时执行了 `rm -rf data/pgdata data/eval data/demo_docs`——**后两个目录是 gitignored 的本机私有工件，从未进过 git**（全历史按名检索 0 commit；根仓/Obsidian/Time Machine 本地快照/Spotlight 全盘检索均无副本），不可恢复：
+
+| 工件 | 可恢复性 | 影响 |
+|---|---|---|
+| `data/eval/e3/e4/e5_*.json` | ✅ `scripts/gen_eval_datasets.py` 确定性再生（连库读 PR 数据） | 无 |
+| `data/demo_docs/POL-2026-03.md` | 🔶 可重建——测试只要求存在/ingest 出 chunks/FTS 命中 "procurement policy"，内容可按 cut-010/011 报告与 DATA_MODEL 语境重写 | 低（不在 CI md5 锁内） |
+| `data/eval/e1_resolution.json` | 🔶 可重建——EVALUATION.md §1 有完整规格（≥50 例、歧义/同名形态），demo.json 提供实体源 | 中：历史 E1 准确率数字无法在**同一数据**上复测 |
+| `data/eval/e2_permission.json` | 🔶 可重建——规格完整（A/B/C × 6 分类 × 跨部门诱导 + 间接泄露专项） | 中：同上 |
+| `data/eval/e6_agent.json` | 🔶 可重建——规格 + cut-015 报告模式 | 中：同上 |
+
+**根因**：我沿用了"清 pgdata"的惯性命令并顺手扩到了整个 data/，没先核对 data/ 下有 gitignored 工件。教训：清理命令的白名单原则——只删确知的可再生物（pgdata），gitignored 目录一律先查 `git ls-files`/可再生性再动手。此事故并入 035R2 范围处置（见 R1'），并在根仓总账记档。
+
+### 9.5 刀 035R2 修订范围（R1 扩为"重建+供给"，其余不变）
+
+- **R1'（扩）**：① 重建 `POL-2026-03.md`（按测试断言与报告语境）；② 重建 e1/e2/e6 数据集（严格按 EVALUATION.md §1 规格：E1 ≥50 例含歧义/同名、E2 ≥50 例含间接泄露专项、E6 ≥50 问含 insufficient 场景）；③ `gen_eval_datasets.py` 再生 e3/e4/e5；④ **全部 force-add 提交**（修复 .gitignore 整目录忽略的供给洞）；⑤ 上述入 CI（gen-dataset 步后）→ `test_e2_permission` + `test_s4_1_docs` ×3 真 green。报告中注明：数据集为重建版，历史准确率数字仅对原版有效，cut-039 出新数。
+- R2–R5 不变（报告勘误 / TASKS hermeticity 规约 / 真 CI 绿+真 run-id / pytest -rs + skip 定性）。
+
 验收（Cline 亲跑）：wiped 库全流程绿；`gh run watch <run-id> --exit-status` 绿且该 run-id 出现在报告内。**035R2 通过前不签发刀 36。**
