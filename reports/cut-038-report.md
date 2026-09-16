@@ -128,9 +128,10 @@ Result: ⬤ SUCCESS
 | 项 | 状态 |
 |---|---|
 | `RUN_ID_1` 真 GH Actions run-id | ✅ `35102064703`（GREEN — `349 passed, 4 skipped, 2 warnings in 28.91s`） |
-| `RUN_ID_2` 真 GH Actions run-id | _pending amend push_ |
+| `RUN_ID_2` 真 GH Actions run-id | ✅ `35102295017`（GREEN — `349 passed, 4 skipped, 2 warnings in 28.05s` 同签名二次验证） |
 | `RUN_ID_1` `exit 0`（无 failed） | ✅ 验证 `gh run watch --exit-status` 通过 |
-| cut-038 vs cut-037 baseline pytest 对比 | cut-037 `8e2237c` (349P/4S/0F) → cut-038 `229ea9d` (349P/4S/0F 同签名) — **zero code change verified** |
+| 本报告 §4.2 同时含 `RUN_ID_1` + `RUN_ID_2` | ✅ |
+| cut-038 vs cut-037 baseline pytest 对比 | cut-037 `8e2237c` (349P/4S/0F) → cut-038 `229ea9d`+`d7e3438` (349P/4S/0F ×2) — **zero code change verified** |
 
 ## 5. R38.1 — 13 v0.2 env 检疫表
 
