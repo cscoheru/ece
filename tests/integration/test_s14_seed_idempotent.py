@@ -18,17 +18,28 @@ def test_seed_first_run_then_second_run_idempotent(tmp_path) -> None:
     # Safe because cut-005 R1 fix preserves demo.json md5.
     # First delete relationships referencing these entities (cut-009 added
     # 1206 relationships; FK constraint would otherwise block entity delete).
+    #
+    # R4 (cut-035R) hermeticity: exclude 'demo:seed_temporal_roles' from
+    # wipe so test_s4_5_temporal's autouse fixture data survives. Test
+    # isolation rule: destructive cleanup must NOT cross test module
+    # boundaries.
     with engine.begin() as conn:
         conn.execute(
             __import__("sqlalchemy").text(
                 "DELETE FROM relationships WHERE "
-                "src_entity_id IN (SELECT id FROM entities WHERE source_system LIKE 'demo:%') "
-                "OR dst_entity_id IN (SELECT id FROM entities WHERE source_system LIKE 'demo:%')"
+                "src_entity_id IN (SELECT id FROM entities WHERE "
+                "source_system LIKE 'demo:%' "
+                "AND source_system != 'demo:seed_temporal_roles') "
+                "OR dst_entity_id IN (SELECT id FROM entities WHERE "
+                "source_system LIKE 'demo:%' "
+                "AND source_system != 'demo:seed_temporal_roles')"
             )
         )
         conn.execute(
             __import__("sqlalchemy").text(
-                "DELETE FROM entities WHERE source_system LIKE 'demo:%'"
+                "DELETE FROM entities WHERE "
+                "source_system LIKE 'demo:%' "
+                "AND source_system != 'demo:seed_temporal_roles'"
             )
         )
 

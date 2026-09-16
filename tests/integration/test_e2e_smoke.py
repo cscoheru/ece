@@ -147,7 +147,7 @@ def test_export_audit_script_runs(client: TestClient, own_request_id: str) -> No
         ],
         capture_output=True,
         text=True,
-        cwd="/Users/kjonekong/projects/domainAgentECE/ece",
+        cwd=str(Path(__file__).resolve().parent.parent.parent),
         timeout=30,
     )
     assert result.returncode == 0, f"export failed:\n{result.stderr}"

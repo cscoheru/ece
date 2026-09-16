@@ -233,10 +233,23 @@ def search_documents_vector(
     chunk_index, text, snippet, similarity}. Empty if no docs have embeddings
     (V0: all NULL since no embedding model run yet).
 
-    Note: pgvector strict on dimension — wrong dim raises DataError.
-    pgvector binding: SQLAlchemy `text()` doesn't auto-convert list → vector;
-    serialize to '[a,b,c,...]' string + CAST AS vector in SQL.
+    R3 (cut-035R): wrong-dim embeddings now return [] gracefully instead
+    of raising DataError. pgvector strictly enforces dimension match at
+    query plan time (BEFORE WHERE filtering), so any non-512-dim input
+    fails on the cast even when no rows have embeddings. Caller-friendly
+    fallback: log a warning and return [].
     """
+    # R3 fix: dim mismatch (non-512-dim input) → return [] with warning
+    # instead of letting pgvector raise DataError.
+    expected_dim = 512
+    if len(query_embedding) != expected_dim:
+        logger.warning(
+            "search_documents_vector: query_embedding dim=%d != expected %d; returning []",
+            len(query_embedding),
+            expected_dim,
+        )
+        return []
+
     type_filter_sql = ""
     # Serialize embedding as pgvector-compatible string '[a,b,c,...]'
     embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"

@@ -37,12 +37,17 @@ def ensure_temporal_roles_seeded() -> None:
     scripts/seed_relationships.py before the temporal tests run.
     """
     # Re-seed per-PR relationships (test_s14 may have deleted them)
+    # R1 (cut-035R): replaced hardcoded mac cwd with Path-based repo root
+    # so test works on CI (Linux runner) too, not just user's Mac.
     import subprocess
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
     result = subprocess.run(
         ["uv", "run", "python", "scripts/seed_relationships.py"],
         capture_output=True,
         text=True,
-        cwd="/Users/kjonekong/projects/domainAgentECE/ece",
+        cwd=str(repo_root),
         timeout=60,
     )
     if result.returncode != 0:
