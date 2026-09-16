@@ -245,16 +245,16 @@ def _seed_entity_departments(engine) -> int:
     total = 0
     with engine.begin() as conn:
         for entity_type, dept in dept_by_entity.items():
-            # COALESCE wraps attributes->>'department' so postgres can
-            # determine the type even when attributes is empty jsonb `{}`
-            # (raw `IS NULL` on `->>` of empty jsonb raises IndeterminateDatatype).
+            # Skip the WHERE filter for empty jsonb (avoids 'IndeterminateDatatype'
+            # from `->>` on {}). `||` is idempotent — overwrites 'department' key
+            # with same value if already present. Cheap since each entity_type has
+            # <200 rows. Idempotency: re-running `make seed` is safe.
             result = conn.execute(
                 text(
                     """
                     UPDATE entities
                     SET attributes = attributes || jsonb_build_object('department', :dept)
                     WHERE entity_type = :etype
-                      AND COALESCE(attributes->>'department', '') = ''
                     """
                 ),
                 {"etype": entity_type, "dept": dept},
