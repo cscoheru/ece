@@ -209,11 +209,11 @@ def seed_acl_entries(engine) -> dict[str, int]:
                     """
                     INSERT INTO acl_entries
                       (subject_type, subject_ref, object_type, object_ref, effect, source_system)
-                    VALUES (:st, :sr, :ot, :or, :eff, :ss)
+                    VALUES (:subject_type, :subject_ref, :object_type, :object_ref, :effect, :source_system)
                     ON CONFLICT DO NOTHING
                     """
                 ),
-                {**r, "ss": "demo:cut-040-test-acl"},
+                {**r, "source_system": "demo:cut-040-test-acl"},
             )
             counters["created" if result.rowcount else "skipped"] += 1
     return dict(counters)
