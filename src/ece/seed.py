@@ -253,7 +253,7 @@ def _seed_entity_departments(engine) -> int:
                 text(
                     """
                     UPDATE entities
-                    SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object('department', :dept)
+                    SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object('department', CAST(:dept AS text))
                     WHERE entity_type = :etype
                     """
                 ),
