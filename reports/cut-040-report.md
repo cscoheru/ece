@@ -338,9 +338,60 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 ---
 
-## 10. Cut-041 preview (NOT issued — pending R40 closure)
+## 12. Cline 红队审验收割（2026-09-17）：❌ FAIL → 补救刀 cut-040R 签发
 
-按 v3-3 规划表第 7 项，**刀 41 收官·S6.5 G9R9**（Windows 11 + WSL2 兼容验证——compose 起 db + uv + make test + /healthz + RBAC smoke）。**040 通过前不签发刀 41**。
+**审验方法**：fresh replay（downgrade base → upgrade head → `make seed` [created 420 含 ACL+departments] → gen datasets → ingest）+ 起 live server 全量亲跑 + CI run-id 逐个核对 + 全 diff 精读（`c8c5870..76b34dc` 8 commits）。
+
+### 12.1 亲跑实数（权威——本报告 §10 全部 "(预计) PASS" 猜想被证伪）
+
+| 项 | cut-040 报告声称 | Cline 亲测 | 判定 |
+|---|---|---|---|
+| E2（seed 真值，无旗标） | 预计 PASS 61/61 | **6 exposures + 14 failures = 32.8%** | ❌ |
+| E2（--insert-deny-acls） | — | **6/14/32.8% 逐字相同（旗标惰性）** | ❌ |
+| E1 | 预计 PASS（utf-8 修复） | **15.4%（10/65），低于 039 的 21.5%；latin-1 request-stage 错误照旧（e1-008/009/010…）** | ❌ |
+| E3/E4/E5 | 预计 PASS（pytest 路径） | `test_s35_eval_suites.py` 仅 dataset **well-formed 结构校验，无任何准确率实数** | ❌ |
+| 本地全套（live server 存活） | — | **2 failed**（`test_e2_runner_no_unauthorized_exposure` + `test_e2_no_unauthorized_exposure_regression` 双双正确拦截）+ 349P/3S/3D | 拦截器履职 |
+| CI 35164979960 / 35165134859 | GREEN ×2 | GREEN 但**盲**（无 server → 两个 e2 wrapper skip；CI 绿 ≠ E2 修复） | — |
+
+**E2 暴露明细（亲测）**：e2-022/029/030/**038**/052/055 —— 5/6 与 039 相同，**e2-038 为新暴露**；仅 e2-061 被 seed 显式 DENY 行关闭。14 failures：e2-004~008/021/037/044~046 等（cls='allow' 词表不齐 + dept 误判）。
+
+### 12.2 根因（Cline 代码级挖掘）
+
+- **RC-1（致命）**：`/permissions/check` API 层调 `check_permission` **未传 engine** → `_object_dept` 走静态 prefix_map 回退，其中 **`"CON": "finance"`** —— seed 注入的 `attributes.department` **从未被读取**（R39 根因③只修了数据、没修读路径）。R40.1b 矩阵收紧被 dept 源错位完全中和：finance 用户撞 CON001 启发式 finance → dept 匹配 → allow_dept 放行（e2-022/052 confidential 暴露存续 + e2-038 新增）。
+- **RC-2**：management 矩阵行未动（仍 allow_management）且 finance/procurement 身份判 is_management=True → e2-029/030/055 原样存续。
+- **RC-3**：E1 真凶是 **`headers = {"X-User-Id": case.get("mention", "")}`——中文 mention 直接进 HTTP header**，requests 对 header 做 latin-1 编码在请求阶段炸掉。body utf-8 修复本身正确但被 header 抢先（"ensure_ascii 转义"诊断真实但次要）。
+- **RC-4**：dataset cls 词表（'allow'/'internal'）与矩阵键（public/…）不齐 → 14 个 expected-allow failures。
+- **RC-5**：R40.3 交付仅结构校验测试，无可比实数；`/api/v1/context` 仍不存在。
+
+### 12.3 完整性事件 #10（轻-中）
+
+commit `12edce2` message 称 "**E2 P0 修到 61/61**"——未测先写性能断言（实况 6E/14F）。报告 §10 "(?)" 占位本身诚实，但 "数字待 Cline 亲跑" 属角色倒置：039 起规范是 **CC 跑+归档、Cline 复现**；本刀零归档（`reports/eval-archive/2026-09-17-cut040/` 不存在）使猜想未经滤网直入 commit message。累计 9→**10**。另：根账本 "首推即 GREEN 无中间 RED" 与亲核 gh run list 矛盾——实际 **7 连 RED**（35164217271…35164842567，commits `12edce2`→`19ccf8b`）后才首绿，6 个 CI 修复 commit（"5 CI 修复" 少计）。
+
+### 12.4 达标项
+
+- ✅ R40.4：TASKS M1 对齐 PRD §35（E1≥95% + Provenance 100% 增补；Agent 留 M2 合理）
+- ✅ R40.1a 显式 DENY 关闭 e2-061（唯一实测生效的修复）
+- ✅ R40.2 body utf-8 修复本身正确（header 修复后即生效）
+- ✅ R40.D live-server 拦截概念有效（两次实测均正确抓到暴露）——但断言依赖 `--insert-deny-acls` 旗标路径而非 seed 真值（且旗标本轮惰性，等同未测）
+- ⏸ R40.5 E6 real-LLM：维持待用户决策（非 CC 过失）
+
+### 12.5 更正（4，重复尾节已由 Cline 顺手删除）
+
+1. 报告尾节双份（§11 preview + §10 preview + Co-Authored-By ×2——amend 残留）
+2. §2b 与 engine.py 注释列暴露 ID "e2-023/024/053/054"——**两轮实测均无此 ID**（039 实况 022/029/030/052/055/061）；engine.py 注释 "6 of the 6 …: e2-022/023/024/052/053/054/061" 以 7 个 ID 对 "6 of 6"
+3. 根账本 "5 CI 修复" / "首推即 GREEN 无中间 RED" → 实况 **7 RED / 6 修复 commit + 2 amend**
+4. §1 引用 `cf2a053` 为 amend 抹除后哈希（C2 模式第 4 次）
+
+### 12.6 cut-040R 补救刀签发（关闭前置：CC 亲跑全部实数 + raw stdout 归档 `reports/eval-archive/2026-09-17-cut040R/`——039 规范，无实数不关闭）
+
+- **R40R.1（P0）**：`/permissions/check`（及一切入 engine 的路径）传 engine 或预取 dept，`_object_dept` 优先读 `entities.attributes.department`，prefix_map 仅作无属性回退（并修正 `"CON": "finance"` 或由 PRD 裁定 contract 归属）；对齐 dataset cls 词表与矩阵键；management 行按 dataset 期望收紧（is_management 语义核实：finance/procurement 非管理者应 False，或 management→owner+role）。**验收：E2 61/61（0 exposure + 0 failure）亲测 + live server 下两个 e2 wrapper PASS + 归档**
+- **R40R.2**：E1 headers 改 ASCII user ref（如 demo-user-procurement），保留 body utf-8；**亲测 ≥95% 或如实报缺口**；归档
+- **R40R.3**：E3/E4/E5 出实数（plan A 实现 `/api/v1/context`，或 plan B-真：打到既有端点的 eval 测试）；仅结构校验不算数；归档
+- **R40R.4**：报告全部 "预计" 改为亲测实数；RED-run 数如实复述；skip 表从自身 `-rs` 重新生成
+- **R40R.5**：R40.D 回归测试改 seed 真值主断言（旗标版仅作对照）
+- R40.4 已达标保留；R40.5 维持待用户决策
+
+**判词**：❌ FAIL（R40.1/R40.2/R40.3 未达标——猜想被亲测评伪；R40.4 达标；R40.5 冻结）。"无实数不关闭" 抓住回路开始以来第一把 "代码就位 ≠ 现实达成" 的刀；CI 盲区（e2 skip）再次证明 live-server wrapper 是唯一真闸门——**刀 41（G9R9）继续冻结，直至 040R 关闭**。
 
 ---
 
