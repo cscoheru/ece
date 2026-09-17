@@ -9,7 +9,7 @@
 | Sprint | v0.1 缺口清偿 (post-cut-039 closure; 035 纠偏规划表第 6 项) |
 | Scope | R40.1 + R40.2 + R40.3 + R40.4 + R40.5 + R40.D |
 | Author | Claude Fable 5 |
-| Commit (R40.1-R40.5 + R40.D) | `cf2a053` (+ amend `a1af336` RUN_ID_1 填实 + RUN_ID_2 验证) |
+| Commit (R40.1-R40.5 + R40.D) | `cf2a053` (+ amend `a1af336` RUN_ID_1 填实 + RUN_ID_2 验证 `76b34dc`; + **R40R 修复 commits `887ce44`+`dddb87a`** — R40.1-R40.5 + R40.D code only, **close gate 实数待 Cline/infra 亲跑**) |
 | Branch | `main` |
 | Test delta | cut-039 baseline 349 passed, 4 skipped → _post-R40 实证 (R40.5 需 user env vars + infra live)_ |
 

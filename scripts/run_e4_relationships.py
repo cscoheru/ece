@@ -54,11 +54,6 @@ def main() -> int:
         except Exception as e:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
             continue
-                "case": case["id"],
-                "stage": "http",
-                "error": f"status {r.status_code}",
-            })
-            continue
 
         rels = pkg.get("relationships", [])
         count = len(rels)

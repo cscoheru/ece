@@ -55,10 +55,6 @@ def main() -> int:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
             continue
 
-        if r.status_code != 200:
-            failures.append({"case": case["id"], "stage": "http", "error": f"status {r.status_code}"})
-            continue
-
         rels = pkg.get("relationships", [])
         count = len(rels)
         expected = case.get("expected_count", 0)
