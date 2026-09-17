@@ -299,4 +299,57 @@ cut-040 RC-5: E3/E4/E5 runner 走 `POST /api/v1/context` (v0.1 不存在 → 404
 
 ---
 
+## 10. Cline 红队审验收割（2026-09-17）：❌ FAIL（二连）→ 补救刀 cut-040R-2 签发
+
+**审验方法**：fresh replay（downgrade base → upgrade → seed → gen → ingest）+ 基线套件 349P/5S/3D == CI 逐字 + live server 全量亲跑 + **受控实验**（dept 手动恢复后重跑 E2 分解暴露源）+ 全 diff 精读。归档：`reports/eval-archive/2026-09-17-cut040R-cline/`（8 文件，README 溯源——**CC 侧 close-gate 归档仍缺**）。
+
+### 10.1 亲跑实数（全部 TBD 已由 Cline 回填）
+
+| 项 | 报告 | Cline 亲测 | 判定 |
+|---|---|---|---|
+| **E1（R40R.2）** | TBD | **98.5% PASS ≥95%**（ASCII header + utf-8 body 双修生效） | ✅ |
+| **E2 post-pytest（seed 真值被洗后）** | TBD | **6E + 14F = 32.8%**（与 040R 修复前逐字同——见 RC-6） | ❌ |
+| **E2 受控（dept 恢复、无 pytest 干扰）** | TBD | **5E + 5F = 16.4%**（e2-022/038/052 关闭=RC-1 生效实证；余 5 暴露见下） | ❌ |
+| **E3/E4/E5（R40R.3）** | TBD | **0.0% 裸崩**：`'ContextPackage' object has no attribute 'get'`（E3/E4）、`'str' object has no attribute 'isoformat'`（E5）——**重写后一次都没跑过** | ❌ |
+| 本地全套（无 server） | — | **349P/5S/3D == CI 35193269427/35193412512 逐字**（零回归真） | ✅ |
+| `/api/v1/context`（040R 称 "不存在"） | — | **存在且活**（OpenAPI 14 paths 含之；POST 得 422 参数校验非 404）——直调改写前提过时 | ⚠️ |
+
+**受控态 5 暴露**：e2-025（restricted 新暴露）、e2-029/030/055（is_management）、e2-061（ACL 哑弹）；**5 failures**：e2-004/008/044/048（U_other_dept 未知身份 deny）、e2-060（ACL 哑弹反噬）。
+
+### 10.2 新根因六连（Cline 受控实验+代码挖掘，RC-6 ~ RC-11）
+
+- **RC-6（状态洗库——两轮 E2 皆中招）**：`tests/integration/test_s14_seed_idempotent.py:38-48` 对**真库** `DELETE FROM entities WHERE source_system LIKE 'demo:%'` 后双重 `seed_from_demo_json` 重建——**每次 pytest 都把 R40.1c 的 attributes.department 洗掉**（ACL 表独立幸存）。040/040R 两轮的 E2 全在被洗库上跑，数据修复从未真正参战。
+- **RC-7（数据集内部冲突）**：e2-060（acl_explicit：FIN→PR001 期望 allow）vs e2-030/055（management：FIN→PR001 期望 deny）——同 user+object 相反期望；ADR-004 ACL 优先于分类 → 全局 ACL 行语义下**不可同时满足**。
+- **RC-8（RC-2 "修复"是空操作）**：`identity/parser.py:85` `is_management = any("manager" in r.lower() ...)`——**flag 本身由同一个 substring 派生**，三个测试用户全 True；engine 侧删 substring 只是搬位置。数据集 management 六案全期望 deny、理由明写 "has no mgmt role"——语义无歧义：substring 派生就是 bug。
+- **RC-9（ACL 全域哑弹）**：seed ACL 行 `object_type='entity'`，数据集 object_type 词表 = {purchase_request 28, contract 16, supplier 17}（**零 'entity'**）；API ACL 预取按类型过滤 → e2-059/060/061 的 ACL 全部不命中（e2-061 翻案、e2-060 反噬之源）。Cline 探针用 'entity' 一发命中、runner 用领域类型全哑——同参数不同命。
+- **RC-10（restricted 语义错置）**：RC-4 把 restricted→allow_dept → 新暴露 e2-025（PROC→PR001 restricted 期望 deny）。
+- **RC-11（未知身份处理）**：U_other_dept 的 public/internal 期望-allow 案（e2-004/008/044/048）全 deny——未知 user_ref 未解析为裸 Identity 走 public 放行。
+
+### 10.3 完整性事件 #11（轻）
+
+§2b + engine.py 注释断言 "改用显式 is_management flag 后 **3 test user 全 False**"——**关于运行时状态的虚假陈述**（parser.py:85 派生下全 True；受控实测 e2-029/030/055 照旧放行）。另记：§1 引 `dddb87a` 复被 amend 抹除（C2 模式第 5 次）；§7 baseline 写 "cut-040 `8e2237c` (349P/4S/0F)"——**哈希不存在且签名是 039 的**；§5 表 "(预计) PASS" 复发（自违 §8.1 新规）；幻影 ID e2-023/024 第 4 次进 docstring。累计 **11**。
+
+### 10.4 达标项（真进步，非全盘否定）
+
+- ✅ **R40R.2 E1 = 98.5%**（关 R39.1 E1 缺口；ASCII header 诊断精准）
+- ✅ **RC-1 engine 传通实测生效**（受控态 e2-022/038/052 三案关闭——040R 核心修复是对的，死于 RC-6 洗库）
+- ✅ internal/restricted 矩阵补齐修好 e2-005/006/007（受控态 failures 14→5）
+- ✅ CI 零回归双绿为真；R40R.5 去旗标代码就位；TBD 纪律（无编造数字）优于 040
+- ⏸ R40.5 E6 real-LLM 维持待用户决策
+
+### 10.5 cut-040R-2 签发（手术单——六根因逐一对应；关闭前置不变：**CC 亲跑 + 归档**，sandbox 受限须**开刀前**声明而非代码落地后）
+
+- **R40R2.1（P0-状态洗库）**：部门注入移入 `seed_from_demo_json` 内（幂等重播自愈）或 s14 改事务回滚；**新增状态完整性测试**：全套 pytest 后 `SELECT count(*) FROM entities WHERE entity_type='contract' AND attributes->>'department' IS NULL` == 0
+- **R40R2.2（P0-ACL 哑弹）**：seed ACL 行 object_type 对齐数据集词表（或在 API 边界归一化 domain-type↔entity）；e2-059/060/061 ACL 复活
+- **R40R2.3（P0-management）**：`is_management` 改显式种子属性（默认 False），删 parser.py:85 substring 派生；六案全 deny 语义即达标
+- **R40R2.4（P0-数据集冲突）**：acl_explicit 案例改用专属对象（不与 management 案同 pair），改 `gen_eval_datasets.py` 重生成——**验收：e2-060 与 e2-030/055 不再共享 user+object**
+- **R40R2.5（restricted）**：枚举 7 个 restricted 案期望，语义改 deny-unless-explicit（或按期望集裁定）
+- **R40R2.6（未知身份）**：U_other_dept 解析为裸 Identity（public/internal 可达）
+- **R40R2.7（runner 冒烟）**：E3/E4/E5 先探 `/api/v1/context`（现已存在，422=参数问题非 404）——能用 HTTP 就回 HTTP 路径；直调路径修 `ContextPackage` 属性访问与 `as_of` 类型；**每个 runner 至少跑通一次再交付**
+- **R40R2.8**：E1 98.5% 已由 Cline 归档定格；E2 验收不变：61/61（0E+0F）亲测 + live 双 wrapper PASS + 归档
+
+**判词**：❌ FAIL 二连（R40R.1 未达 61/61——受控最好 5E/5F；R40R.3 0.0% 裸崩；R40R.2 ✅ 98.5%；R40R.4 半达标——TBD 诚实但含虚假运行时断言；R40R.5 代码就位未证）。核心修复方向正确、死于三个没人跑过就看不见的交叉雷（洗库/词表/派生）。**刀 41 继续冻结，直至 040R-2 关闭。**
+
+---
+
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>

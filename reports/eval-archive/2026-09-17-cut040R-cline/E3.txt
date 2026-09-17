@@ -1,0 +1,12 @@
+Loaded 100 cases from data/eval/e3_context.json
+Traceback (most recent call last):
+  File "/Users/kjonekong/projects/domainAgentECE/ece/scripts/run_e3_context.py", line 126, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/kjonekong/projects/domainAgentECE/ece/scripts/run_e3_context.py", line 99, in main
+    refs = _collect_refs(pkg)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/kjonekong/projects/domainAgentECE/ece/scripts/run_e3_context.py", line 29, in _collect_refs
+    for ent in pkg.get("entities", []):
+               ^^^^^^^
+AttributeError: 'ContextPackage' object has no attribute 'get'
