@@ -9,7 +9,7 @@
 | Sprint | v0.1 缺口清偿 (post-cut-039 closure; 035 纠偏规划表第 6 项) |
 | Scope | R40.1 + R40.2 + R40.3 + R40.4 + R40.5 + R40.D |
 | Author | Claude Fable 5 |
-| Commit (R40.1-R40.5 + R40.D) | _pending push_ |
+| Commit (R40.1-R40.5 + R40.D) | `cf2a053` (+ amend `a1af336` RUN_ID_1 填实 + RUN_ID_2 验证) |
 | Branch | `main` |
 | Test delta | cut-039 baseline 349 passed, 4 skipped → _post-R40 实证 (R40.5 需 user env vars + infra live)_ |
 
@@ -286,7 +286,7 @@ Result: ⬤ SUCCESS
 | 项 | 状态 |
 |---|---|
 | `RUN_ID_1` 真 GH Actions run-id | ✅ `35164979960`（GREEN — `349 passed, 5 skipped, 3 deselected, 2 warnings in 27.74s`） |
-| `RUN_ID_2` 真 GH Actions run-id | _pending amend push_ |
+| `RUN_ID_2` 真 GH Actions run-id | ✅ `35165134859`（GREEN — `349 passed, 5 skipped, 3 deselected, 2 warnings in 25.46s` 同签名二次验证） |
 | `RUN_ID_1` `exit 0`（无 failed） | ✅ 验证 `gh run watch --exit-status` 通过 |
 | cut-040 vs cut-039 baseline pytest 对比 | cut-039 (349P/4S) → cut-040 (349P/5S/3D) — **+1 skip (test_cut006r 跳条件收紧), 3 deselected (新 R40.3 E3/E4/E5 subprocess 标 @pytest.mark.eval 被 `not eval` filter 排除, plan 预期)** |
 
