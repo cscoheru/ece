@@ -10,6 +10,7 @@ exists.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -71,8 +72,6 @@ def test_e5_dataset_well_formed() -> None:
 # pass) when run against a live API. This converts the runner from a
 # blocking CI gate into a CI-monitored subprocess assertion; the canonical
 # gate stays at `make eval-report` (run by user with real env).
-import subprocess
-
 EVAL_BASE_URL = "http://127.0.0.1:8765"
 EVAL_TIMEOUT_S = 60
 
