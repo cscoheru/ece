@@ -59,15 +59,24 @@ def test_e2_runner_no_unauthorized_exposure() -> None:
 
 @pytest.mark.security
 def test_e2_no_unauthorized_exposure_regression() -> None:
-    """cut-040 R40.D: 6 cut-039 R39.1 exposures must never recur.
+    """cut-040R R40R.5: 6 cut-039 R39.1 exposures must never recur.
 
-    Live-server gate: invokes scripts/run_e2_permission.py with
-    --insert-deny-acls (per run_e2_permission.py:29-33) so the runner
-    auto-inserts the 3 acl_entries rows that R40.1a seeds — making this
-    test self-sufficient without depending on `make seed` having run
-    R40.1. Then defense-in-depth greps stdout for the two PRD §35
-    hard-gate markers ('Exposures:          0' and 'Failures:           0')
-    so a future matrix/seed regression cannot mask a non-zero count as 0.
+    Defense-in-depth gate: invokes scripts/run_e2_permission.py **without**
+    --insert-deny-acls (Cline亲验发现 cut-040 R40.D 该旗标惰性 — 与
+    不带该旗标输出逐字相同)。本测试改为**主断言** = `make seed` 真值
+    已生效（即 R40R.1 RC-1 engine pass-through + R40R.1 RC-2 management
+    tighten + R40R.1 RC-4 cls词表补齐 + R40.1a seed_acl_entries 全部
+    起作用），e2-022/023/024/038/052/055 不再 unauthorized 暴露。
+
+    Requires:
+    - infra live (docker compose up -d db + api)
+    - `make seed` 已跑 (R40.1a seed_acl_entries 落库)
+    - `alembic upgrade head` (migrations applied)
+
+    If R40R.1 fixes aren't actually effective, this test FAILS immediately
+    at the marker-grep step. If `--insert-deny-acls` is added back, the
+    test would pass even with broken engine — which is what Cline caught
+    in cut-040 §12 review.
     """
     p = Path("data/eval/e2_permission.json")
     if not p.exists():
@@ -79,7 +88,10 @@ def test_e2_no_unauthorized_exposure_regression() -> None:
                 "uv", "run", "python", "scripts/run_e2_permission.py",
                 "--data", str(p),
                 "--base-url", "http://127.0.0.1:8765",
-                "--insert-deny-acls",
+                # NO --insert-deny-acls: cut-040R R40R.5 main assertion.
+                # The test now depends on `make seed` having actually
+                # populated acl_entries (R40.1a) + the engine having
+                # actually been passed through (R40R.1 RC-1).
             ],
             capture_output=True, text=True, timeout=60,
         )
@@ -94,7 +106,8 @@ def test_e2_no_unauthorized_exposure_regression() -> None:
     # Hard fail: exposure > 0 (CI blocker per cut-006 R2 + PRD §35)
     if result.returncode == 2:
         pytest.fail(
-            f"cut-040 R40.D REGRESSION: E2 Unauthorized Exposure > 0 (cut-039 根因复发):\n"
+            f"cut-040R R40R.5 REGRESSION: E2 Unauthorized Exposure > 0 "
+            f"(cut-039 根因复发 — RC-1/RC-2/RC-4 修复未生效 OR make seed 未跑):\n"
             f"{result.stdout[-2000:]}"
         )
 
@@ -103,18 +116,18 @@ def test_e2_no_unauthorized_exposure_regression() -> None:
     # still appear non-zero in stdout and the test will fail.
     if "Exposures:          0" not in result.stdout:
         pytest.fail(
-            f"cut-040 R40.D REGRESSION: 'Exposures: 0' marker missing in E2 runner output:\n"
+            f"cut-040R R40R.5 REGRESSION: 'Exposures: 0' marker missing in E2 runner output:\n"
             f"{result.stdout[-2000:]}"
         )
     if "Failures:           0" not in result.stdout:
         pytest.fail(
-            f"cut-040 R40.D REGRESSION: 'Failures: 0' marker missing in E2 runner output:\n"
+            f"cut-040R R40R.5 REGRESSION: 'Failures: 0' marker missing in E2 runner output:\n"
             f"{result.stdout[-2000:]}"
         )
 
     # exit 0: PASS (with both markers explicitly verified)
     assert result.returncode == 0, (
-        f"cut-040 R40.D REGRESSION: E2 runner exit {result.returncode} (expect 0). "
+        f"cut-040R R40R.5 REGRESSION: E2 runner exit {result.returncode} (expect 0). "
         f"Last 1500 chars: {result.stdout[-1500:]}"
     )
     assert "PASS" in result.stdout

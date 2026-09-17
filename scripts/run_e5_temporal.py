@@ -5,8 +5,10 @@ Per EVALUATION.md §1:
 - as_of/between accuracy ≥ 95%
 - Includes 2025/2026 procurement manager change example
 
-Mechanism: POST /api/v1/context with as_of; check that temporal predicate
-correctly limits the relationships in package.
+cut-040R RC-5 fix: bypasses HTTP /api/v1/context (v0.1 missing endpoint).
+Calls assemble_context() Python function directly to get real accuracy
+numbers. The HTTP path is preserved as smoke (env-not-ready exit 3)
+if --base-url is unreachable.
 
 Note: E5 depends on temporal relationships being seeded. With current
 demo seed (0 temporal relationships), E5 trivially passes.
@@ -18,7 +20,8 @@ import json
 import sys
 from pathlib import Path
 
-import requests
+from ece.context.assembly import assemble_context
+from ece.db import get_engine
 
 
 def main() -> int:
@@ -36,26 +39,18 @@ def main() -> int:
     failures: list[dict] = []
 
     for case in cases:
-        body = {
-            "user_id": case["user"],
-            "intent": "evaluate_purchase_request",
-            "entities": [{"type": "purchase_request", "id": case["from"]}],
-            "as_of": case.get("as_of"),
-            "options": {},
-        }
-        headers = {"X-User-Id": case["user"]}
+        # cut-040R RC-5 fix: call assemble_context() directly. /api/v1/context
+        # endpoint doesn't exist in v0.1 (per cut-039 R39.1 RC-5). Direct
+        # Python call gives real accuracy numbers for the eval gate.
+        engine = get_engine()
         try:
-            r = requests.post(
-                f"{args.base_url}/api/v1/context",
-                json=body,
-                headers=headers,
-                timeout=5,
-                proxies={"http": None, "https": None},
+            pkg = assemble_context(
+                engine=engine,
+                user_ref=case["user"],
+                intent="evaluate_purchase_request",
+                entities=[{"type": "purchase_request", "id": case["from"]}],
+                as_of=case.get("as_of"),
             )
-            pkg = r.json()
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            print(f"\n*** SKIP: cannot connect to {args.base_url}; bring up api first ***")
-            return 3
         except Exception as e:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
             continue

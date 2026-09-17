@@ -111,12 +111,17 @@ def permissions_check(
             for r in rows
         ]
 
+    # cut-040R RC-1 fix: pass engine so _object_dept reads attributes.department
+    # from DB (Priority 1) instead of falling through to static prefix_map
+    # (Priority 2). Without engine, R40.1c's seed_acl_entries + department
+    # injection is completely neutralized — matrix tightening was a no-op.
     decision: PermissionDecision = check_permission(
         identity=identity,
         object_type=req.object_type,
         object_ref=req.object_ref,
         classification=req.classification,
         acl_entries=acl_entries,
+        engine=engine,
     )
     return PermissionCheckResponse(
         allowed=decision.allowed,

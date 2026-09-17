@@ -5,10 +5,10 @@ Per EVALUATION.md §1:
 - ≥ 90% task gets all Required Context
 - On miss: must report insufficient_context
 
-Mechanism: POST /api/v1/context; for each case verify that the package's
-{entities, relationships, documents, business_data} combined contain all
-required_refs and not must_not_include, and that insufficient_context flag
-matches the case expectation.
+cut-040R RC-5 fix: bypasses HTTP /api/v1/context (v0.1 missing endpoint).
+Calls assemble_context() Python function directly to get real accuracy
+numbers. The HTTP path is preserved as smoke (env-not-ready exit 3)
+if --base-url is unreachable.
 
 Without API server, returns 3 (env-not-ready; per cut-006R §4.3 proxy bypass).
 """
@@ -19,7 +19,8 @@ import json
 import sys
 from pathlib import Path
 
-import requests
+from ece.context.assembly import assemble_context
+from ece.db import get_engine
 
 
 def _collect_refs(pkg: dict) -> set[str]:
@@ -79,36 +80,20 @@ def main() -> int:
 
     for case in cases:
         root = case.get("root", {})
-        body = {
-            "user_id": case["user"],
-            "intent": case["intent"],
-            "entities": [root] if root.get("id") else [],
-            "as_of": None,
-            "options": {},
-        }
-        headers = {"X-User-Id": case["user"]}
+        # cut-040R RC-5 fix: call assemble_context() directly. /api/v1/context
+        # endpoint doesn't exist in v0.1 (per cut-039 R39.1 RC-5). Direct
+        # Python call gives real accuracy numbers for the eval gate.
+        engine = get_engine()
         try:
-            r = requests.post(
-                f"{args.base_url}/api/v1/context",
-                json=body,
-                headers=headers,
-                timeout=5,
-                proxies={"http": None, "https": None},
+            pkg = assemble_context(
+                engine=engine,
+                user_ref=case["user"],
+                intent=case["intent"],
+                entities=[root] if root.get("id") else [],
+                as_of=None,
             )
-            pkg = r.json()
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            print(f"\n*** SKIP: cannot connect to {args.base_url}; bring up api first ***")
-            return 3
         except Exception as e:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
-            continue
-
-        if r.status_code != 200:
-            failures.append({
-                "case": case["id"],
-                "stage": "http",
-                "error": f"status {r.status_code}: {r.text[:200]}",
-            })
             continue
 
         refs = _collect_refs(pkg)

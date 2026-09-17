@@ -43,7 +43,14 @@ def main() -> int:
             "mention": case["mention"],
             "type_hint": case.get("type_hint"),
         }
-        headers = {"X-User-Id": case.get("mention", "")}
+        # cut-040R RC-3 fix: X-User-Id header must be ASCII. The `requests`
+        # library encodes headers as latin-1; a Chinese mention like
+        # "无限极" fails at request stage with `latin-1 codec can't encode
+        # characters` BEFORE the body (which now uses utf-8 correctly) ever
+        # gets serialized. Use a fixed ASCII user_ref for auth identity —
+        # the actual `mention` for resolver lookup goes in the JSON body
+        # (which is utf-8 encoded via the data= + Content-Type fix below).
+        headers = {"X-User-Id": "demo-user-default"}
         try:
             # cut-040 R40.2: explicit UTF-8 encoding + Content-Type header.
             # `requests.post(json=body)` defaults to ensure_ascii=True which

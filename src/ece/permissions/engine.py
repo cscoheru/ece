@@ -20,14 +20,14 @@ if TYPE_CHECKING:
 # management/confidential = management + explicit allow; finance/procurement = role-restricted
 DEFAULT_CLASSIFICATION_MATRIX: dict[str, dict[str, str | list[str]]] = {
     "public":        {"default": "allow"},
+    # cut-040R RC-4 fix: dataset (e2_permission.json) uses 'internal' and
+    # 'restricted' classifications that weren't in this matrix → 14 cases
+    # expected-allowed silently failed at the matrix miss (default-deny).
+    "internal":      {"default": "allow"},
     "department":    {"default": "allow_dept"},
+    "restricted":    {"default": "allow_dept"},
     "management":    {"default": "allow_management"},
-    # cut-040 R40.1b: confidential = owner-dept-match (was allow_management, which
-    # let every user with is_management=True in — including the 3 test users
-    # flagged as 'management' — bypass confidential, causing 6 of the 6 cut-039
-    # R39.1 unauthorized exposures: e2-022/023/024/052/053/054/061. PRD §35
-    # hard gate: 0 exposures, so this MUST be owner-dept not blanket-management).
-    "confidential":  {"default": "allow_dept"},
+    "confidential":  {"default": "allow_dept"},  # cut-040 R40.1b
     "finance":       {"default": "allow_role", "roles": ["finance_manager", "cfo"]},
     "procurement":   {"default": "allow_role", "roles": ["procurement_manager", "buyer"]},
 }
@@ -69,6 +69,7 @@ def check_permission(
     object_ref: str,
     classification: str = "department",
     acl_entries: list[dict] | None = None,
+    engine=None,
 ) -> PermissionDecision:
     """Determine if identity can access object.
 
@@ -128,15 +129,21 @@ def check_permission(
         default_mode == "allow_dept"
         and identity.department
         and object_ref
-        and _object_dept(acl_entries, object_ref=object_ref) == identity.department
+        and _object_dept(acl_entries, object_ref=object_ref, engine=engine) == identity.department
     ):
         return PermissionDecision(
             allowed=True, reason="classification department (matched)",
             matched_rule="classification-dept",
         )
-    if default_mode == "allow_management" and (
-        identity.is_management or any("manager" in r.lower() for r in identity.roles)
+    if (
+        default_mode == "allow_management"
+        and identity.is_management
     ):
+        # cut-040R RC-2 fix: tighten allow_management — require EXPLICIT
+        # is_management flag. Substring check ("manager" in role.lower()) was
+        # too loose: procurement_manager / finance_manager roles fired this
+        # branch even though no test user is actually "management" — exposed
+        # e2-029/030/055. Without explicit is_management=True, deny.
         return PermissionDecision(
             allowed=True, reason="classification management",
             matched_rule="classification-management",
