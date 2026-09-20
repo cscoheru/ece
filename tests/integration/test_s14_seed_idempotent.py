@@ -14,32 +14,37 @@ def test_seed_first_run_then_second_run_idempotent(tmp_path) -> None:
     if not demo.exists():
         pytest.skip("demo.json not generated; run make gen-dataset first")
 
-    # Wipe all entities seeded by demo.json to make this test deterministic.
-    # Safe because cut-005 R1 fix preserves demo.json md5.
+    # Wipe the entities that seed_from_demo_json() ITSELF creates, so the first
+    # run is guaranteed to create > 0 and the second run 0.
+    #
+    # The predicate is EXACTLY the source_system that function writes
+    # (src/ece/seed.py:169 — `f"demo:{path.stem}"` == "demo:demo" for
+    # data/dataset/demo.json).
+    #
+    # It used to be `LIKE 'demo:%'` minus a HAND-MAINTAINED exclusion list, which
+    # meant every other `demo:*` seeder had to remember to exclude itself:
+    #   * cut-035R added the 'demo:seed_temporal_roles' exclusion
+    #   * cut-040R-2 P1'' found that 'demo:seed_departments' (created by
+    #     scripts/seed_relationships.py) had been silently destroyed by every
+    #     suite run and never restored — the same class of defect as RC-6
+    # Targeting the exact source_system is self-maintaining: a new `demo:*`
+    # seeder can no longer be clobbered by this test.
+    #
     # First delete relationships referencing these entities (cut-009 added
     # 1206 relationships; FK constraint would otherwise block entity delete).
-    #
-    # R4 (cut-035R) hermeticity: exclude 'demo:seed_temporal_roles' from
-    # wipe so test_s4_5_temporal's autouse fixture data survives. Test
-    # isolation rule: destructive cleanup must NOT cross test module
-    # boundaries.
     with engine.begin() as conn:
         conn.execute(
             __import__("sqlalchemy").text(
                 "DELETE FROM relationships WHERE "
                 "src_entity_id IN (SELECT id FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles') "
+                "source_system = 'demo:demo') "
                 "OR dst_entity_id IN (SELECT id FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles')"
+                "source_system = 'demo:demo')"
             )
         )
         conn.execute(
             __import__("sqlalchemy").text(
-                "DELETE FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles'"
+                "DELETE FROM entities WHERE source_system = 'demo:demo'"
             )
         )
 

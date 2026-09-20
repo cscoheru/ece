@@ -27,8 +27,9 @@ FIXED_COMMIT=$(git rev-parse HEAD)
 DATASET_SHA=$(shasum -a 256 data/eval/e2_permission.json | cut -d' ' -f1)
 
 fingerprint() {
-  docker compose exec -T db psql -U ece -d ece -t -A -f - \
-    < scripts/db_state_fingerprint.sql 2>/dev/null | tr -d '[:space:]'
+  # Emits:  <sha256>|<entities_rows>|<aliases_rows>|<acl_rows>
+  docker compose exec -T db psql -U ece -d ece -t -A -F'|' -f - \
+    < scripts/db_state_fingerprint.sql 2>/dev/null | tr -d '\r' | head -1
 }
 
 run_arm() {
@@ -61,18 +62,22 @@ run_arm() {
 
 {
   echo "==================================================================="
-  echo "cut-040R-2 P1' — 严格单变量实验记录"
+  echo "cut-040R-2 单变量实验记录 (rev3: SHA-256 指纹 + read-set 完整覆盖)"
   echo "==================================================================="
-  echo "目的: 证明在【固定 DB 状态 + 固定数据集】下, 两臂的唯一差异是源码。"
+  echo "目的: 证明在【固定 DB 状态 + 固定数据集 + 同一运行时】下, 两臂的唯一差异是源码。"
   echo ""
   echo "baseline commit : $BASELINE_COMMIT"
   echo "fixed commit    : $FIXED_COMMIT"
   echo "                  (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)"
   echo "dataset         : data/eval/e2_permission.json"
   echo "dataset sha256  : $DATASET_SHA"
-  echo "runtime         : 两臂均为宿主 uvicorn (同一 venv, 同一 DATABASE_URL)"
-  echo "db              : docker compose ece-db-1 (postgresql+psycopg://ece@localhost:5432/ece)"
-  echo "fingerprint     : scripts/db_state_fingerprint.sql (entities + acl_entries 的有序 md5)"
+  echo "runtime         : 两臂均为宿主 uvicorn (同一 venv)"
+  echo "DATABASE_URL    : ${DATABASE_URL:-postgresql+psycopg://ece:ece@localhost:5432/ece (default)}"
+  echo "db              : docker compose ece-db-1 (postgres 16-pgvector)"
+  echo "fingerprint     : scripts/db_state_fingerprint.sql — SHA-256 over the COMPLETE"
+  echo "                  E2 read-set (entities 9 cols / entity_aliases 9 cols / acl_entries 10 cols),"
+  echo "                  ordered by (scope, row_text). 输出格式: sha256|entities_rows|aliases_rows|acl_rows"
+  echo "deps evidence   : P1_DEPENDENCY_MATRIX.md (E2 read-set ⊆ fingerprint scope, 逐项)"
   echo ""
 } > "$RECORD"
 
@@ -109,14 +114,35 @@ echo "ARM B exit code      : $(cat /tmp/p1v2-ec-b)" | tee -a "$RECORD"
     echo "  F2=$F2"
   fi
   echo ""
-  echo "结论口径 (严格):"
-  echo "  在【固定 DB 状态】+【固定数据集】下, permission RUNTIME 代码由 baseline"
-  echo "  改为 fixed, E2 从 4 暴露/4 失败 变为 0/0。"
+  echo "-------------------------------------------------------------------"
+  echo "A. 本实验【已经证明】的内容"
+  echo "-------------------------------------------------------------------"
+  echo "  固定 DB state + 固定 dataset + 相同 runtime +"
+  echo "  baseline/fixed RUNTIME code    ->  E2 结果发生变化 (4/4 -> 0/0)"
   echo ""
-  echo "本实验【不】测量的:"
-  echo "  seed/数据层面的修复 (RC-6 部门注入位置 / RC-7 专属对象 / RC-9 ACL 词表) ——"
-  echo "  这些已由修后的 seed 写入 DB, 两臂共用同一份, 故其对结果的贡献在本设计中恒为 0。"
-  echo "  要测量它们需另设一臂: baseline 代码 + baseline seed 产出的 DB。"
+  echo "  即: permission RUNTIME 代码是 E2 结果变化的【充分原因】,"
+  echo "      且 DB 状态在两臂之间恒定 (F0==F1==F2), 数据集逐字节相同 (sha256 见上)。"
+  echo ""
+  echo "-------------------------------------------------------------------"
+  echo "B. 本实验【没有测量】的内容"
+  echo "-------------------------------------------------------------------"
+  echo "  seed / 数据层面的修复各自贡献多少:"
+  echo "    RC-6  部门注入位置  (seed_from_demo_json 内)"
+  echo "    RC-7  专属对象      (PR003 / CON002)"
+  echo "    RC-9  ACL 对象词表  (entity -> 域类型)"
+  echo "  这些修复已由修后的 seed 写入 DB, 两臂共用同一份,"
+  echo "  故其在本设计中对结果差异的贡献【恒为 0】—— 它们不是被『对照』了, 而是被『共享』了。"
+  echo ""
+  echo "-------------------------------------------------------------------"
+  echo "C. 若将来需要回答 B, 应增加什么实验"
+  echo "-------------------------------------------------------------------"
+  echo "  增设第三臂: baseline 代码 + **baseline seed 产出的 DB**"
+  echo "    - 需要一个独立数据库实例, 或用 dump/restore 保存两份 DB 快照"
+  echo "    - 对本轮而言【不必要】: 本实验要回答的问题不是『seed 修复贡献几何』,"
+  echo "      而是『runtime 代码修复是否足以把 E2 从 4/4 变为 0/0』—— 该问题已回答。"
+  echo ""
+  echo "  ⚠️ 措辞纪律: 不得使用超出证据范围的『严格因果证明』表述。"
+  echo "     本实验的证据类型是【可审计、可复现的实验控制】, 不是密码学意义上的绝对证明。"
 } >> "$RECORD"
 
 cat "$RECORD"

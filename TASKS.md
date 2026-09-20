@@ -144,3 +144,32 @@ v0.1 的 PRD/ADR-004 权限模型（DB acl_entries + PermissionScope SQL 下推�
 - **文档**：`docs/v0.2-deploy.md` / `docs/v0.2-cutover-checklist.md` 头部 BLOCKER 警示（本附录生效）
 - **未来路线**：v0.2 弧**不整体回滚**，但**全部隔离在 demo 层**；若需启用任一 env，必须走正式规划流程（PRD 增补 + 新 ADR + 用户批准），且重做为 DB-backed（acl_entries/委托表入库），弃 env-token 模式——预计另立 arc 约 6–8 刀，属新产品决策，由用户裁定是否启动。
 
+
+---
+
+## 附录 J — Production Gate 登记（cut-040R-2，Codex 第三轮补充判词 §五）
+
+> 本附录是**治理登记**，不是权限架构设计。登记原因：该约束若只留在代码注释中会被遗忘。
+
+### J.1 已登记的 Production Gate
+
+| ID | 约束 | 位置 | V0 | Production |
+|---|---|---|---|---|
+| **PG-1** | **Production authorization chain MUST derive principal from authenticated credential; caller-supplied `req.user_ref` must be removed.** | `src/ece/api/identity.py` :: `POST /permissions/check` | **允许保留** | **禁止** |
+
+**背景**：`/permissions/check` 现为 `user_ref = req.user_ref or x_user_id`，即**请求体可指定被检查的身份**。
+作为 **verification surface**（"user X 能否访问 object Y？"）这是其设计用途，可接受。
+但一旦进入真实**授权链**，调用者将能询问"**别人**能不能访问 X"，而非只能问"**我**能不能访问 X"。
+授权主体绝不能由调用者自行指定。
+
+### J.2 处置规则
+
+- **V0 / demo / 评测**：保持现状，**不修改**（改动会波及 E2 全部 61 例的调用方式）。
+- **进入 Production 前**：必须删除 `req.user_ref`，principal 只从认证凭据解析。
+- **触发条件**：任何把 `/permissions/check` 接入真实访问决策的前置工作，**必须先完成 PG-1**。
+- 计数器：本附录是 PG 系列的第 1 条；后续 Production Gate 追加于此表，不新开文档。
+
+### J.3 明确不做
+
+- ❌ 不在本刀内重构权限架构
+- ❌ 不新增 IAM / 身份目录 / 凭据轮换能力（Kernel 只拥有 **enforcement point + scope contract**，见 `docs/v3/KERNEL_BOUNDARY.md` §3.1）

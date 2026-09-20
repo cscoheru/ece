@@ -2,11 +2,15 @@
 
 The bug this guards against: `_seed_entity_departments()` used to be called
 only from `run_seed()`, NOT from `seed_from_demo_json()`. Any test that wipes
-`source_system LIKE 'demo:%'` entities and replays `seed_from_demo_json()`
-(e.g. `test_s14_seed_idempotent`) therefore destroyed
+the demo-seeded entities and replays `seed_from_demo_json()` (e.g.
+`test_s14_seed_idempotent`) therefore destroyed
 `entities.attributes.department` and never restored it. E2 then measured a
 scrubbed DB — the department-based permission cases silently reverted to their
 pre-fix behaviour.
+
+(That wipe predicate was later narrowed to `source_system = 'demo:demo'`; see
+test_s14's comment — the previous `LIKE 'demo:%'` sweep also destroyed
+`demo:seed_departments`.)
 
 The invariant: after a wipe + replay, the seeded entities must carry their
 `attributes.department` again. Without the R40R2.1 fix this test fails with a
@@ -70,26 +74,20 @@ def test_seed_replay_after_wipe_restores_departments() -> None:
 
     # Same predicate as tests/integration/test_s14_seed_idempotent.py so this
     # test reproduces exactly the state that used to clobber the department
-    # attributes. 'demo:seed_temporal_roles' is excluded for the same
-    # hermeticity reason (see test_s14 docstring).
+    # attributes: wipe precisely what seed_from_demo_json() creates
+    # (`source_system = 'demo:demo'`), not a `LIKE 'demo:%'` sweep.
     with engine.begin() as conn:
         conn.execute(
             text(
                 "DELETE FROM relationships WHERE "
                 "src_entity_id IN (SELECT id FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles') "
+                "source_system = 'demo:demo') "
                 "OR dst_entity_id IN (SELECT id FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles')"
+                "source_system = 'demo:demo')"
             )
         )
         conn.execute(
-            text(
-                "DELETE FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles'"
-            )
+            text("DELETE FROM entities WHERE source_system = 'demo:demo'")
         )
 
     # Precondition: the wipe really did remove the demo-seeded entities. Other
@@ -99,14 +97,10 @@ def test_seed_replay_after_wipe_restores_departments() -> None:
     # the replay recreates them.
     with engine.connect() as conn:
         remaining_demo = conn.execute(
-            text(
-                "SELECT count(*) FROM entities WHERE "
-                "source_system LIKE 'demo:%' "
-                "AND source_system != 'demo:seed_temporal_roles'"
-            )
+            text("SELECT count(*) FROM entities WHERE source_system = 'demo:demo'")
         ).scalar()
     assert remaining_demo == 0, (
-        f"precondition failed: wipe left {remaining_demo} demo:% entities behind"
+        f"precondition failed: wipe left {remaining_demo} demo:demo entities behind"
     )
 
     seed_from_demo_json(engine, demo)

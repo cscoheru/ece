@@ -4,22 +4,26 @@ cut-040R-2 P1' — 严格单变量实验记录
 目的: 证明在【固定 DB 状态 + 固定数据集】下, 两臂的唯一差异是源码。
 
 baseline commit : c92316370b87343ba76c5776f9d56eb05e3f7be3
-fixed commit    : 93ed0e307fd22f9b30b5a16314344c730bd837ff
+fixed commit    : 32a0b920b014c50543c92d826b00c262f11def9b
                   (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)
 dataset         : data/eval/e2_permission.json
 dataset sha256  : 7f82340adcbca4118aae51ad20090a0c40fd75f8301e1e7cd59c2a9d5ca9670c
-runtime         : 两臂均为宿主 uvicorn (同一 venv, 同一 DATABASE_URL)
-db              : docker compose ece-db-1 (postgresql+psycopg://ece@localhost:5432/ece)
-fingerprint     : scripts/db_state_fingerprint.sql (entities + acl_entries 的有序 md5)
+runtime         : 两臂均为宿主 uvicorn (同一 venv)
+DATABASE_URL    : postgresql+psycopg://ece:ece@localhost:5432/ece (default)
+db              : docker compose ece-db-1 (postgres 16-pgvector)
+fingerprint     : scripts/db_state_fingerprint.sql — SHA-256 over the COMPLETE
+                  E2 read-set (entities 9 cols / entity_aliases 9 cols / acl_entries 10 cols),
+                  ordered by (scope, row_text). 输出格式: sha256|entities_rows|aliases_rows|acl_rows
+deps evidence   : P1_DEPENDENCY_MATRIX.md (E2 read-set ⊆ fingerprint scope, 逐项)
 
-F0 (两臂开始前)      : faff49167d6781e6245dcd58ab116c10
+F0 (两臂开始前)      : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
 
 --- ARM A: baseline 源码 (c92316370b87343ba76c5776f9d56eb05e3f7be3) @ :8766 ---
-F1 (ARM A 结束后)    : faff49167d6781e6245dcd58ab116c10
+F1 (ARM A 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
 ARM A exit code      : 2
 
---- ARM B: fixed 源码 (93ed0e307fd22f9b30b5a16314344c730bd837ff) @ :8767 ---
-F2 (ARM B 结束后)    : faff49167d6781e6245dcd58ab116c10
+--- ARM B: fixed 源码 (32a0b920b014c50543c92d826b00c262f11def9b) @ :8767 ---
+F2 (ARM B 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
 ARM B exit code      : 0
 
 ===================================================================
@@ -27,11 +31,32 @@ DB 状态恒定性判定
 ===================================================================
 PASS — F0 == F1 == F2, DB 状态在两臂之间未被改动。
 
-结论口径 (严格):
-  在【固定 DB 状态】+【固定数据集】下, permission RUNTIME 代码由 baseline
-  改为 fixed, E2 从 4 暴露/4 失败 变为 0/0。
+-------------------------------------------------------------------
+A. 本实验【已经证明】的内容
+-------------------------------------------------------------------
+  固定 DB state + 固定 dataset + 相同 runtime +
+  baseline/fixed RUNTIME code    ->  E2 结果发生变化 (4/4 -> 0/0)
 
-本实验【不】测量的:
-  seed/数据层面的修复 (RC-6 部门注入位置 / RC-7 专属对象 / RC-9 ACL 词表) ——
-  这些已由修后的 seed 写入 DB, 两臂共用同一份, 故其对结果的贡献在本设计中恒为 0。
-  要测量它们需另设一臂: baseline 代码 + baseline seed 产出的 DB。
+  即: permission RUNTIME 代码是 E2 结果变化的【充分原因】,
+      且 DB 状态在两臂之间恒定 (F0==F1==F2), 数据集逐字节相同 (sha256 见上)。
+
+-------------------------------------------------------------------
+B. 本实验【没有测量】的内容
+-------------------------------------------------------------------
+  seed / 数据层面的修复各自贡献多少:
+    RC-6  部门注入位置  (seed_from_demo_json 内)
+    RC-7  专属对象      (PR003 / CON002)
+    RC-9  ACL 对象词表  (entity -> 域类型)
+  这些修复已由修后的 seed 写入 DB, 两臂共用同一份,
+  故其在本设计中对结果差异的贡献【恒为 0】—— 它们不是被『对照』了, 而是被『共享』了。
+
+-------------------------------------------------------------------
+C. 若将来需要回答 B, 应增加什么实验
+-------------------------------------------------------------------
+  增设第三臂: baseline 代码 + **baseline seed 产出的 DB**
+    - 需要一个独立数据库实例, 或用 dump/restore 保存两份 DB 快照
+    - 对本轮而言【不必要】: 本实验要回答的问题不是『seed 修复贡献几何』,
+      而是『runtime 代码修复是否足以把 E2 从 4/4 变为 0/0』—— 该问题已回答。
+
+  ⚠️ 措辞纪律: 不得使用超出证据范围的『严格因果证明』表述。
+     本实验的证据类型是【可审计、可复现的实验控制】, 不是密码学意义上的绝对证明。

@@ -1,0 +1,106 @@
+===================================================================
+cut-040R-2 最终工程验收 (Codex 第三轮补充判词 §七)
+date : 2026-09-20T17:11:27+08:00
+HEAD : 32a0b920b014c50543c92d826b00c262f11def9b
+===================================================================
+
+--- [0] 起点 DB 指纹 + 实体数 ---
+fingerprint: 171d1f23b43564bc2173306fdd5b5e84e01975b6e2f7b50b21a270e57f9592f7|439|1|3
+entities   : 439
+
+--- [1] 完整 pytest ---
+collected 356 / passed 353 / skipped 3 / failed 0
+pytest exit code: 0
+
+--- [2] E1 ---
+Total:    65
+Correct:  64
+Wrong:    1
+Accuracy: 98.5%
+*** PASS: >= 95% R3 acceptance ***
+
+--- [3] E2 ---
+Total cases:        61
+Failures:           0
+Exposures:          0
+*** PASS: 0 Unauthorized Exposure, 0 permission failure (cut-006 R2) ***
+
+--- [4] 终点 DB 指纹 + 实体数 (见文件头说明: 与 [0] 必然不同, 因 uuid 重生成) ---
+fingerprint: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
+entities   : 439
+
+--- [4b] E2 运行前后的 DB 指纹 (应与 P1 的 F0==F1==F2 一致: **相同**) ---
+before E2 run: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
+after  E2 run: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
+=> UNCHANGED — E2 runner 不写库, 与 P1 的 F0==F1==F2 一致 ✅
+
+--- [5a] 污染检查: 重名实体 (P2 判据, 应为 0) ---
+ dup_names 
+-----------
+         0
+(1 row)
+
+--- [5b] 幂等性检查: 再跑一次 pytest, 实体数应不变 ---
+pytest #2 exit code: 0
+entities before 2nd run: 439
+entities after  2nd run: 439
+=> IDEMPOTENT (测试创建实体的 source_id 稳定, 无无界增长)
+
+--- [5c] 残留 r4-test 来源 (应只剩保留的 SUP052/SUP053 一对) ---
+    source_system     | count 
+----------------------+-------
+ csv:r4-test-57471f45 |     2
+(1 row)
+
+
+--- [6] git status ---
+ M TASKS.md
+ M reports/eval-archive/2026-09-20-cut040R2/single-variable-v2/EXPERIMENT_RECORD.txt
+ M scripts/db_state_fingerprint.sql
+ M scripts/run_p1_single_variable_experiment.sh
+ M tests/integration/test_cut040r2_state_integrity.py
+ M tests/integration/test_s14_seed_idempotent.py
+?? reports/eval-archive/2026-09-20-cut040R2/FINAL_ACCEPTANCE/
+?? reports/eval-archive/2026-09-20-cut040R2/P1_DEPENDENCY_MATRIX.md
+?? scripts/db_surface_dump.sql
+?? scripts/run_final_acceptance.sh
+
+--- [7] P1 单变量实验记录 (最近一次) ---
+===================================================================
+cut-040R-2 P1' — 严格单变量实验记录
+===================================================================
+目的: 证明在【固定 DB 状态 + 固定数据集】下, 两臂的唯一差异是源码。
+
+baseline commit : c92316370b87343ba76c5776f9d56eb05e3f7be3
+fixed commit    : 32a0b920b014c50543c92d826b00c262f11def9b
+                  (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)
+dataset         : data/eval/e2_permission.json
+dataset sha256  : 7f82340adcbca4118aae51ad20090a0c40fd75f8301e1e7cd59c2a9d5ca9670c
+runtime         : 两臂均为宿主 uvicorn (同一 venv)
+DATABASE_URL    : postgresql+psycopg://ece:ece@localhost:5432/ece (default)
+db              : docker compose ece-db-1 (postgres 16-pgvector)
+fingerprint     : scripts/db_state_fingerprint.sql — SHA-256 over the COMPLETE
+                  E2 read-set (entities 9 cols / entity_aliases 9 cols / acl_entries 10 cols),
+                  ordered by (scope, row_text). 输出格式: sha256|entities_rows|aliases_rows|acl_rows
+deps evidence   : P1_DEPENDENCY_MATRIX.md (E2 read-set ⊆ fingerprint scope, 逐项)
+
+F0 (两臂开始前)      : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+
+--- ARM A: baseline 源码 (c92316370b87343ba76c5776f9d56eb05e3f7be3) @ :8766 ---
+F1 (ARM A 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+ARM A exit code      : 2
+
+--- ARM B: fixed 源码 (32a0b920b014c50543c92d826b00c262f11def9b) @ :8767 ---
+F2 (ARM B 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+ARM B exit code      : 0
+
+===================================================================
+DB 状态恒定性判定
+
+--- [8] 指纹漂移归因 (聚焦实验: 只跑两个 wipe+replay 测试) ---
+目的: 证明跨 pytest 的指纹变化**全部来自 entities.id (uuid) 重生成**, 而非决策状态变化。
+wipe+replay 测试 exit code: 0
+surface 行数: before=443 after=443
+差异行数    : 844
+差异是否**仅**限于 id 字段 (第 2 列)?
+  => YES — 除 id 外内容完全一致; 指纹变化 100% 由 uuid 重生成解释 ✅
