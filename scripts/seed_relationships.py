@@ -11,6 +11,10 @@ Kept as a standalone command because existing callers and docs use it:
 and three integration tests shell out to it, depending on the exit-code contract
 (0 = seeded, 1 = could not seed) and on the `Total relationships in DB: N` line.
 
+R2.1: exit 1 now also covers "the fixture would come out incomplete" (a rejected
+edge, or fewer rows than `PRs x 6`). Previously such a run exited 0 while
+building less than the canonical fixture.
+
 Prefer `make seed`, which now performs this step automatically.
 
 Per DATA_MODEL.md §2 + ontology whitelist (ece/domain_packs/procurement/ontology.py).
@@ -29,6 +33,14 @@ def main() -> int:
     print("Seeding 4 department entities...")
     result = seed_demo_relationships(engine)
 
+    # Report rejections BEFORE the ok check: since R2.1 a rejected edge makes the
+    # seed fail, so printing them only on the happy path would hide the reason.
+    rejected: list[str] = result["rejected"]  # type: ignore[assignment]
+    if rejected:
+        print(f"  REJECTED {len(rejected)} relationship(s):")
+        for r in rejected[:5]:
+            print(f"    {r}")
+
     if not result.get("ok"):
         print(f"ERROR: {result.get('error')}", file=sys.stderr)
         return 1
@@ -41,12 +53,6 @@ def main() -> int:
     print(f"\nSeeded relationships from {result['prs']} PRs:")
     for rel, count in inserted.items():
         print(f"  {rel}: {count} new insertions")
-
-    rejected: list[str] = result["rejected"]  # type: ignore[assignment]
-    if rejected:
-        print(f"  REJECTED {len(rejected)} relationship(s):")
-        for r in rejected[:5]:
-            print(f"    {r}")
 
     # Kept verbatim: existing tooling and archived stdout compare on this line.
     print(f"Total relationships in DB: {result['total_in_db']}")

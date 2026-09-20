@@ -462,8 +462,14 @@ def seed_demo_relationships(engine) -> dict[str, object]:
     Prerequisite: entities (incl. `api:header` persons from `seed_test_users`)
     must already exist — hence `run_seed()` calls `seed_test_users()` first.
 
-    Returns {"ok", "error"?, "departments", "removed", "inserted_by_type",
+    Returns {"ok", "error"?, "prs", "departments", "removed", "inserted_by_type",
              "rejected", "total_in_db"}.
+
+    `ok` is True only when the fixture is COMPLETE: zero rejected edges AND
+    exactly `len(prs) x EXPECTED_RELS_PER_DEMO_PR` rows tagged with this
+    fixture's own `source_system`. Anything less sets `ok=False` plus an
+    `error` explaining which of the two failed — `run_seed()` turns that into a
+    RuntimeError rather than letting `make seed` report success.
     """
     dept_ids = _seed_fixture_departments(engine)
     if not dept_ids:
@@ -527,11 +533,46 @@ def seed_demo_relationships(engine) -> dict[str, object]:
             else:
                 rejected.append(f"{pr_id} -{rel_type}-> {target}: {reason}")
 
+    expected = len(pr_ids) * EXPECTED_RELS_PER_DEMO_PR
+    problems: list[str] = []
+
+    # A rejected edge is a FAILURE, not a footnote. The contract here is "build a
+    # complete, deterministic fixture", not "seed as much as you can": reporting
+    # ok=True alongside a short fixture is how `make seed` would go green on an
+    # environment that cannot support the evaluation it claims to prepare.
+    if rejected:
+        problems.append(
+            f"{len(rejected)} relationship(s) REJECTED — the canonical fixture must be "
+            f"complete: {'; '.join(rejected[:3])}"
+        )
+
     with engine.connect() as conn:
         total = conn.execute(text("SELECT count(*) FROM relationships")).scalar()
+        owned = conn.execute(
+            text("SELECT count(*) FROM relationships WHERE source_system = :s"),
+            {"s": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
+        ).scalar_one()
 
-    return {
-        "ok": True,
+    # Ground truth is the ROW COUNT, never the counters above. Two reasons, both
+    # verified against this database:
+    #   1. upsert_relationship returns inserted=True even when ON CONFLICT DO
+    #      NOTHING wrote nothing (probe: two calls on one triple -> True/True,
+    #      one row).
+    #   2. uq_relationships_triple keys on (src, relation, dst, valid_from)
+    #      WITHOUT source_system, so a triple already owned by another fixture
+    #      swallows our insert silently.
+    # Only counting rows tagged with our own source_system sees either case.
+    if int(owned) != expected:
+        problems.append(
+            f"fixture incomplete: {owned} rows tagged "
+            f"'{DEMO_RELATIONSHIP_SOURCE_SYSTEM}', expected {expected} "
+            f"({len(pr_ids)} PRs x {EXPECTED_RELS_PER_DEMO_PR}) while "
+            f"{sum(counters.values())} insert(s) were reported. A shortfall with no "
+            "rejections means a foreign source_system already owns those triples."
+        )
+
+    result: dict[str, object] = {
+        "ok": len(problems) == 0,
         "prs": len(pr_ids),
         "departments": len(dept_ids),
         "removed": deleted,
@@ -539,6 +580,9 @@ def seed_demo_relationships(engine) -> dict[str, object]:
         "rejected": rejected,
         "total_in_db": int(total or 0),
     }
+    if problems:
+        result["error"] = " | ".join(problems)
+    return result
 
 
 def demo_relationship_fixture_status(engine) -> dict[str, object]:

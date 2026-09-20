@@ -1,0 +1,6 @@
+uv run python -m ece.seed
+Seed complete: {'supplier': 0, 'product': 0, 'purchase_request': 0, 'contract': 0, 'policy': 0}
+Total created: 0
+Total skipped: 0
+Relationships: {'BELONGS_TO': 200, 'SUBMITTED_BY': 400, 'SELECTS': 200, 'CONTAINS': 200, 'SUBJECT_TO': 200} (replaced 1200 prior rows, 4 departments)
+Total relationships in DB: 1204

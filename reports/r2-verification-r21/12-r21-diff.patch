@@ -1,0 +1,310 @@
+diff --git a/scripts/seed_relationships.py b/scripts/seed_relationships.py
+index 6d437a9..4795434 100644
+--- a/scripts/seed_relationships.py
++++ b/scripts/seed_relationships.py
+@@ -11,6 +11,10 @@ Kept as a standalone command because existing callers and docs use it:
+ and three integration tests shell out to it, depending on the exit-code contract
+ (0 = seeded, 1 = could not seed) and on the `Total relationships in DB: N` line.
+ 
++R2.1: exit 1 now also covers "the fixture would come out incomplete" (a rejected
++edge, or fewer rows than `PRs x 6`). Previously such a run exited 0 while
++building less than the canonical fixture.
++
+ Prefer `make seed`, which now performs this step automatically.
+ 
+ Per DATA_MODEL.md §2 + ontology whitelist (ece/domain_packs/procurement/ontology.py).
+@@ -29,6 +33,14 @@ def main() -> int:
+     print("Seeding 4 department entities...")
+     result = seed_demo_relationships(engine)
+ 
++    # Report rejections BEFORE the ok check: since R2.1 a rejected edge makes the
++    # seed fail, so printing them only on the happy path would hide the reason.
++    rejected: list[str] = result["rejected"]  # type: ignore[assignment]
++    if rejected:
++        print(f"  REJECTED {len(rejected)} relationship(s):")
++        for r in rejected[:5]:
++            print(f"    {r}")
++
+     if not result.get("ok"):
+         print(f"ERROR: {result.get('error')}", file=sys.stderr)
+         return 1
+@@ -42,12 +54,6 @@ def main() -> int:
+     for rel, count in inserted.items():
+         print(f"  {rel}: {count} new insertions")
+ 
+-    rejected: list[str] = result["rejected"]  # type: ignore[assignment]
+-    if rejected:
+-        print(f"  REJECTED {len(rejected)} relationship(s):")
+-        for r in rejected[:5]:
+-            print(f"    {r}")
+-
+     # Kept verbatim: existing tooling and archived stdout compare on this line.
+     print(f"Total relationships in DB: {result['total_in_db']}")
+     return 0
+diff --git a/src/ece/seed.py b/src/ece/seed.py
+index e9c7399..fcfd001 100644
+--- a/src/ece/seed.py
++++ b/src/ece/seed.py
+@@ -462,8 +462,14 @@ def seed_demo_relationships(engine) -> dict[str, object]:
+     Prerequisite: entities (incl. `api:header` persons from `seed_test_users`)
+     must already exist — hence `run_seed()` calls `seed_test_users()` first.
+ 
+-    Returns {"ok", "error"?, "departments", "removed", "inserted_by_type",
++    Returns {"ok", "error"?, "prs", "departments", "removed", "inserted_by_type",
+              "rejected", "total_in_db"}.
++
++    `ok` is True only when the fixture is COMPLETE: zero rejected edges AND
++    exactly `len(prs) x EXPECTED_RELS_PER_DEMO_PR` rows tagged with this
++    fixture's own `source_system`. Anything less sets `ok=False` plus an
++    `error` explaining which of the two failed — `run_seed()` turns that into a
++    RuntimeError rather than letting `make seed` report success.
+     """
+     dept_ids = _seed_fixture_departments(engine)
+     if not dept_ids:
+@@ -527,11 +533,46 @@ def seed_demo_relationships(engine) -> dict[str, object]:
+             else:
+                 rejected.append(f"{pr_id} -{rel_type}-> {target}: {reason}")
+ 
++    expected = len(pr_ids) * EXPECTED_RELS_PER_DEMO_PR
++    problems: list[str] = []
++
++    # A rejected edge is a FAILURE, not a footnote. The contract here is "build a
++    # complete, deterministic fixture", not "seed as much as you can": reporting
++    # ok=True alongside a short fixture is how `make seed` would go green on an
++    # environment that cannot support the evaluation it claims to prepare.
++    if rejected:
++        problems.append(
++            f"{len(rejected)} relationship(s) REJECTED — the canonical fixture must be "
++            f"complete: {'; '.join(rejected[:3])}"
++        )
++
+     with engine.connect() as conn:
+         total = conn.execute(text("SELECT count(*) FROM relationships")).scalar()
++        owned = conn.execute(
++            text("SELECT count(*) FROM relationships WHERE source_system = :s"),
++            {"s": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
++        ).scalar_one()
+ 
+-    return {
+-        "ok": True,
++    # Ground truth is the ROW COUNT, never the counters above. Two reasons, both
++    # verified against this database:
++    #   1. upsert_relationship returns inserted=True even when ON CONFLICT DO
++    #      NOTHING wrote nothing (probe: two calls on one triple -> True/True,
++    #      one row).
++    #   2. uq_relationships_triple keys on (src, relation, dst, valid_from)
++    #      WITHOUT source_system, so a triple already owned by another fixture
++    #      swallows our insert silently.
++    # Only counting rows tagged with our own source_system sees either case.
++    if int(owned) != expected:
++        problems.append(
++            f"fixture incomplete: {owned} rows tagged "
++            f"'{DEMO_RELATIONSHIP_SOURCE_SYSTEM}', expected {expected} "
++            f"({len(pr_ids)} PRs x {EXPECTED_RELS_PER_DEMO_PR}) while "
++            f"{sum(counters.values())} insert(s) were reported. A shortfall with no "
++            "rejections means a foreign source_system already owns those triples."
++        )
++
++    result: dict[str, object] = {
++        "ok": len(problems) == 0,
+         "prs": len(pr_ids),
+         "departments": len(dept_ids),
+         "removed": deleted,
+@@ -539,6 +580,9 @@ def seed_demo_relationships(engine) -> dict[str, object]:
+         "rejected": rejected,
+         "total_in_db": int(total or 0),
+     }
++    if problems:
++        result["error"] = " | ".join(problems)
++    return result
+ 
+ 
+ def demo_relationship_fixture_status(engine) -> dict[str, object]:
+diff --git a/tests/integration/test_canonical_seed_completeness.py b/tests/integration/test_canonical_seed_completeness.py
+index d79220f..26041fa 100644
+--- a/tests/integration/test_canonical_seed_completeness.py
++++ b/tests/integration/test_canonical_seed_completeness.py
+@@ -18,6 +18,11 @@ G5  canonical seed produces the complete relationship fixture, and re-running it
+ G6  the E4/E5 precondition actually DETECTS a missing fixture. Without this
+     negative control the precondition would be an untested guard, which is the
+     same "unverified assertion" pattern that produced the earlier fake greens.
++G7  a rejected relationship FAILS the seed instead of becoming a footnote, so a
++    short fixture can never be reported as a successful canonical seed.
++G8  a triple already owned by another `source_system` is detected too. That
++    insert is a silent ON CONFLICT no-op, so the row count — never the insert
++    counters — is the only thing that sees it.
+ """
+ 
+ from __future__ import annotations
+@@ -28,12 +33,14 @@ from pathlib import Path
+ import pytest
+ from sqlalchemy import text
+ 
++from ece import seed as seed_module
+ from ece.db import get_engine
+ from ece.seed import (
+     DEMO_RELATIONSHIP_SOURCE_SYSTEM,
+     EXPECTED_RELS_PER_DEMO_PR,
+     demo_relationship_fixture_status,
+     run_seed,
++    seed_demo_relationships,
+ )
+ 
+ DEMO_JSON = Path("data/dataset/demo.json")
+@@ -98,6 +105,25 @@ def _require_demo_dataset() -> None:
+         pytest.skip("demo.json not generated; run `make gen-dataset` first")
+ 
+ 
++@pytest.fixture(scope="module", autouse=True)
++def _canonical_environment() -> None:
++    """Guarantee a canonical environment before any guard in this module.
++
++    These guards make claims about the SEED, so the environment must not be able
++    to fail them for an unrelated reason — an earlier test file (e.g.
++    test_s14_seed_idempotent) legitimately wipes `demo:*` entities. Declared
++    after `_require_demo_dataset` so the skip still wins if demo.json is absent.
++
++    This is NOT the "tests repair the environment" anti-pattern R2 removed: that
++    was the E4/E5 RUNNERS healing the graph mid-evaluation and then scoring it.
++    Here the setup runs before the assertion, and the assertions still test the
++    environment's state. A broken environment still fails loudly — `run_seed()`
++    raises rather than returning a half-built fixture.
++    """
++    if not demo_relationship_fixture_status(get_engine())["complete"]:
++        run_seed()
++
++
+ def test_g5_canonical_seed_restores_complete_relationship_fixture() -> None:
+     """`run_seed()` must build the whole fixture, and rebuilding must not drift.
+ 
+@@ -180,3 +206,130 @@ def test_g6_precondition_detects_missing_fixture() -> None:
+         "canonical seed did not restore the fixture after the negative control: "
+         f"{restored}"
+     )
++
++
++def test_g7_rejected_relationship_fails_the_canonical_seed(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """A rejected edge must FAIL the seed, not become a footnote (R2.1).
++
++    Before R2.1 `rejected` only fed a list and `ok` stayed True, so `make seed`
++    reported success on a fixture that was short — the same "green but
++    incomplete" shape R2 exists to remove.
++
++    The patch is scoped with `monkeypatch.context()` so it is undone BEFORE the
++    restoration seed in `finally`, which must run against the real function.
++    """
++    engine = get_engine()
++    real_upsert = seed_module.upsert_relationship
++    state = {"reject_next": True}
++
++    def _reject_the_next_edge(*args, **kwargs):
++        if state["reject_next"]:
++            state["reject_next"] = False
++            return False, "ontology rejected: forced by test_g7"
++        return real_upsert(*args, **kwargs)
++
++    try:
++        with monkeypatch.context() as mp:
++            mp.setattr(seed_module, "upsert_relationship", _reject_the_next_edge)
++
++            result = seed_demo_relationships(engine)
++            assert result["ok"] is False, (
++                "one rejected relationship must fail the canonical seed, not be "
++                f"reported as success; got {result}"
++            )
++            assert result["rejected"], result
++            assert "forced by test_g7" in str(result["error"]), result["error"]
++            assert len(result["rejected"]) == 1, (
++                "expected exactly ONE rejected edge — a single rejection must be "
++                f"enough to fail the seed; got {result['rejected'][:3]}"
++            )
++
++            state["reject_next"] = True  # re-arm for the propagation check
++            with pytest.raises(RuntimeError, match="relationship seeding failed"):
++                run_seed()
++    finally:
++        run_seed()
++
++    assert demo_relationship_fixture_status(engine)["complete"] is True, (
++        "the fixture was not restored after the G7 negative control"
++    )
++
++
++def test_g8_foreign_owned_triple_is_not_mistaken_for_a_complete_fixture() -> None:
++    """`inserted=True` does not mean a row was written (R2.1).
++
++    `uq_relationships_triple` keys on (src, relation, dst, valid_from) WITHOUT
++    `source_system`, and `upsert_relationship` reports success for an ON CONFLICT
++    DO NOTHING that wrote nothing. So a foreign fixture squatting on one of our
++    triples costs us a row while every insert counter still reads six-per-PR.
++
++    The triple is DISCOVERED from the live fixture rather than hardcoded, so the
++    guard stays honest if the fixture's PR-to-target pairing ever changes.
++    """
++    engine = get_engine()
++    squatter = "test:g8_foreign_squatter"
++
++    with engine.connect() as conn:
++        triple = conn.execute(
++            text(
++                """
++                SELECT r.src_entity_id, r.relation, r.dst_entity_id
++                FROM relationships r
++                JOIN entities s ON s.id = r.src_entity_id
++                WHERE r.source_system = :f
++                  AND r.relation = 'BELONGS_TO'
++                  AND s.entity_type = 'purchase_request'
++                  AND s.source_system = 'demo:demo'
++                ORDER BY s.display_id
++                LIMIT 1
++                """
++            ),
++            {"f": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
++        ).first()
++    assert triple is not None, "no demo BELONGS_TO edge found — run the canonical seed first"
++    src_id, relation, dst_id = triple
++
++    try:
++        with engine.begin() as conn:
++            # Free the triple (precise predicate, own source_system only), then
++            # let a FOREIGN source_system own it. Plain INSERT, no ON CONFLICT —
++            # a conflict here would mean the test's own setup is wrong, and it
++            # must say so loudly.
++            conn.execute(
++                text(
++                    "DELETE FROM relationships WHERE source_system = :f "
++                    "AND src_entity_id = :s AND relation = :r AND dst_entity_id = :d"
++                ),
++                {"f": DEMO_RELATIONSHIP_SOURCE_SYSTEM, "s": src_id, "r": relation, "d": dst_id},
++            )
++            conn.execute(
++                text(
++                    "INSERT INTO relationships (src_entity_id, relation, dst_entity_id, "
++                    "source_system, source_ref, confidence) "
++                    "VALUES (:s, :r, :d, :ss, '', 1.0)"
++                ),
++                {"s": src_id, "r": relation, "d": dst_id, "ss": squatter},
++            )
++
++        result = seed_demo_relationships(engine)
++        assert result["ok"] is False, (
++            "a foreign source_system owning one of our triples must fail the "
++            f"canonical seed; got {result}"
++        )
++        assert not result["rejected"], (
++            f"this case is a silent no-op, NOT an ontology rejection: {result}"
++        )
++        assert "fixture incomplete" in str(result["error"]), result["error"]
++    finally:
++        with engine.begin() as conn:
++            conn.execute(
++                text("DELETE FROM relationships WHERE source_system = :s"),
++                {"s": squatter},
++            )
++        run_seed()
++
++    assert demo_relationship_fixture_status(engine)["complete"] is True, (
++        "the fixture was not restored after the G8 negative control"
++    )

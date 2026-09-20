@@ -1,0 +1,9 @@
+Loaded 100 cases from data/eval/e3_context.json
+
+=== E3 Context Completeness Results ===
+Total:    100
+Correct:  100
+Wrong:    0
+Accuracy: 100.0%
+
+*** PASS: >=90% R3 acceptance ***

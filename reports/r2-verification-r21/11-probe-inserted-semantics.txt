@@ -1,0 +1,8 @@
+--- pre-clean ---
+removed 0 stale probe rows
+probe triple: (PR001)-[SUBMITTED_BY]->(S24-P-001)
+1st call -> inserted=True reason='ok'
+2nd call -> inserted=True reason='ok'   <-- conflicts with the 1st
+rows ACTUALLY tagged 'probe:noop': 1   <-- 2 calls reported inserted=True
+owners of that triple: ['probe:noop']
+cleanup done

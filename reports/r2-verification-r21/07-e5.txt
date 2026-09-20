@@ -1,0 +1,9 @@
+Loaded 30 cases from data/eval/e5_temporal.json
+
+=== E5 Temporal Results ===
+Total:    30
+Correct:  30
+Wrong:    0
+Accuracy: 100.0%
+
+*** PASS: >=95% R3 acceptance ***

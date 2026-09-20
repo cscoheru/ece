@@ -1,0 +1,111 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+____________ test_g7_rejected_relationship_fails_the_canonical_seed ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10b7db350>
+
+    def test_g7_rejected_relationship_fails_the_canonical_seed(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A rejected edge must FAIL the seed, not become a footnote (R2.1).
+    
+        Before R2.1 `rejected` only fed a list and `ok` stayed True, so `make seed`
+        reported success on a fixture that was short — the same "green but
+        incomplete" shape R2 exists to remove.
+    
+        The patch is scoped with `monkeypatch.context()` so it is undone BEFORE the
+        restoration seed in `finally`, which must run against the real function.
+        """
+        engine = get_engine()
+        real_upsert = seed_module.upsert_relationship
+        state = {"reject_next": True}
+    
+        def _reject_the_next_edge(*args, **kwargs):
+            if state["reject_next"]:
+                state["reject_next"] = False
+                return False, "ontology rejected: forced by test_g7"
+            return real_upsert(*args, **kwargs)
+    
+        try:
+            with monkeypatch.context() as mp:
+                mp.setattr(seed_module, "upsert_relationship", _reject_the_next_edge)
+    
+                result = seed_demo_relationships(engine)
+>               assert result["ok"] is False, (
+                    "one rejected relationship must fail the canonical seed, not be "
+                    f"reported as success; got {result}"
+                )
+E               AssertionError: one rejected relationship must fail the canonical seed, not be reported as success; got {'ok': True, 'prs': 200, 'departments': 4, 'removed': 1200, 'inserted_by_type': {'BELONGS_TO': 199, 'SUBMITTED_BY': 400, 'SELECTS': 200, 'CONTAINS': 200, 'SUBJECT_TO': 200}, 'rejected': ['PR001 -BELONGS_TO-> D001: ontology rejected: forced by test_g7'], 'total_in_db': 1203}
+E               assert True is False
+
+tests/integration/test_canonical_seed_completeness.py:219: AssertionError
+_____ test_g8_foreign_owned_triple_is_not_mistaken_for_a_complete_fixture ______
+
+    def test_g8_foreign_owned_triple_is_not_mistaken_for_a_complete_fixture() -> None:
+        """`inserted=True` does not mean a row was written (R2.1).
+    
+        `uq_relationships_triple` keys on (src, relation, dst, valid_from) WITHOUT
+        `source_system`, and `upsert_relationship` reports success for an ON CONFLICT
+        DO NOTHING that wrote nothing. So a foreign fixture squatting on one of our
+        triples costs us a row while every insert counter still reads six-per-PR.
+    
+        The triple is DISCOVERED from the live fixture rather than hardcoded, so the
+        guard stays honest if the fixture's PR-to-target pairing ever changes.
+        """
+        engine = get_engine()
+        squatter = "test:g8_foreign_squatter"
+    
+        with engine.connect() as conn:
+            triple = conn.execute(
+                text(
+                    """
+                    SELECT r.src_entity_id, r.relation, r.dst_entity_id
+                    FROM relationships r
+                    JOIN entities s ON s.id = r.src_entity_id
+                    WHERE r.source_system = :f
+                      AND r.relation = 'BELONGS_TO'
+                      AND s.entity_type = 'purchase_request'
+                      AND s.source_system = 'demo:demo'
+                    ORDER BY s.display_id
+                    LIMIT 1
+                    """
+                ),
+                {"f": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
+            ).first()
+        assert triple is not None, "no demo BELONGS_TO edge found — run the canonical seed first"
+        src_id, relation, dst_id = triple
+    
+        try:
+            with engine.begin() as conn:
+                # Free the triple (precise predicate, own source_system only), then
+                # let a FOREIGN source_system own it. Plain INSERT, no ON CONFLICT —
+                # a conflict here would mean the test's own setup is wrong, and it
+                # must say so loudly.
+                conn.execute(
+                    text(
+                        "DELETE FROM relationships WHERE source_system = :f "
+                        "AND src_entity_id = :s AND relation = :r AND dst_entity_id = :d"
+                    ),
+                    {"f": DEMO_RELATIONSHIP_SOURCE_SYSTEM, "s": src_id, "r": relation, "d": dst_id},
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO relationships (src_entity_id, relation, dst_entity_id, "
+                        "source_system, source_ref, confidence) "
+                        "VALUES (:s, :r, :d, :ss, '', 1.0)"
+                    ),
+                    {"s": src_id, "r": relation, "d": dst_id, "ss": squatter},
+                )
+    
+            result = seed_demo_relationships(engine)
+>           assert result["ok"] is False, (
+                "a foreign source_system owning one of our triples must fail the "
+                f"canonical seed; got {result}"
+            )
+E           AssertionError: a foreign source_system owning one of our triples must fail the canonical seed; got {'ok': True, 'prs': 200, 'departments': 4, 'removed': 1199, 'inserted_by_type': {'BELONGS_TO': 200, 'SUBMITTED_BY': 400, 'SELECTS': 200, 'CONTAINS': 200, 'SUBJECT_TO': 200}, 'rejected': [], 'total_in_db': 1204}
+E           assert True is False
+
+tests/integration/test_canonical_seed_completeness.py:298: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_canonical_seed_completeness.py::test_g7_rejected_relationship_fails_the_canonical_seed
+FAILED tests/integration/test_canonical_seed_completeness.py::test_g8_foreign_owned_triple_is_not_mistaken_for_a_complete_fixture

@@ -1,0 +1,10 @@
+Seeding 4 department entities...
+  Removed 1200 prior 'demo:seed_relationships' rows (canonical reseed)
+
+Seeded relationships from 200 PRs:
+  BELONGS_TO: 200 new insertions
+  SUBMITTED_BY: 400 new insertions
+  SELECTS: 200 new insertions
+  CONTAINS: 200 new insertions
+  SUBJECT_TO: 200 new insertions
+Total relationships in DB: 1204
