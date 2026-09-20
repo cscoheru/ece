@@ -87,7 +87,18 @@ def main() -> int:
         )
         return 1
 
-    # 3. For each PR, create 5 relationships (cyclic selection for variety)
+    # 3. For each PR, create 6 relationships (cyclic selection for variety)
+    #
+    # NOTE (cut-040R-2 Final Evidence Repair): this list has SIX entries, not
+    # five — the 6th is the deliberate "2nd submitter for variety" added in
+    # cut-009. The old comment said "5", and that stale count propagated into
+    # `gen_eval_datasets.py` (E5 `expected_count`) and its docstring. The
+    # implemented contract is 6 non-temporal relationships per PR.
+    #
+    # The fixture is made CANONICAL below (delete-then-insert scoped to this
+    # script's own source_system): repeated runs, or runs interleaved with other
+    # tests that mutate the person/supplier lists, used to leave 7-8 rows behind
+    # and silently invalidate E5's expected count.
     counters: dict[str, int] = {
         "BELONGS_TO": 0,
         "SUBMITTED_BY": 0,
@@ -95,6 +106,14 @@ def main() -> int:
         "CONTAINS": 0,
         "SUBJECT_TO": 0,
     }
+
+    with engine.begin() as conn:
+        deleted = conn.execute(
+            text("DELETE FROM relationships WHERE source_system = :s"),
+            {"s": "demo:seed_relationships"},
+        ).rowcount
+    if deleted:
+        print(f"  Removed {deleted} prior 'demo:seed_relationships' rows (canonical reseed)")
 
     for i, pr_id in enumerate(pr_ids):
         rel_specs = [

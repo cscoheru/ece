@@ -8,272 +8,272 @@
     {
       "id": "e5-001",
       "user": "demo-user-procurement",
-      "from": "PR001",
+      "from": "PR201",
       "relation": "SELECTS",
       "as_of": "2024-01-01",
-      "expected_count": 5,
-      "note": "as_of=2024-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-002",
       "user": "demo-user-procurement",
-      "from": "PR002",
+      "from": "PR202",
       "relation": "SELECTS",
       "as_of": "2024-12-31",
-      "expected_count": 5,
-      "note": "as_of=2024-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-003",
       "user": "demo-user-procurement",
-      "from": "PR003",
+      "from": "PR203",
       "relation": "SELECTS",
       "as_of": "2025-06-30",
-      "expected_count": 5,
-      "note": "as_of=2025-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-004",
       "user": "demo-user-procurement",
-      "from": "PR004",
+      "from": "PR204",
       "relation": "SELECTS",
       "as_of": "2025-12-31",
-      "expected_count": 5,
-      "note": "as_of=2025-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-005",
       "user": "demo-user-procurement",
-      "from": "PR005",
+      "from": "PR205",
       "relation": "SELECTS",
       "as_of": "2026-01-01",
-      "expected_count": 5,
-      "note": "as_of=2026-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-006",
       "user": "demo-user-procurement",
-      "from": "PR006",
+      "from": "PR206",
       "relation": "SELECTS",
       "as_of": "2026-06-30",
-      "expected_count": 5,
-      "note": "as_of=2026-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-007",
       "user": "demo-user-procurement",
-      "from": "PR007",
+      "from": "PR207",
       "relation": "SELECTS",
       "as_of": "2026-09-14",
-      "expected_count": 5,
-      "note": "as_of=2026-09-14; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-09-14; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-008",
       "user": "demo-user-procurement",
-      "from": "PR008",
+      "from": "PR208",
       "relation": "SELECTS",
       "as_of": "2024-01-01",
-      "expected_count": 5,
-      "note": "as_of=2024-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-009",
       "user": "demo-user-procurement",
-      "from": "PR009",
+      "from": "PR209",
       "relation": "SELECTS",
       "as_of": "2024-12-31",
-      "expected_count": 5,
-      "note": "as_of=2024-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-010",
       "user": "demo-user-procurement",
-      "from": "PR010",
+      "from": "PR210",
       "relation": "SELECTS",
       "as_of": "2025-06-30",
-      "expected_count": 5,
-      "note": "as_of=2025-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-011",
       "user": "demo-user-procurement",
-      "from": "PR011",
+      "from": "PR211",
       "relation": "SELECTS",
       "as_of": "2025-12-31",
-      "expected_count": 5,
-      "note": "as_of=2025-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-012",
       "user": "demo-user-procurement",
-      "from": "PR012",
+      "from": "PR212",
       "relation": "SELECTS",
       "as_of": "2026-01-01",
-      "expected_count": 5,
-      "note": "as_of=2026-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-013",
       "user": "demo-user-procurement",
-      "from": "PR013",
+      "from": "PR213",
       "relation": "SELECTS",
       "as_of": "2026-06-30",
-      "expected_count": 5,
-      "note": "as_of=2026-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-014",
       "user": "demo-user-procurement",
-      "from": "PR014",
+      "from": "PR214",
       "relation": "SELECTS",
       "as_of": "2026-09-14",
-      "expected_count": 5,
-      "note": "as_of=2026-09-14; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-09-14; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-015",
       "user": "demo-user-procurement",
-      "from": "PR015",
+      "from": "PR215",
       "relation": "SELECTS",
       "as_of": "2024-01-01",
-      "expected_count": 5,
-      "note": "as_of=2024-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-016",
       "user": "demo-user-procurement",
-      "from": "PR016",
+      "from": "PR216",
       "relation": "SELECTS",
       "as_of": "2024-12-31",
-      "expected_count": 5,
-      "note": "as_of=2024-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-017",
       "user": "demo-user-procurement",
-      "from": "PR017",
+      "from": "PR217",
       "relation": "SELECTS",
       "as_of": "2025-06-30",
-      "expected_count": 5,
-      "note": "as_of=2025-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-018",
       "user": "demo-user-procurement",
-      "from": "PR018",
+      "from": "PR218",
       "relation": "SELECTS",
       "as_of": "2025-12-31",
-      "expected_count": 5,
-      "note": "as_of=2025-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-019",
       "user": "demo-user-procurement",
-      "from": "PR019",
+      "from": "PR219",
       "relation": "SELECTS",
       "as_of": "2026-01-01",
-      "expected_count": 5,
-      "note": "as_of=2026-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-020",
       "user": "demo-user-procurement",
-      "from": "PR020",
+      "from": "PR220",
       "relation": "SELECTS",
       "as_of": "2026-06-30",
-      "expected_count": 5,
-      "note": "as_of=2026-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-021",
       "user": "demo-user-procurement",
-      "from": "PR021",
+      "from": "PR221",
       "relation": "SELECTS",
       "as_of": "2026-09-14",
-      "expected_count": 5,
-      "note": "as_of=2026-09-14; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-09-14; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-022",
       "user": "demo-user-procurement",
-      "from": "PR022",
+      "from": "PR222",
       "relation": "SELECTS",
       "as_of": "2024-01-01",
-      "expected_count": 5,
-      "note": "as_of=2024-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-023",
       "user": "demo-user-procurement",
-      "from": "PR023",
+      "from": "PR223",
       "relation": "SELECTS",
       "as_of": "2024-12-31",
-      "expected_count": 5,
-      "note": "as_of=2024-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-024",
       "user": "demo-user-procurement",
-      "from": "PR024",
+      "from": "PR224",
       "relation": "SELECTS",
       "as_of": "2025-06-30",
-      "expected_count": 5,
-      "note": "as_of=2025-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-025",
       "user": "demo-user-procurement",
-      "from": "PR025",
+      "from": "PR225",
       "relation": "SELECTS",
       "as_of": "2025-12-31",
-      "expected_count": 5,
-      "note": "as_of=2025-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2025-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-026",
       "user": "demo-user-procurement",
-      "from": "PR026",
+      "from": "PR226",
       "relation": "SELECTS",
       "as_of": "2026-01-01",
-      "expected_count": 5,
-      "note": "as_of=2026-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-027",
       "user": "demo-user-procurement",
-      "from": "PR027",
+      "from": "PR227",
       "relation": "SELECTS",
       "as_of": "2026-06-30",
-      "expected_count": 5,
-      "note": "as_of=2026-06-30; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-06-30; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-028",
       "user": "demo-user-procurement",
-      "from": "PR028",
+      "from": "PR228",
       "relation": "SELECTS",
       "as_of": "2026-09-14",
-      "expected_count": 5,
-      "note": "as_of=2026-09-14; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2026-09-14; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-029",
       "user": "demo-user-procurement",
-      "from": "PR029",
+      "from": "PR229",
       "relation": "SELECTS",
       "as_of": "2024-01-01",
-      "expected_count": 5,
-      "note": "as_of=2024-01-01; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-01-01; 6 non-temporal relationships from seed_relationships (cut-009)"
     },
     {
       "id": "e5-030",
       "user": "demo-user-procurement",
-      "from": "PR030",
+      "from": "PR230",
       "relation": "SELECTS",
       "as_of": "2024-12-31",
-      "expected_count": 5,
-      "note": "as_of=2024-12-31; 5 non-temporal relationships from seed_relationships (cut-009)"
+      "expected_count": 6,
+      "note": "as_of=2024-12-31; 6 non-temporal relationships from seed_relationships (cut-009)"
     }
   ]
 }

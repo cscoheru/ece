@@ -104,33 +104,54 @@ def test_seed_relationship_ontology_whitelist() -> None:
 
 
 def test_seed_relationship_upsert_idempotent_direct() -> None:
-    """Direct upsert_relationship call is idempotent (UNIQUE INDEX)."""
+    """Direct upsert_relationship call is idempotent (UNIQUE INDEX).
+
+    cut-040R-2 Final Evidence Repair: this test used to leave its
+    `test:seed_relationships_test` row in the database forever. E5 counts the
+    relationships per PR, so a leftover row inflated one PR's count and was one
+    of the two pollution sources that made E5 immeasurable. Cleans up in
+    `finally` now.
+    """
     engine = get_engine()
-    # Pick first PR + first person
+    # Pick first PR + first person (ORDER BY for determinism)
     with engine.connect() as conn:
         pr_row = conn.execute(
-            text("SELECT display_id FROM entities WHERE entity_type='purchase_request' LIMIT 1")
+            text(
+                "SELECT display_id FROM entities WHERE entity_type='purchase_request' "
+                "ORDER BY display_id LIMIT 1"
+            )
         ).first()
         person_row = conn.execute(
-            text("SELECT display_id FROM entities WHERE entity_type='person' LIMIT 1")
+            text(
+                "SELECT display_id FROM entities WHERE entity_type='person' "
+                "ORDER BY display_id LIMIT 1"
+            )
         ).first()
     assert pr_row and person_row
 
-    # First call: should insert (or be already there)
-    ins1, _ = upsert_relationship(
-        engine,
-        src_display_id=pr_row[0],
-        relation="SUBMITTED_BY",
-        dst_display_id=person_row[0],
-        source_system="test:seed_relationships_test",
-    )
-    # Second call: same triple → should NOT insert (idempotent)
-    ins2, _ = upsert_relationship(
-        engine,
-        src_display_id=pr_row[0],
-        relation="SUBMITTED_BY",
-        dst_display_id=person_row[0],
-        source_system="test:seed_relationships_test",
-    )
-    # Only one should return True (inserted)
-    assert ins1 or not ins2, f"both inserts returned True: ins1={ins1} ins2={ins2}"
+    try:
+        # First call: should insert (or be already there)
+        ins1, _ = upsert_relationship(
+            engine,
+            src_display_id=pr_row[0],
+            relation="SUBMITTED_BY",
+            dst_display_id=person_row[0],
+            source_system="test:seed_relationships_test",
+        )
+        # Second call: same triple → should NOT insert (idempotent)
+        ins2, _ = upsert_relationship(
+            engine,
+            src_display_id=pr_row[0],
+            relation="SUBMITTED_BY",
+            dst_display_id=person_row[0],
+            source_system="test:seed_relationships_test",
+        )
+        # Only one should return True (inserted)
+        assert ins1 or not ins2, f"both inserts returned True: ins1={ins1} ins2={ins2}"
+    finally:
+        # Remove exactly this test's own rows (scoped by source_system).
+        with engine.begin() as conn:
+            conn.execute(
+                text("DELETE FROM relationships WHERE source_system = :s"),
+                {"s": "test:seed_relationships_test"},
+            )

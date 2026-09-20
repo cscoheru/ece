@@ -373,9 +373,14 @@ def _gen_e4(pr_ids: list[str]) -> list[dict]:
             "user": "demo-user-procurement",
             "from": pr_id,
             "spec_relations": ["SELECTS", "CONTAINS", "SUBMITTED_BY", "BELONGS_TO"],
-            "expected_count_min": 0,
-            "expected_count_max": 100,
-            "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)",
+            # cut-040R-2 Final Evidence Repair: the previous bounds [0, 100] made
+            # E4 pass VACUOUSLY (a missing entity yields 0 relationships, which
+            # is inside the band). Bounds are now the canonical fixture contract:
+            # scripts/seed_relationships.py creates exactly 6 non-temporal
+            # relationships per PR (see its rel_specs — 6 entries, not 5).
+            "expected_count_min": 6,
+            "expected_count_max": 6,
+            "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)",
         })
     return cases
 
@@ -387,17 +392,25 @@ def _gen_e4(pr_ids: list[str]) -> list[dict]:
 def _gen_e5(pr_ids: list[str]) -> list[dict]:
     """E5: Temporal as_of/between cases (target ≥30).
 
-    Per cut-009: after seed_relationships, each PR has 5 relationships
-    (BELONGS_TO + SUBMITTED_BY + SELECTS + CONTAINS + SUBJECT_TO).
-    None are temporal (valid_from=NULL), so as_of doesn't filter — all
-    dates see the same 5 relationships.
+    Per cut-009 (corrected by cut-040R-2 Final Evidence Repair): after
+    scripts/seed_relationships.py, each PR has **6** relationships —
+    BELONGS_TO + SUBMITTED_BY + SELECTS + CONTAINS + **SUBMITTED_BY (2nd
+    submitter, "for variety")** + SUBJECT_TO. The original "5" was a stale
+    count that never matched the implementation (whose rel_specs list has six
+    entries); it survived unnoticed because the E5 runner crashed from the day
+    it was written.
+
+    None are temporal (valid_from = valid_to = NULL). Per DATA_MODEL.md §
+    `valid_from NULL = -∞ / valid_to NULL = +∞`, the interval is [-∞, +∞), so
+    `as_of` does not filter — every date sees the same 6 relationships. That
+    invariance is exactly what E5 measures.
     """
     cases: list[dict] = []
     as_of_dates = [
         "2024-01-01", "2024-12-31", "2025-06-30", "2025-12-31",
         "2026-01-01", "2026-06-30", "2026-09-14",
     ]
-    expected_rels_per_pr = 5
+    expected_rels_per_pr = 6
     for i in range(30):
         pr_id = pr_ids[i % len(pr_ids)]
         as_of = as_of_dates[i % len(as_of_dates)]

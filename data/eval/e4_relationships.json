@@ -8,422 +8,422 @@
     {
       "id": "e4-001",
       "user": "demo-user-procurement",
-      "from": "PR001",
+      "from": "PR201",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-002",
       "user": "demo-user-procurement",
-      "from": "PR002",
+      "from": "PR202",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-003",
       "user": "demo-user-procurement",
-      "from": "PR003",
+      "from": "PR203",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-004",
       "user": "demo-user-procurement",
-      "from": "PR004",
+      "from": "PR204",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-005",
       "user": "demo-user-procurement",
-      "from": "PR005",
+      "from": "PR205",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-006",
       "user": "demo-user-procurement",
-      "from": "PR006",
+      "from": "PR206",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-007",
       "user": "demo-user-procurement",
-      "from": "PR007",
+      "from": "PR207",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-008",
       "user": "demo-user-procurement",
-      "from": "PR008",
+      "from": "PR208",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-009",
       "user": "demo-user-procurement",
-      "from": "PR009",
+      "from": "PR209",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-010",
       "user": "demo-user-procurement",
-      "from": "PR010",
+      "from": "PR210",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-011",
       "user": "demo-user-procurement",
-      "from": "PR011",
+      "from": "PR211",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-012",
       "user": "demo-user-procurement",
-      "from": "PR012",
+      "from": "PR212",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-013",
       "user": "demo-user-procurement",
-      "from": "PR013",
+      "from": "PR213",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-014",
       "user": "demo-user-procurement",
-      "from": "PR014",
+      "from": "PR214",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-015",
       "user": "demo-user-procurement",
-      "from": "PR015",
+      "from": "PR215",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-016",
       "user": "demo-user-procurement",
-      "from": "PR016",
+      "from": "PR216",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-017",
       "user": "demo-user-procurement",
-      "from": "PR017",
+      "from": "PR217",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-018",
       "user": "demo-user-procurement",
-      "from": "PR018",
+      "from": "PR218",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-019",
       "user": "demo-user-procurement",
-      "from": "PR019",
+      "from": "PR219",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-020",
       "user": "demo-user-procurement",
-      "from": "PR020",
+      "from": "PR220",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-021",
       "user": "demo-user-procurement",
-      "from": "PR021",
+      "from": "PR221",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-022",
       "user": "demo-user-procurement",
-      "from": "PR022",
+      "from": "PR222",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-023",
       "user": "demo-user-procurement",
-      "from": "PR023",
+      "from": "PR223",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-024",
       "user": "demo-user-procurement",
-      "from": "PR024",
+      "from": "PR224",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-025",
       "user": "demo-user-procurement",
-      "from": "PR025",
+      "from": "PR225",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-026",
       "user": "demo-user-procurement",
-      "from": "PR026",
+      "from": "PR226",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-027",
       "user": "demo-user-procurement",
-      "from": "PR027",
+      "from": "PR227",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-028",
       "user": "demo-user-procurement",
-      "from": "PR028",
+      "from": "PR228",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-029",
       "user": "demo-user-procurement",
-      "from": "PR029",
+      "from": "PR229",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     },
     {
       "id": "e4-030",
       "user": "demo-user-procurement",
-      "from": "PR030",
+      "from": "PR230",
       "spec_relations": [
         "SELECTS",
         "CONTAINS",
         "SUBMITTED_BY",
         "BELONGS_TO"
       ],
-      "expected_count_min": 0,
-      "expected_count_max": 100,
-      "note": "no relationships seeded; expect empty (post-cut-008: seed for full E4)"
+      "expected_count_min": 6,
+      "expected_count_max": 6,
+      "note": "canonical fixture: 6 relationships per PR from seed_relationships (cut-009)"
     }
   ]
 }

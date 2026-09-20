@@ -51,6 +51,18 @@ def test_seed_first_run_then_second_run_idempotent(tmp_path) -> None:
     r1 = seed_from_demo_json(engine, demo)
     r2 = seed_from_demo_json(engine, demo)
 
+    # cut-040R-2 Final Evidence Repair: restore the relationship fixture this
+    # test just destroyed. The wipe above deletes every relationship touching a
+    # `demo:demo` entity, but `seed_from_demo_json` only recreates ENTITIES.
+    # Without this, E4/E5 — and the eval-asset guards — measure an EMPTY graph
+    # after any pytest run. (test_s4_5_temporal already did this locally; the
+    # coupling that forced it is now fixed at the source instead.)
+    import subprocess as _sp
+    _sp.run(
+        ["uv", "run", "python", "scripts/seed_relationships.py"],
+        capture_output=True, text=True, check=False,
+    )
+
     cb1: dict[str, int] = r1["created_by_type"]  # type: ignore[assignment]
     cb2: dict[str, int] = r2["created_by_type"]  # type: ignore[assignment]
     total1 = sum(cb1.values())

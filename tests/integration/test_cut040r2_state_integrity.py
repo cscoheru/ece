@@ -105,6 +105,18 @@ def test_seed_replay_after_wipe_restores_departments() -> None:
 
     seed_from_demo_json(engine, demo)
 
+    # cut-040R-2 Final Evidence Repair: restore the relationship fixture this
+    # test just destroyed. The wipe above deletes every relationship touching a
+    # `demo:demo` entity, but `seed_from_demo_json` only recreates ENTITIES.
+    # Without this, E4/E5 — and the eval-asset guards — measure an EMPTY graph
+    # after any pytest run. (test_s4_5_temporal already did this locally; the
+    # coupling that forced it is now fixed at the source instead.)
+    import subprocess as _sp
+    _sp.run(
+        ["uv", "run", "python", "scripts/seed_relationships.py"],
+        capture_output=True, text=True, check=False,
+    )
+
     restored = _entity_counts(engine)
     assert sum(restored.values()) > 0, (
         "seed replay created no entities — the invariant cannot be evaluated"

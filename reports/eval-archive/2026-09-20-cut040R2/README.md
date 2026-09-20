@@ -205,3 +205,65 @@ RC-8 修好后,4 个测试失败 —— 它们**编码了 substring 派生的错
 management-or-admin 门禁** —— 即它们依赖的正是 RC-8 这个 bug。E2 的 4 个用户必须
 **不是** management(否则 6 个 management 分类案全破),故为 ingestion 测试单设一个
 显式 `admin` 角色的用户(admin ≠ management)。
+
+---
+
+## Final Evidence Repair (2026-09-20) — E3/E4/E5 有效性修复
+
+Codex 最终判定:**NO-GO,但非架构 NO-GO**。架构 PASS/FREEZE,P1/P2/E1/E2 全 PASS,
+唯一阻塞是 E3/E4/E5 的**评测有效性**。
+
+### 根因(本轮查明)
+
+| 套件 | 原结果 | 真实根因 |
+|---|---|---|
+| **E3** | 15.0% | `e3_context.json` 引用 `PR001…`,而 `_next_display_id` 按 max+1 分配、wipe+replay 会推移 display_id → **数据集过期** |
+| **E4** | 100% | **vacuous**:边界 `[0,100]`,对象缺失(0 关系)也在带内。生成器原 note 明写 *"no relationships seeded; expect empty"* —— 它本来就是占位符 |
+| **E5** | 0.0% | ① 数据集过期 ② **关系 fixture 被 wipe 摧毁且无人恢复** ③ `expected_count=5` **从未匹配实现(6)** |
+
+### 关键发现:E5 的 expected 一直错了
+
+`scripts/seed_relationships.py` 的 `rel_specs` 列表有 **六** 项(第 6 项带注释
+`# 2nd submitter for variety`),但代码注释写"create 5"、生成器 docstring 写 5、
+数据集 `expected_count` 写 5 —— **三处陈旧副本**。E5 runner 从写出来那天就崩,
+所以这个错配**从未被发现**。
+
+### 关键发现:时态语义没有问题
+
+`docs/DATA_MODEL.md:67-68` 明写 `valid_from NULL = -∞ / valid_to NULL = +∞`,区间 `[from, to)`;
+`src/ece/context/relationships.py:49-50` 的实现与之**逐字一致**。
+所以 `[None,None]` = 永久有效、在任何 `as_of` 都命中 —— E5 的"0 条"从来不是时态 bug。
+
+### 修复
+
+| # | 修复 | 文件 |
+|---|---|---|
+| 1 | 关系 fixture **canonical 化**(DELETE-then-INSERT 限于自身 source_system) | `scripts/seed_relationships.py` |
+| 2 | 陈旧注释 "5" → "6" + 说明 | 同上 |
+| 3 | E5 `expected_rels_per_pr` 5 → **6**;E4 边界 `[0,100]` → `[6,6]` | `scripts/gen_eval_datasets.py` |
+| 4 | 数据集重生成并固化为正式 artifact | `data/eval/*.json` |
+| 5 | ACL 对象改为**从 DB 派生**(与生成器同算法)→ seed↔dataset 不再漂移 | `src/ece/seed.py` |
+| 6 | `test_seed_relationships_test` 加 cleanup | `tests/integration/test_seed_relationships.py` |
+| 7 | 两个 wipe 测试**恢复它们毁掉的 fixture** | `test_s14_*` / `test_cut040r2_state_integrity.py` |
+| 8 | **4 类 guard**(6 个测试) | `tests/integration/test_eval_asset_integrity.py` |
+
+### Guards(Codex 要求)
+
+- **G1** 数据集引用的 display_id 必须存在(`expect=ok` 用例);不存在 → 明确 FAIL 并列出 stale reference
+- **G2** 关系 fixture 必须 canonical(每 PR 恰 6 条)+ 不得有 `test:*` 来源污染
+- **G3** 时态契约回归:`valid_from=valid_to=NULL` 必须在**每个** `as_of` 都命中
+- **G4** 数据集 expected 必须与 fixture 一致;E4 下界必须 > 0(防 vacuous)
+
+### 结果
+
+| 套件 | 修复前 | 修复后 |
+|---|---|---|
+| E1 | 98.5% | **98.5%** |
+| E2 | 61/61 | **61/61** |
+| **E3** | 15.0% (exit 1) | **100.0% (exit 0)** |
+| **E4** | 100% (vacuous) | **100.0% (exit 0, 非 vacuous)** |
+| **E5** | 0.0% (exit 1) | **100.0% (exit 0)** |
+| pytest | 353P/3S/0F | **359P/3S/0F** (+6 guards) |
+| P1 | F0==F1==F2 | **F0==F1==F2**(无回归) |
+
+原始 stdout: `reports/eval-archive/2026-09-20-cut040R2/FER/`

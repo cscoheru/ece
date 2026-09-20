@@ -1,0 +1,9 @@
+Loaded 30 cases from data/eval/e4_relationships.json
+
+=== E4 Relationships Results ===
+Total:    30
+Correct:  30
+Wrong:    0
+Accuracy: 100.0%
+
+*** PASS: 0 wrong relations (E4 acceptance) ***
