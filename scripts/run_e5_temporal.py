@@ -27,6 +27,7 @@ from pathlib import Path
 
 from ece.context.assembly import assemble_context
 from ece.db import get_engine
+from ece.seed import demo_relationship_fixture_status
 
 
 def main() -> int:
@@ -34,6 +35,24 @@ def main() -> int:
     parser.add_argument("--data", type=Path, default=Path("data/eval/e5_temporal.json"))
     parser.add_argument("--base-url", default="http://127.0.0.1:8765")
     args = parser.parse_args()
+
+    # R2 (C.3): environment integrity precondition. E5 asserts a per-PR count of
+    # 6; against an empty graph every case reports 0 and the suite scores 0% —
+    # or worse, a bounds-only case reads as a pass. Refuse rather than score.
+    # Does not change the dataset, expected_count or thresholds.
+    status = demo_relationship_fixture_status(get_engine())
+    if not status["complete"]:
+        print("PRECONDITION FAILURE: demo relationship fixture missing or incomplete.", file=sys.stderr)
+        print(
+            f"  demo:seed_relationships = {status['total']} rows, "
+            f"expected {status['expected_total']} (6 per demo PR).",
+            file=sys.stderr,
+        )
+        if status["deviating_prs"]:
+            print(f"  PRs not matching 6 relationships: {status['deviating_prs'][:8]}", file=sys.stderr)
+        print("  Refusing to run: an empty graph would produce a VACUOUS result.", file=sys.stderr)
+        print("  Fix: run `make seed` (canonical seed now restores relationships).", file=sys.stderr)
+        return 2
 
     data = json.loads(args.data.read_text(encoding="utf-8"))
     cases = data["cases"]

@@ -1,0 +1,44 @@
+### B. entities 总数与分布
+ total_entities 
+----------------
+            428
+(1 row)
+
+     source_system     |   entity_type    | count 
+-----------------------+------------------+-------
+ api:header            | person           |     4
+ demo:demo             | contract         |    50
+ demo:demo             | policy           |    20
+ demo:demo             | product          |   100
+ demo:demo             | purchase_request |   200
+ demo:demo             | supplier         |    50
+ demo:seed_departments | department       |     4
+(7 rows)
+
+### C. relationships 分布
+      source_system      |   relation   | count 
+-------------------------+--------------+-------
+ demo:seed_relationships | BELONGS_TO   |   200
+ demo:seed_relationships | CONTAINS     |   200
+ demo:seed_relationships | SELECTS      |   200
+ demo:seed_relationships | SUBJECT_TO   |   200
+ demo:seed_relationships | SUBMITTED_BY |   400
+(5 rows)
+
+### D. 偏离 6 条的 demo PR (期望 0 行)
+ display_id | n 
+------------+---
+(0 rows)
+
+### D2. 没有任何关系的 demo PR (期望 0 行)
+ demo_prs_without_rels 
+-----------------------
+                     0
+(1 row)
+
+### acl
+     source_system     | count 
+-----------------------+-------
+ demo:cut-040-test-acl |     3
+(1 row)
+

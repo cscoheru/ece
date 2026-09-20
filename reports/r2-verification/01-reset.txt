@@ -1,0 +1,24 @@
+### A1. alembic downgrade base
+INFO  [alembic.runtime.migration] Running downgrade 0006_pg_trgm -> 0005_context_audit, S4.4 — Chinese tokenization via pg_trgm.
+INFO  [alembic.runtime.migration] Running downgrade 0005_context_audit -> 0004_resolution_pending, S3.3 — context_requests + context_items tables (DATA_MODEL §5).
+INFO  [alembic.runtime.migration] Running downgrade 0004_resolution_pending -> 0003_ontology_rejections, S2.3 R4 (cut-006 §7.3): pending resolution queue table.
+INFO  [alembic.runtime.migration] Running downgrade 0003_ontology_rejections -> 0002_relationship_unique, S2.4 ontology rejection log migration.
+INFO  [alembic.runtime.migration] Running downgrade 0002_relationship_unique -> 0001_initial, R3 -- 0002 migration: add unique index for relationships.
+INFO  [alembic.runtime.migration] Running downgrade 0001_initial -> , S0.5 initial migration — covers docs/DATA_MODEL.md sections 1-4 + acl_entries.
+
+### A2. alembic upgrade head
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, S0.5 initial migration — covers docs/DATA_MODEL.md sections 1-4 + acl_entries.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_relationship_unique, R3 -- 0002 migration: add unique index for relationships.
+INFO  [alembic.runtime.migration] Running upgrade 0002_relationship_unique -> 0003_ontology_rejections, S2.4 ontology rejection log migration.
+INFO  [alembic.runtime.migration] Running upgrade 0003_ontology_rejections -> 0004_resolution_pending, S2.3 R4 (cut-006 §7.3): pending resolution queue table.
+INFO  [alembic.runtime.migration] Running upgrade 0004_resolution_pending -> 0005_context_audit, S3.3 — context_requests + context_items tables (DATA_MODEL §5).
+INFO  [alembic.runtime.migration] Running upgrade 0005_context_audit -> 0006_pg_trgm, S4.4 — Chinese tokenization via pg_trgm.
+INFO  [alembic.runtime.migration] Running upgrade 0006_pg_trgm -> 0007_user_orgs, 0007 — add org_id column to context_requests (cut-019 multi-tenant).
+
+### A3. 空库计数
+ e | r | a 
+---+---+---
+ 0 | 0 | 0
+(1 row)
+

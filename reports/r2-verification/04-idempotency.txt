@@ -1,0 +1,24 @@
+=== R2 幂等性验证 (make seed 连跑, 逐字比对) ===
+快照 A: entities/relationships/acl = acl_entries|3 entities|428 relationships|1200 
+快照 B: entities/relationships/acl = acl_entries|3 entities|428 relationships|1200 
+
+--- 关系分布 (source_system|relation|count), 5 行 ---
+demo:seed_relationships|BELONGS_TO|200
+demo:seed_relationships|CONTAINS|200
+demo:seed_relationships|SELECTS|200
+demo:seed_relationships|SUBJECT_TO|200
+demo:seed_relationships|SUBMITTED_BY|400
+
+--- 每 PR 关系数, 前 5 行 / 共      200 行 ---
+PR001|6
+PR002|6
+PR003|6
+PR004|6
+PR005|6
+
+--- diff 结果 ---
+✅ rel: 逐字相同 (       5 行)
+✅ pr: 逐字相同 (     200 行)
+✅ tot: 逐字相同 (       3 行)
+
+注: 首次记录时 SQL 有误(GROUP BY 位置引用), 两个分布查询均报错, diff 比较的是空文件 —— 该次结果作废, 已用修正后 SQL 重跑。

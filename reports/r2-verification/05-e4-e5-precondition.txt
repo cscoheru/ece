@@ -1,0 +1,22 @@
+### G1. 完整 fixture 下 E4/E5 (未手工跑 seed_relationships.py)
+E4 exit=0  Accuracy: 100.0%
+E5 exit=0  Accuracy: 100.0%
+
+### G2. 负向对照 —— 删掉 fixture 后必须 exit 2 而不是对空图打分
+DELETE 1200
+E4 exit=2 (期望 2)
+PRECONDITION FAILURE: demo relationship fixture missing or incomplete.
+  demo:seed_relationships = 0 rows, expected 1200 (6 per demo PR).
+  Refusing to run: an empty graph would produce a VACUOUS result.
+  Fix: run `make seed` (canonical seed now restores relationships).
+E5 exit=2 (期望 2)
+PRECONDITION FAILURE: demo relationship fixture missing or incomplete.
+  demo:seed_relationships = 0 rows, expected 1200 (6 per demo PR).
+  Refusing to run: an empty graph would produce a VACUOUS result.
+  Fix: run `make seed` (canonical seed now restores relationships).
+
+### 恢复 canonical seed
+Total skipped: 0
+Relationships: {'BELONGS_TO': 200, 'SUBMITTED_BY': 400, 'SELECTS': 200, 'CONTAINS': 200, 'SUBJECT_TO': 200} (replaced 0 prior rows, 4 departments)
+Total relationships in DB: 1200
+relationships=1200

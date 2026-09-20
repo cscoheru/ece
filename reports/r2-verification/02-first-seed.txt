@@ -1,0 +1,14 @@
+### A4. make gen-dataset + md5 baseline
+高额 PR 对抗用例 (≥100万 触发比价): 54 个 (期望 ≥ 10)
+
+OK — all counts within tolerance, adversarial cases present
+f98a76ca10a025d530e1d018582a13ca
+(CI baseline: f98a76ca10a025d530e1d018582a13ca)
+
+### A5. make seed (第一次, 空库)
+uv run python -m ece.seed
+Seed complete: {'supplier': 50, 'product': 100, 'purchase_request': 200, 'contract': 50, 'policy': 20}
+Total created: 420
+Total skipped: 0
+Relationships: {'BELONGS_TO': 200, 'SUBMITTED_BY': 400, 'SELECTS': 200, 'CONTAINS': 200, 'SUBJECT_TO': 200} (replaced 0 prior rows, 4 departments)
+Total relationships in DB: 1200

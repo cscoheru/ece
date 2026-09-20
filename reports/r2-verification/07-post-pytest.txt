@@ -1,0 +1,18 @@
+### H2. 新增 guard 是否真的跑了
+============================== 2 passed in 10.01s ==============================
+
+### H3. FER guards (G1-G4)
+......                                                                   [100%]
+
+### H4. ⭐ pytest 全套跑完之后的不变量 (R2 的最终判据)
+ entities | relationships | acl 
+----------+---------------+-----
+      437 |          1203 |   3
+(1 row)
+
+ demo_prs_deviating_from_6 
+---------------------------
+                         0
+(1 row)
+
+demo:seed_relationships = 1200

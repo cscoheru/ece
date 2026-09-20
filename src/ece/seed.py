@@ -24,7 +24,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from ece.db import get_engine
-from ece.entities.pipeline import upsert_entity
+from ece.entities.pipeline import upsert_entity, upsert_relationship
 
 # Map from gen_dataset top-level key -> entity_type (per PRD §27).
 # Some lists contain str (name only), others contain dict (id + fields).
@@ -360,6 +360,237 @@ def _seed_entity_departments(engine) -> int:
     return total
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Demo relationship fixture
+#
+# R2: the relationship seeding logic used to live ONLY in
+# `scripts/seed_relationships.py`, a standalone process-level script. `make seed`
+# therefore produced 428 entities and ZERO relationships, so any workflow that
+# rebuilt the DB and ran the eval suites measured an empty graph. The logic is
+# now a shared function here — `run_seed()` calls it, and the script is a thin
+# wrapper over it (one implementation, not two copies that drift).
+# ─────────────────────────────────────────────────────────────────────────────
+
+DEMO_RELATIONSHIP_SOURCE_SYSTEM = "demo:seed_relationships"
+
+# Departments inferred from demo person attributes (seed.py)
+DEMO_DEPARTMENTS = ["procurement", "finance", "sales", "D01"]
+
+# Canonical fixture contract: SIX relationships per demo PR. The 6th is the
+# deliberate "2nd submitter for variety" — see the rel_specs list below. This
+# count is what the frozen E4/E5 datasets assert (`expected_count`).
+EXPECTED_RELS_PER_DEMO_PR = 6
+
+# Explicit allowlist of the source_systems THIS fixture builds relationships on.
+#
+# cut-040R-2 S1 fix: `_fetch_display_ids` used to select by `entity_type` alone,
+# so it annexed ANY entity of the same type. Adding the V0 spike fixture (a
+# purchase_request) silently gave it six demo relationships and broke the
+# eval-asset guard G2. Scoping by an explicit allowlist expresses the intent
+# ("this fixture only touches its own entities") and cannot annex foreign
+# fixtures — same pattern as the wipe-predicate fix (precise predicate, never a
+# blacklist / LIKE sweep).
+_FIXTURE_SOURCE_SYSTEMS: dict[str, str] = {
+    "purchase_request": "demo:demo",
+    "supplier": "demo:demo",
+    "product": "demo:demo",
+    "policy": "demo:demo",
+    "department": "demo:seed_departments",
+    "person": "api:header",
+}
+
+
+def _fetch_display_ids(engine, entity_type: str) -> list[str]:
+    """Fetch display_ids for an entity type, SCOPED to this fixture's own
+    source_system (see _FIXTURE_SOURCE_SYSTEMS). Sorted.
+
+    Fails loudly on an unmapped entity_type rather than silently reverting to an
+    unscoped scan.
+    """
+    source_system = _FIXTURE_SOURCE_SYSTEMS.get(entity_type)
+    if source_system is None:
+        raise KeyError(
+            f"no fixture source_system mapped for entity_type={entity_type!r}. "
+            "Add it to _FIXTURE_SOURCE_SYSTEMS — do NOT fall back to an unscoped "
+            "scan (that annexes foreign fixtures)."
+        )
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT display_id FROM entities "
+                "WHERE entity_type = :t AND source_system = :s ORDER BY display_id"
+            ),
+            {"t": entity_type, "s": source_system},
+        ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _seed_fixture_departments(engine) -> list[str]:
+    """Seed 4 department entities (no separate dept entities in demo).
+
+    NOTE (R2-obs-2, deliberately NOT changed by R2): `upsert_entity` is called
+    without an explicit `display_id`, so D001..D004 are still allocated by the
+    global max+1 allocator. No current consumer reads `D0xx` display_ids (E1–E5
+    never reference them), so this is latent, not live. Fixing it was ruled out
+    of R2's scope.
+    """
+    for dept in DEMO_DEPARTMENTS:
+        upsert_entity(
+            engine,
+            entity_type="department",
+            name=dept.capitalize() if dept != "D01" else "D01 Department",
+            source_system="demo:seed_departments",
+            source_id=f"dept:{dept}",
+            attributes={"name": dept},
+        )
+    return _fetch_display_ids(engine, "department")
+
+
+def seed_demo_relationships(engine) -> dict[str, object]:
+    """Seed the demo relationship fixture (canonical, idempotent, self-scoped).
+
+    For each demo PR, creates 6 relationships:
+    BELONGS_TO department / SUBMITTED_BY person / SELECTS supplier /
+    CONTAINS product / SUBMITTED_BY (2nd person) / SUBJECT_TO policy.
+
+    Idempotent via DELETE-then-INSERT scoped to THIS fixture's own
+    `source_system` (the `uq_relationships_triple` unique index is the backstop).
+    The delete MUST stay scoped: a previous version relied on ON CONFLICT alone
+    and leftover rows from interleaved tests silently invalidated E5's
+    per-PR expected count.
+
+    Prerequisite: entities (incl. `api:header` persons from `seed_test_users`)
+    must already exist — hence `run_seed()` calls `seed_test_users()` first.
+
+    Returns {"ok", "error"?, "departments", "removed", "inserted_by_type",
+             "rejected", "total_in_db"}.
+    """
+    dept_ids = _seed_fixture_departments(engine)
+    if not dept_ids:
+        return {"ok": False, "error": "failed to seed departments"}
+
+    pr_ids = _fetch_display_ids(engine, "purchase_request")
+    if not pr_ids:
+        return {"ok": False, "error": "no purchase_request entities; run `make seed` first"}
+
+    people_ids = _fetch_display_ids(engine, "person")
+    supplier_ids = _fetch_display_ids(engine, "supplier")
+    product_ids = _fetch_display_ids(engine, "product")
+    policy_ids = _fetch_display_ids(engine, "policy")
+
+    if not (people_ids and supplier_ids and product_ids and policy_ids):
+        return {
+            "ok": False,
+            "error": "missing entity types (need person/supplier/product/policy)",
+        }
+
+    counters: dict[str, int] = {
+        "BELONGS_TO": 0,
+        "SUBMITTED_BY": 0,
+        "SELECTS": 0,
+        "CONTAINS": 0,
+        "SUBJECT_TO": 0,
+    }
+    rejected: list[str] = []
+
+    with engine.begin() as conn:
+        deleted = conn.execute(
+            text("DELETE FROM relationships WHERE source_system = :s"),
+            {"s": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
+        ).rowcount
+
+    for i, pr_id in enumerate(pr_ids):
+        rel_specs = [
+            ("BELONGS_TO", dept_ids[i % len(dept_ids)]),
+            ("SUBMITTED_BY", people_ids[i % len(people_ids)]),
+            ("SELECTS", supplier_ids[i % len(supplier_ids)]),
+            ("CONTAINS", product_ids[i % len(product_ids)]),
+            ("SUBMITTED_BY", people_ids[(i + 1) % len(people_ids)]),  # 2nd submitter for variety
+            ("SUBJECT_TO", policy_ids[i % len(policy_ids)]),
+        ]
+        # Dedupe rel_specs in case of cyclic collisions
+        seen_targets: set[tuple[str, str]] = set()
+        for rel_type, target in rel_specs:
+            key = (rel_type, target)
+            if key in seen_targets:
+                continue
+            seen_targets.add(key)
+            inserted, reason = upsert_relationship(
+                engine,
+                src_display_id=pr_id,
+                relation=rel_type,
+                dst_display_id=target,
+                source_system=DEMO_RELATIONSHIP_SOURCE_SYSTEM,
+            )
+            if inserted:
+                counters[rel_type] += 1
+            else:
+                rejected.append(f"{pr_id} -{rel_type}-> {target}: {reason}")
+
+    with engine.connect() as conn:
+        total = conn.execute(text("SELECT count(*) FROM relationships")).scalar()
+
+    return {
+        "ok": True,
+        "prs": len(pr_ids),
+        "departments": len(dept_ids),
+        "removed": deleted,
+        "inserted_by_type": dict(counters),
+        "rejected": rejected,
+        "total_in_db": int(total or 0),
+    }
+
+
+def demo_relationship_fixture_status(engine) -> dict[str, object]:
+    """Report whether the demo relationship fixture is present AND canonical.
+
+    R2 (C.3): consumers that would otherwise measure an EMPTY graph (E4/E5)
+    call this so a missing fixture fails loudly instead of producing a vacuous
+    result.
+
+    The per-PR deviation check alone is NOT sufficient: `HAVING count(*) != 6`
+    only sees PRs that HAVE relationship rows, so it silently ignores the worst
+    case (a PR with zero relationships). The total is therefore also reconciled
+    against `<demo PR entities> × EXPECTED_RELS_PER_DEMO_PR`.
+
+    Returns {"total", "expected_total", "deviating_prs", "complete"}.
+    """
+    with engine.connect() as conn:
+        total = conn.execute(
+            text("SELECT count(*) FROM relationships WHERE source_system = :s"),
+            {"s": DEMO_RELATIONSHIP_SOURCE_SYSTEM},
+        ).scalar_one()
+        demo_prs = conn.execute(
+            text(
+                "SELECT count(*) FROM entities "
+                "WHERE entity_type = 'purchase_request' AND source_system = 'demo:demo'"
+            )
+        ).scalar_one()
+        deviating = conn.execute(
+            text(
+                """
+                SELECT s.display_id, count(*) AS n
+                FROM relationships r
+                JOIN entities s ON s.id = r.src_entity_id
+                WHERE s.entity_type = 'purchase_request'
+                  AND s.source_system = 'demo:demo'
+                GROUP BY s.display_id
+                HAVING count(*) != :want
+                ORDER BY s.display_id
+                """
+            ),
+            {"want": EXPECTED_RELS_PER_DEMO_PR},
+        ).fetchall()
+
+    expected_total = int(demo_prs) * EXPECTED_RELS_PER_DEMO_PR
+    return {
+        "total": int(total),
+        "expected_total": expected_total,
+        "deviating_prs": [(r[0], r[1]) for r in deviating],
+        "complete": bool(demo_prs) and int(total) == expected_total and not deviating,
+    }
+
+
 def run_seed() -> dict[str, object]:
     """Entry: load demo.json, upsert all entities, return summary.
 
@@ -369,6 +600,13 @@ def run_seed() -> dict[str, object]:
       idempotent replay self-heals
     - seed_acl_entries() seeds 3 acl_entries for E2 'acl_explicit' cases
       (R40.1a)
+
+    R2 addition:
+    - seed_demo_relationships() — relationship seeding moved in from
+      scripts/seed_relationships.py, so this entrypoint now produces a COMPLETE
+      environment. Order matters: it must run after seed_test_users(), because
+      the fixture's SUBMITTED_BY edges target the `api:header` persons that
+      function creates.
     """
     engine = get_engine()
     out = seed_from_demo_json(engine, Path("data/dataset/demo.json"))
@@ -379,6 +617,15 @@ def run_seed() -> dict[str, object]:
     # re-injected here.
     # cut-040 R40.1a: seed 3 acl_entries for E2 explicit-acl cases
     out["acl_entries"] = seed_acl_entries(engine)
+    # R2: relationships. Fails loudly rather than leaving a half-built
+    # environment — a silent empty graph is what made E4/E5 vacuous.
+    relationships = seed_demo_relationships(engine)
+    if not relationships.get("ok"):
+        raise RuntimeError(
+            "canonical seed incomplete — relationship seeding failed: "
+            f"{relationships.get('error')}"
+        )
+    out["relationships"] = relationships
     return out
 
 
@@ -394,4 +641,18 @@ if __name__ == "__main__":
     if skipped_list:
         for s in skipped_list[:5]:
             print(f"  skipped: {s}")
+    # R2: report the relationship stage so `make seed` output shows the fixture
+    # is complete (this line is also what makes an incomplete seed auditable).
+    rels: dict[str, object] = result["relationships"]  # type: ignore[assignment]
+    inserted: dict[str, int] = rels["inserted_by_type"]  # type: ignore[assignment]
+    rejected_list: list[str] = rels["rejected"]  # type: ignore[assignment]
+    print(
+        f"Relationships: {inserted} "
+        f"(replaced {rels['removed']} prior rows, {rels['departments']} departments)"
+    )
+    print(f"Total relationships in DB: {rels['total_in_db']}")
+    if rejected_list:
+        print(f"  REJECTED {len(rejected_list)} relationship(s):")
+        for r in rejected_list[:5]:
+            print(f"    {r}")
     sys.exit(0)

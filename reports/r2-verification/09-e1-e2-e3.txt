@@ -1,0 +1,22 @@
+### healthz
+{"status":"ok","service":"ece","version":"0.1.0"} (http=200)
+
+### E1
+exit=0
+Total:    65
+Correct:  64
+Accuracy: 98.5%
+
+### E2
+exit=0
+Total cases:        61
+Failures:           0
+Exposures:          0
+Failure+Exposure %: 0.0%
+*** PASS: 0 Unauthorized Exposure, 0 permission failure (cut-006 R2) ***
+
+### E3
+exit=0
+Total:    100
+Correct:  100
+Accuracy: 100.0%

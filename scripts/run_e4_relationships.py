@@ -11,7 +11,10 @@ cut-040R-2 R40R2.7 (runner ↔ runtime contract fix):
   raised `AttributeError: 'ContextPackage' object has no attribute 'get'`.
   Fix: convert via `.to_dict()`. Test semantics and expectations unchanged.
 
-Note: E4 depends on the relationships table being seeded (scripts/seed_relationships.py).
+Note: E4 depends on the relationships table being seeded. That used to be a
+manual step (`scripts/seed_relationships.py`); `make seed` now performs it, and
+this runner asserts the fixture is present before scoring (R2 / C.3) — an empty
+graph would otherwise yield a VACUOUS pass.
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ from pathlib import Path
 
 from ece.context.assembly import assemble_context
 from ece.db import get_engine
+from ece.seed import demo_relationship_fixture_status
 
 
 def main() -> int:
@@ -29,6 +33,23 @@ def main() -> int:
     parser.add_argument("--data", type=Path, default=Path("data/eval/e4_relationships.json"))
     parser.add_argument("--base-url", default="http://127.0.0.1:8765")
     args = parser.parse_args()
+
+    # R2 (C.3): environment integrity precondition. Refuses to score against an
+    # empty graph — "0 relationships" would sit inside the E4 bounds and read as
+    # a pass. Does not change datasets, bounds or thresholds.
+    status = demo_relationship_fixture_status(get_engine())
+    if not status["complete"]:
+        print("PRECONDITION FAILURE: demo relationship fixture missing or incomplete.", file=sys.stderr)
+        print(
+            f"  demo:seed_relationships = {status['total']} rows, "
+            f"expected {status['expected_total']} (6 per demo PR).",
+            file=sys.stderr,
+        )
+        if status["deviating_prs"]:
+            print(f"  PRs not matching 6 relationships: {status['deviating_prs'][:8]}", file=sys.stderr)
+        print("  Refusing to run: an empty graph would produce a VACUOUS result.", file=sys.stderr)
+        print("  Fix: run `make seed` (canonical seed now restores relationships).", file=sys.stderr)
+        return 2
 
     data = json.loads(args.data.read_text(encoding="utf-8"))
     cases = data["cases"]

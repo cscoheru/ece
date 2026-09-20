@@ -1,0 +1,12 @@
+### 恢复 S1 spike fixture (被全库重置清除)
+entities created     : 7
+relationships created: 1
+PR display_id        : SPIKE-PR-001  (resolved at runtime)
+------------------------------------------------------------------------
+SELF-CHECK PASSED — all 7 fixture entities present, 1 SELECTS relationship,
+                     PR review_status='pending', DENY acl on current display_id.
+
+### API 健康检查
+health=404
+ece-api-1	127.0.0.1:8765->8000/tcp
+ece-db-1	0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp

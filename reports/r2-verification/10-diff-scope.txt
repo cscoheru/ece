@@ -1,0 +1,22 @@
+### git status (ece)
+ M README.md
+ M scripts/run_e4_relationships.py
+ M scripts/run_e5_temporal.py
+ M scripts/seed_relationships.py
+ M src/ece/seed.py
+?? reports/r2-verification/
+?? tests/integration/test_canonical_seed_completeness.py
+
+### diff --stat vs 8cb6824
+ README.md                       |  37 +++++-
+ scripts/run_e4_relationships.py |  23 +++-
+ scripts/run_e5_temporal.py      |  19 +++
+ scripts/seed_relationships.py   | 187 +++++-----------------------
+ src/ece/seed.py                 | 263 +++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 367 insertions(+), 162 deletions(-)
+
+### 禁区文件是否被改动 (期望: 无输出)
+(以上为空 = 禁区零改动)
+
+### data/eval 是否仍与 HEAD 一致
+(空 = 冻结数据集未被触碰)

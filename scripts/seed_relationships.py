@@ -1,21 +1,17 @@
-"""Seed demo relationships (cut-009 path A — unlocks E4/E5 evaluation).
+"""Seed demo relationships — thin CLI wrapper over `ece.seed.seed_demo_relationships`.
 
-For each PR in demo seed, create 5 basic relationships:
-- BELONGS_TO department  (procurement/finance/sales/D01)
-- SUBMITTED_BY person
-- SELECTS supplier
-- CONTAINS product
-- SUBJECT_TO policy
+R2: this used to hold the ONLY implementation. `make seed` never called it, so
+rebuilding the DB produced 428 entities and ZERO relationships, and E4/E5 then
+measured an empty graph. The logic now lives in `src/ece/seed.py` so that
+`run_seed()` (the canonical entrypoint) and this script share ONE implementation
+instead of two copies that drift apart.
 
-Idempotent thanks to UNIQUE INDEX uq_relationships_triple
-(on src_entity_id, relation, dst_entity_id, COALESCE(valid_from, '0001-01-01'))
-from migration 0002. Re-runs skip existing triples via ON CONFLICT DO NOTHING.
-
-Also seeds 4 department entities (extracted from demo person attributes;
-no separate department entities exist in current demo seed).
-
-Run after `make seed`:
+Kept as a standalone command because existing callers and docs use it:
     uv run python scripts/seed_relationships.py
+and three integration tests shell out to it, depending on the exit-code contract
+(0 = seeded, 1 = could not seed) and on the `Total relationships in DB: N` line.
+
+Prefer `make seed`, which now performs this step automatically.
 
 Per DATA_MODEL.md §2 + ontology whitelist (ece/domain_packs/procurement/ontology.py).
 """
@@ -23,164 +19,37 @@ from __future__ import annotations
 
 import sys
 
-from sqlalchemy import text
-
 from ece.db import get_engine
-from ece.entities.pipeline import upsert_entity, upsert_relationship
-
-# Departments inferred from demo person attributes (seed.py)
-DEPARTMENTS = ["procurement", "finance", "sales", "D01"]
-
-
-# Explicit allowlist of the source_systems THIS fixture builds relationships on.
-#
-# cut-040R-2 S1 fix: `_fetch_display_ids` used to select by `entity_type` alone,
-# so it annexed ANY entity of the same type. Adding the V0 spike fixture (a
-# purchase_request) silently gave it six demo relationships and broke the
-# eval-asset guard G2. Scoping by an explicit allowlist expresses the intent
-# ("this fixture only touches its own entities") and cannot annex foreign
-# fixtures — same pattern as the wipe-predicate fix (precise predicate, never a
-# blacklist / LIKE sweep).
-_FIXTURE_SOURCE_SYSTEMS: dict[str, str] = {
-    "purchase_request": "demo:demo",
-    "supplier": "demo:demo",
-    "product": "demo:demo",
-    "policy": "demo:demo",
-    "department": "demo:seed_departments",
-    "person": "api:header",
-}
-
-
-def _fetch_display_ids(engine, entity_type: str) -> list[str]:
-    """Fetch display_ids for an entity type, SCOPED to this fixture's own
-    source_system (see _FIXTURE_SOURCE_SYSTEMS). Sorted.
-
-    Fails loudly on an unmapped entity_type rather than silently reverting to an
-    unscoped scan.
-    """
-    source_system = _FIXTURE_SOURCE_SYSTEMS.get(entity_type)
-    if source_system is None:
-        raise KeyError(
-            f"no fixture source_system mapped for entity_type={entity_type!r}. "
-            "Add it to _FIXTURE_SOURCE_SYSTEMS — do NOT fall back to an unscoped "
-            "scan (that annexes foreign fixtures)."
-        )
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                "SELECT display_id FROM entities "
-                "WHERE entity_type = :t AND source_system = :s ORDER BY display_id"
-            ),
-            {"t": entity_type, "s": source_system},
-        ).fetchall()
-    return [r[0] for r in rows]
-
-
-def _seed_departments(engine) -> list[str]:
-    """Seed 4 department entities (no separate dept entities in demo)."""
-    for dept in DEPARTMENTS:
-        upsert_entity(
-            engine,
-            entity_type="department",
-            name=dept.capitalize() if dept != "D01" else "D01 Department",
-            source_system="demo:seed_departments",
-            source_id=f"dept:{dept}",
-            attributes={"name": dept},
-        )
-    return _fetch_display_ids(engine, "department")
+from ece.seed import seed_demo_relationships
 
 
 def main() -> int:
     engine = get_engine()
 
-    # 1. Seed departments first (needed for BELONGS_TO)
     print("Seeding 4 department entities...")
-    dept_ids = _seed_departments(engine)
-    if not dept_ids:
-        print("ERROR: failed to seed departments", file=sys.stderr)
+    result = seed_demo_relationships(engine)
+
+    if not result.get("ok"):
+        print(f"ERROR: {result.get('error')}", file=sys.stderr)
         return 1
 
-    # 2. Fetch PR + target entity display_ids
-    pr_ids = _fetch_display_ids(engine, "purchase_request")
-    if not pr_ids:
-        print("ERROR: no PRs found; run `make seed` first", file=sys.stderr)
-        return 1
+    removed = result["removed"]
+    if removed:
+        print(f"  Removed {removed} prior 'demo:seed_relationships' rows (canonical reseed)")
 
-    people_ids = _fetch_display_ids(engine, "person")
-    supplier_ids = _fetch_display_ids(engine, "supplier")
-    product_ids = _fetch_display_ids(engine, "product")
-    policy_ids = _fetch_display_ids(engine, "policy")
-
-    if not (people_ids and supplier_ids and product_ids and policy_ids):
-        print(
-            "ERROR: missing entity types (need person/supplier/product/policy)",
-            file=sys.stderr,
-        )
-        return 1
-
-    # 3. For each PR, create 6 relationships (cyclic selection for variety)
-    #
-    # NOTE (cut-040R-2 Final Evidence Repair): this list has SIX entries, not
-    # five — the 6th is the deliberate "2nd submitter for variety" added in
-    # cut-009. The old comment said "5", and that stale count propagated into
-    # `gen_eval_datasets.py` (E5 `expected_count`) and its docstring. The
-    # implemented contract is 6 non-temporal relationships per PR.
-    #
-    # The fixture is made CANONICAL below (delete-then-insert scoped to this
-    # script's own source_system): repeated runs, or runs interleaved with other
-    # tests that mutate the person/supplier lists, used to leave 7-8 rows behind
-    # and silently invalidate E5's expected count.
-    counters: dict[str, int] = {
-        "BELONGS_TO": 0,
-        "SUBMITTED_BY": 0,
-        "SELECTS": 0,
-        "CONTAINS": 0,
-        "SUBJECT_TO": 0,
-    }
-
-    with engine.begin() as conn:
-        deleted = conn.execute(
-            text("DELETE FROM relationships WHERE source_system = :s"),
-            {"s": "demo:seed_relationships"},
-        ).rowcount
-    if deleted:
-        print(f"  Removed {deleted} prior 'demo:seed_relationships' rows (canonical reseed)")
-
-    for i, pr_id in enumerate(pr_ids):
-        rel_specs = [
-            ("BELONGS_TO", dept_ids[i % len(dept_ids)]),
-            ("SUBMITTED_BY", people_ids[i % len(people_ids)]),
-            ("SELECTS", supplier_ids[i % len(supplier_ids)]),
-            ("CONTAINS", product_ids[i % len(product_ids)]),
-            ("SUBMITTED_BY", people_ids[(i + 1) % len(people_ids)]),  # 2nd submitter for variety
-            ("SUBJECT_TO", policy_ids[i % len(policy_ids)]),
-        ]
-        # Dedupe rel_specs in case of cyclic collisions
-        seen_targets: set[tuple[str, str]] = set()
-        for rel_type, target in rel_specs:
-            key = (rel_type, target)
-            if key in seen_targets:
-                continue
-            seen_targets.add(key)
-            inserted, reason = upsert_relationship(
-                engine,
-                src_display_id=pr_id,
-                relation=rel_type,
-                dst_display_id=target,
-                source_system="demo:seed_relationships",
-            )
-            if inserted:
-                counters[rel_type] += 1
-
-    # 4. Report
-    print(f"\nSeeded relationships from {len(pr_ids)} PRs:")
-    for rel, count in counters.items():
+    inserted: dict[str, int] = result["inserted_by_type"]  # type: ignore[assignment]
+    print(f"\nSeeded relationships from {result['prs']} PRs:")
+    for rel, count in inserted.items():
         print(f"  {rel}: {count} new insertions")
 
-    with engine.connect() as conn:
-        total = conn.execute(text("SELECT count(*) FROM relationships")).scalar()
-    print(f"Total relationships in DB: {total}")
+    rejected: list[str] = result["rejected"]  # type: ignore[assignment]
+    if rejected:
+        print(f"  REJECTED {len(rejected)} relationship(s):")
+        for r in rejected[:5]:
+            print(f"    {r}")
 
+    # Kept verbatim: existing tooling and archived stdout compare on this line.
+    print(f"Total relationships in DB: {result['total_in_db']}")
     return 0
 
 

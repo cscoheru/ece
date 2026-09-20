@@ -32,9 +32,44 @@
 ## 快速开始（Sprint 0 完成后可用）
 
 ```bash
-make setup      # uv 同步依赖 + alembic 迁移 + seed 合成数据
+make setup      # uv 同步依赖
 make up         # docker compose 起 api + postgres
 make test       # unit/integration/security
 make eval       # 评测套件（需 ECE_LLM_* 环境变量）
 make demo       # 演示脚本：PR001 合理性分析 + 无权限用户对照
 ```
+
+## Canonical seed（唯一权威链条）
+
+> **R2**：在此之前，「canonical seed」在仓库里有三份互相不一致的定义 ——
+> `make seed`（无关系）、CI 链条（无关系）、以及测试自己的 `subprocess` 自愈。
+> 没有一份是完整的：`make seed` 建出 428 个实体但 **0 条关系**，于是任何
+> 「重置 → seed → 跑评测」的流程都在空关系图上打分。
+>
+> 下面这条链是**唯一权威**定义。
+
+```bash
+make gen-dataset        # data/dataset/demo.json（确定性，S0.6）
+make db-upgrade         # alembic upgrade head
+make seed               # 实体 + 测试用户 + ACL + 关系 —— 完整入口
+make gen-eval-datasets  # E1-E6 评测数据集（依赖 display_id，必须在 seed 之后）
+uv run python scripts/ingest_demo_docs.py
+```
+
+空库上 `make seed` 的产出：
+
+| 对象 | 期望 |
+|---|---|
+| entities | **428**（`demo:demo` 420 + `api:header` 4 + `demo:seed_departments` 4） |
+| relationships | **1200**（`demo:seed_relationships`，每个 demo PR 恰 6 条） |
+| acl_entries | **3**（`demo:cut-040-test-acl`） |
+
+**幂等**：第二次 `make seed` 与第一次逐字段相同（实体 `created=0`；关系
+delete-then-insert 回同样的 1200 条）。
+
+两点约定：
+
+- `scripts/seed_relationships.py` 保留为兼容 CLI wrapper，内部调用
+  `ece.seed.seed_demo_relationships()` —— **只有一份实现**。
+- E4/E5 runner 在关系 fixture 缺失或不完整时 **`exit 2` 拒绝运行**，
+  而不是对空图打分（那会产出 vacuous pass）。
