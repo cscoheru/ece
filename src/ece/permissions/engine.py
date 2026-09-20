@@ -37,6 +37,20 @@ DEFAULT_CLASSIFICATION_MATRIX: dict[str, dict[str, str | list[str]]] = {
     "procurement":   {"default": "allow_role", "roles": ["procurement_manager", "buyer"]},
 }
 
+# ⚠️ KNOWN MODEL LIMITATION (Codex 第二轮判词 §7, 2026-09-20 — documented, not fixed):
+# an acl_entries row is keyed on (subject_type, subject_ref, object_type, object_ref)
+# only — it has NO classification dimension. Consequences:
+#   1. One ACL row cannot express "allow for user X on object Y *when classified
+#      as A*, deny when classified as B".
+#   2. Therefore an ACL-explicit test case must not share (subject, object) with a
+#      classification test case — the two expectations would be unsatisfiable.
+#      That is why cut-040R-2 moved e2-060/e2-061 onto dedicated objects
+#      (PR003 / CON002). The test intent was "explicit OBJECT acl", so decoupling
+#      was the correct fix.
+#   3. If the product later genuinely needs classification-scoped ACLs, the ACL
+#      model itself must change (add a classification column / scope predicate) —
+#      do NOT work around it by editing datasets again.
+
 
 @dataclass
 class PermissionScope:

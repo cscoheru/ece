@@ -4,6 +4,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from sqlalchemy import text
+
 from ece.connectors.csv import CsvConnector
 from ece.connectors.pipeline import run_ingestion
 from ece.db import get_engine
@@ -39,6 +41,13 @@ def test_run_ingestion_actually_upserts_entities() -> None:
     Use unique source_system per test run to avoid state pollution
     from prior runs (each invocation would otherwise hit ON CONFLICT and
     stats.created would be 0).
+
+    cut-040R-2 P2 (E1 hermeticity): the unique source_system is required for the
+    `created == 2` assertion, but the rows it creates MUST be removed again —
+    each leftover run adds two duplicate-name suppliers (R4-Acme / R4-Globex),
+    and the E1 resolver treats N equal-confidence candidates as ambiguous
+    (`resolved=False`, "never guess"). Before this cleanup the suite degraded
+    E1 monotonically: 98.5% → 95.4% after four executions.
     """
     import os
     import tempfile
@@ -53,29 +62,55 @@ def test_run_ingestion_actually_upserts_entities() -> None:
         writer.writerow({"id": "RT002", "name": "R4-Globex", "entity_type": "supplier"})
         tmp_path = f.name
 
+    engine = get_engine()
+
+    def _count() -> int:
+        return (
+            engine.connect()
+            .execute(
+                text("SELECT count(*) FROM entities WHERE source_system = :s"),
+                {"s": unique_source},
+            )
+            .scalar()
+            or 0
+        )
+
     try:
         c = CsvConnector(path=Path(tmp_path))
-        engine = get_engine()
-        before_raw = engine.connect().execute(
-            __import__("sqlalchemy").text(
-                "SELECT count(*) FROM entities WHERE source_system = :s"
-            ),
-            {"s": unique_source},
-        ).scalar()
-        before = before_raw or 0
+        before = _count()
 
         stats = run_ingestion(c, engine, connector_type=unique_source)
 
-        after_raw = engine.connect().execute(
-            __import__("sqlalchemy").text(
-                "SELECT count(*) FROM entities WHERE source_system = :s"
-            ),
-            {"s": unique_source},
-        ).scalar()
-        after = after_raw or 0
+        after = _count()
         assert stats.created == 2
         assert after - before == 2
         # R6: stats.connector must preserve the resource segment
         assert stats.connector == unique_source
     finally:
+        # Remove exactly this run's rows (relationships and aliases first —
+        # FK constraints would otherwise block the entity delete).
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "DELETE FROM relationships WHERE "
+                    "src_entity_id IN (SELECT id FROM entities WHERE source_system = :s) "
+                    "OR dst_entity_id IN (SELECT id FROM entities WHERE source_system = :s)"
+                ),
+                {"s": unique_source},
+            )
+            conn.execute(
+                text(
+                    "DELETE FROM entity_aliases WHERE entity_id IN "
+                    "(SELECT id FROM entities WHERE source_system = :s)"
+                ),
+                {"s": unique_source},
+            )
+            conn.execute(
+                text("DELETE FROM entities WHERE source_system = :s"),
+                {"s": unique_source},
+            )
         os.unlink(tmp_path)
+        # Self-check: the test must not leave anything behind.
+        assert _count() == 0, (
+            f"E1 hermeticity violation: {_count()} rows left under {unique_source}"
+        )

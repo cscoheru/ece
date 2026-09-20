@@ -75,6 +75,14 @@ def permissions_check(
 
     Accepts user_ref in body OR X-User-Id header (header preferred per ADR-004).
     """
+    # ⚠️ SECURITY FINDING (Codex 第二轮判词 §9, 2026-09-20 — NOT fixed, by design):
+    # the request BODY can select which identity is checked (`req.user_ref`).
+    # That is acceptable while /permissions/check is a VERIFICATION surface
+    # (its purpose is "does user X have access to object Y?"), but it is NOT
+    # acceptable if this endpoint ever becomes part of a production
+    # AUTHORIZATION chain: an authorization subject must not be chosen by the
+    # caller. Before wiring this into real access decisions, drop `req.user_ref`
+    # and resolve the principal from the authenticated credential only.
     user_ref = req.user_ref or x_user_id
     if not user_ref:
         raise HTTPException(status_code=400, detail="user_ref or X-User-Id required")
