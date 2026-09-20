@@ -1,0 +1,21 @@
+Loaded 61 cases from data/eval/e2_permission.json
+
+=== E2 Permission Suite Results ===
+Total cases:        61
+Failures:           4
+Exposures:          4
+Failure+Exposure %: 13.1%
+
+--- Failures (Expected allow but got deny) ---
+  [e2-004] user=U_other_dept purchase_request/PR001 cls=allow -- public PR visible to all users
+  [e2-008] user=U_other_dept contract/CON001 cls=allow -- internal contract visible internally
+  [e2-044] user=U_other_dept supplier/SUP051 cls=allow -- public supplier: all users
+  [e2-048] user=U_other_dept supplier/SUP051 cls=allow -- internal supplier: all users
+
+--- UNAUTHORIZED EXPOSURES (FAIL-CLOSED must be 0; CI blocker) ---
+  [e2-025] user=demo-user-procurement purchase_request/PR001 cls=restricted cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-029] user=demo-user-procurement purchase_request/PR001 cls=management cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-030] user=demo-user-finance purchase_request/PR001 cls=management cat=permission_check -- server returned allowed=True but expected allowed=False
+  [e2-055] user=demo-user-finance purchase_request/PR001 cls=management cat=indirect_leak -- server returned allowed=True but expected allowed=False
+
+*** FAIL: 4 Unauthorized Exposure(s); CI blocked (cut-006 R2) ***

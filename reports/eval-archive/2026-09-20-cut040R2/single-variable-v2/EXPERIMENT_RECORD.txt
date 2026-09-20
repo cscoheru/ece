@@ -1,0 +1,37 @@
+===================================================================
+cut-040R-2 P1' — 严格单变量实验记录
+===================================================================
+目的: 证明在【固定 DB 状态 + 固定数据集】下, 两臂的唯一差异是源码。
+
+baseline commit : c92316370b87343ba76c5776f9d56eb05e3f7be3
+fixed commit    : 93ed0e307fd22f9b30b5a16314344c730bd837ff
+                  (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)
+dataset         : data/eval/e2_permission.json
+dataset sha256  : 7f82340adcbca4118aae51ad20090a0c40fd75f8301e1e7cd59c2a9d5ca9670c
+runtime         : 两臂均为宿主 uvicorn (同一 venv, 同一 DATABASE_URL)
+db              : docker compose ece-db-1 (postgresql+psycopg://ece@localhost:5432/ece)
+fingerprint     : scripts/db_state_fingerprint.sql (entities + acl_entries 的有序 md5)
+
+F0 (两臂开始前)      : faff49167d6781e6245dcd58ab116c10
+
+--- ARM A: baseline 源码 (c92316370b87343ba76c5776f9d56eb05e3f7be3) @ :8766 ---
+F1 (ARM A 结束后)    : faff49167d6781e6245dcd58ab116c10
+ARM A exit code      : 2
+
+--- ARM B: fixed 源码 (93ed0e307fd22f9b30b5a16314344c730bd837ff) @ :8767 ---
+F2 (ARM B 结束后)    : faff49167d6781e6245dcd58ab116c10
+ARM B exit code      : 0
+
+===================================================================
+DB 状态恒定性判定
+===================================================================
+PASS — F0 == F1 == F2, DB 状态在两臂之间未被改动。
+
+结论口径 (严格):
+  在【固定 DB 状态】+【固定数据集】下, permission RUNTIME 代码由 baseline
+  改为 fixed, E2 从 4 暴露/4 失败 变为 0/0。
+
+本实验【不】测量的:
+  seed/数据层面的修复 (RC-6 部门注入位置 / RC-7 专属对象 / RC-9 ACL 词表) ——
+  这些已由修后的 seed 写入 DB, 两臂共用同一份, 故其对结果的贡献在本设计中恒为 0。
+  要测量它们需另设一臂: baseline 代码 + baseline seed 产出的 DB。

@@ -66,7 +66,9 @@ post-pytest 仍全绿 = RC-6 确实修好,而非"只在干净库上好看"。
 
 Codex 第二轮判词要求补两项测试卫生工作。两项均已完成并验证。
 
-### P1 — 严格单变量实验（`single-variable/`）
+### P1 — 严格单变量实验（`single-variable/`，已被 `single-variable-v2/` 取代）
+
+> ⚠️ **本节的结论口径已于 Codex 第三轮判词后被修正。以 `single-variable-v2/` 为准。**
 
 判词指出原对照组**同时改变了代码与数据集**,因此"5 暴露 → 0 暴露"不是纯代码效果。
 本实验固定数据集(一律用**新** `e2_permission.json`),只变代码:
@@ -79,16 +81,63 @@ Codex 第二轮判词要求补两项测试卫生工作。两项均已完成并�
 原始 stdout: `single-variable/E2-baseline-code-NEW-dataset.txt` /
 `single-variable/E2-fixed-code-NEW-dataset.txt`
 
-**该实验顺带把「代码修复」与「数据修复」分离了**:
+> ❌ **已撤回的声明**：本节原来写"证据等级：由「可信」提升为**严格因果证明**"。
+> **该声明过强。** 本实验只证明了**两臂共用同一份数据集**,**没有**证明两臂共用同一份
+> **DB 状态**；而 seed/数据层面的修复(RC-6/7/9)本身就是 `037260b` 变更集的一部分,
+> 两臂共用的那个 DB 状态**已经是修后的 seed 产出的**,故它是一个**未受控变量**。
+> 另,两臂运行时环境不同(宿主 vs docker)。
+>
+> **已由 `single-variable-v2/` 补齐** —— 见下节。
 
-| 消失的 case | 根因 | 性质 |
+**该实验顺带把「代码修复」与「数据修复」分开了**（此部分结论仍然成立）:
+
+| 消失的 case（baseline 代码上） | 根因 | 性质 |
 |---|---|---|
 | e2-025 | RC-10 `restricted` 语义 | **代码** |
 | e2-029 / e2-030 / e2-055 | RC-8 `is_management` 派生 | **代码** |
 | e2-004 / e2-008 / e2-044 / e2-048 | RC-11 未知身份提前 deny | **代码** |
 
 而 **e2-059 / e2-060 / e2-061(ACL 案)在 baseline 代码上同样通过** —— 因为 ACL 数据已由修后的
-seed 写成域类型。这证明 **RC-9 是数据/seed 修复,不是代码修复**,原对照把它们混在一起了。
+seed 写成域类型。这证明 **RC-9 是数据/seed 修复,不是代码修复**。
+
+### P1' — 补齐 DB 状态证据（`single-variable-v2/`）
+
+Codex 第三轮判词 [MAJOR]：「P1 的『严格单变量实验』目前还不能达到它声称的『严格因果证明』等级……
+它没有充分证明：两组使用完全相同的数据库 state。」
+
+**本实验补齐两点**:
+
+1. **DB 状态指纹**(`scripts/db_state_fingerprint.sql` —— entities + acl_entries 的有序 md5),
+   在两臂**之前 / 之间 / 之后**各取一次。
+2. **两臂同运行时** —— 均跑宿主 uvicorn(同 venv、同 `DATABASE_URL`),
+   消除原实验"宿主 vs docker"的环境差异。
+
+| 项 | 值 |
+|---|---|
+| F0(开始前) | `faff49167d6781e6245dcd58ab116c10` |
+| F1(ARM A 结束后) | `faff49167d6781e6245dcd58ab116c10` |
+| F2(ARM B 结束后) | `faff49167d6781e6245dcd58ab116c10` |
+| baseline commit | `c92316370b87343ba76c5776f9d56eb05e3f7be3` |
+| fixed commit | `93ed0e307fd22f9b30b5a16314344c730bd837ff` |
+| dataset sha256 | `7f82340adcbca4118aae51ad20090a0c40fd75f8301e1e7cd59c2a9d5ca9670c` |
+| ARM A 退出码 | 2(4 暴露 + 4 失败) |
+| ARM B 退出码 | 0(0 / 0) |
+
+**F0 == F1 == F2 → DB 状态在两臂之间未被改动,已证明。**
+
+**修正后的结论口径(严格)**:
+
+> 在【固定 DB 状态】+【固定数据集】+【同一运行时】下,
+> **permission RUNTIME 代码**由 baseline 改为 fixed,E2 从 4 暴露/4 失败 变为 0/0。
+
+**本实验【不】测量的**:
+
+> seed / 数据层面的修复(RC-6 部门注入位置、RC-7 专属对象、RC-9 ACL 词表)——
+> 它们已由修后的 seed 写入 DB,两臂共用同一份,故其贡献在本设计中**恒为 0**。
+> 要测量它们需另设一臂:baseline 代码 + **baseline seed 产出的 DB**。
+
+复现: `bash scripts/run_p1_single_variable_experiment.sh`(完整记录见
+`single-variable-v2/EXPERIMENT_RECORD.txt`)。
 
 ### P2 — E1 hermeticity（`fixed/E1.txt`）
 
