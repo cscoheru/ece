@@ -4,10 +4,10 @@ cut-040R-2 单变量实验记录 (rev3: SHA-256 指纹 + read-set 完整覆盖)
 目的: 证明在【固定 DB 状态 + 固定数据集 + 同一运行时】下, 两臂的唯一差异是源码。
 
 baseline commit : c92316370b87343ba76c5776f9d56eb05e3f7be3
-fixed commit    : a698dd4425ff094d023c633638e2ab958abc0e15
+fixed commit    : a7ccb978dba09a4890ef9ba5e01329feb0583c78
                   (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)
 dataset         : data/eval/e2_permission.json
-dataset sha256  : da2837948f055531adeab46ea0b93221194d0cdf489af83f039a0e97d1835489
+dataset sha256  : 02762230499444a02a0ba6ecdf2df62e5bb0f5dbfcdabce597a46383e97f24fb
 runtime         : 两臂均为宿主 uvicorn (同一 venv)
 DATABASE_URL    : postgresql+psycopg://ece:ece@localhost:5432/ece (default)
 db              : docker compose ece-db-1 (postgres 16-pgvector)
@@ -16,14 +16,14 @@ fingerprint     : scripts/db_state_fingerprint.sql — SHA-256 over the COMPLETE
                   ordered by (scope, row_text). 输出格式: sha256|entities_rows|aliases_rows|acl_rows
 deps evidence   : P1_DEPENDENCY_MATRIX.md (E2 read-set ⊆ fingerprint scope, 逐项)
 
-F0 (两臂开始前)      : 231b97903c1326c1f193495da5b6fe33eb26fea7e533235685dcd701e8f4c9c1|439|1|3
+F0 (两臂开始前)      : 3be7d355aa6de050ae28985beaef2651412893b86dc411234c8cf1261c12e16a|444|1|4
 
 --- ARM A: baseline 源码 (c92316370b87343ba76c5776f9d56eb05e3f7be3) @ :8766 ---
-F1 (ARM A 结束后)    : 231b97903c1326c1f193495da5b6fe33eb26fea7e533235685dcd701e8f4c9c1|439|1|3
+F1 (ARM A 结束后)    : 3be7d355aa6de050ae28985beaef2651412893b86dc411234c8cf1261c12e16a|444|1|4
 ARM A exit code      : 2
 
---- ARM B: fixed 源码 (a698dd4425ff094d023c633638e2ab958abc0e15) @ :8767 ---
-F2 (ARM B 结束后)    : 231b97903c1326c1f193495da5b6fe33eb26fea7e533235685dcd701e8f4c9c1|439|1|3
+--- ARM B: fixed 源码 (a7ccb978dba09a4890ef9ba5e01329feb0583c78) @ :8767 ---
+F2 (ARM B 结束后)    : 3be7d355aa6de050ae28985beaef2651412893b86dc411234c8cf1261c12e16a|444|1|4
 ARM B exit code      : 0
 
 ===================================================================
