@@ -7,7 +7,7 @@
   "cases": [
     {
       "id": "e6-001",
-      "question": "PR201 金额 150万 是否符合采购政策 POL-2026-03?",
+      "question": "PR001 金额 150万 是否符合采购政策 POL-2026-03?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -15,7 +15,7 @@
     },
     {
       "id": "e6-002",
-      "question": "PR204 超过 100万 触发三家比价了吗?",
+      "question": "PR004 超过 100万 触发三家比价了吗?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -23,7 +23,7 @@
     },
     {
       "id": "e6-003",
-      "question": "PR205 80万 需要比价吗?",
+      "question": "PR005 80万 需要比价吗?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -31,7 +31,7 @@
     },
     {
       "id": "e6-004",
-      "question": "PR202 50万 采购是否合规?",
+      "question": "PR002 50万 采购是否合规?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -39,7 +39,7 @@
     },
     {
       "id": "e6-005",
-      "question": "PR203 120万 是否需要财务总监审批?",
+      "question": "PR003 120万 是否需要财务总监审批?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -47,7 +47,7 @@
     },
     {
       "id": "e6-006",
-      "question": "PR201 是否需要 CEO 审批?",
+      "question": "PR001 是否需要 CEO 审批?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -55,7 +55,7 @@
     },
     {
       "id": "e6-007",
-      "question": "PR204 200万 是否触发 CEO 审批?",
+      "question": "PR004 200万 是否触发 CEO 审批?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -63,7 +63,7 @@
     },
     {
       "id": "e6-008",
-      "question": "PR202 审批流程是否完整?",
+      "question": "PR002 审批流程是否完整?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -71,7 +71,7 @@
     },
     {
       "id": "e6-009",
-      "question": "PR203 是否符合化整为零政策?",
+      "question": "PR003 是否符合化整为零政策?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -79,7 +79,7 @@
     },
     {
       "id": "e6-010",
-      "question": "PR201 150万 是否符合价格偏离 ±10% 规则?",
+      "question": "PR001 150万 是否符合价格偏离 ±10% 规则?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -87,7 +87,7 @@
     },
     {
       "id": "e6-011",
-      "question": "PR205 是否在政策允许范围?",
+      "question": "PR005 是否在政策允许范围?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -95,7 +95,7 @@
     },
     {
       "id": "e6-012",
-      "question": "PR202 紧急采购是否需要事后补办?",
+      "question": "PR002 紧急采购是否需要事后补办?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -103,7 +103,7 @@
     },
     {
       "id": "e6-013",
-      "question": "PR203 单一来源采购是否需要采购总监批准?",
+      "question": "PR003 单一来源采购是否需要采购总监批准?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -111,7 +111,7 @@
     },
     {
       "id": "e6-014",
-      "question": "PR201 是否需要三家供应商比价?",
+      "question": "PR001 是否需要三家供应商比价?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -119,7 +119,7 @@
     },
     {
       "id": "e6-015",
-      "question": "PR204 是否符合采购政策?",
+      "question": "PR004 是否符合采购政策?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "policy_compliance",
@@ -127,7 +127,7 @@
     },
     {
       "id": "e6-016",
-      "question": "PR201 150万 价格是否合理?",
+      "question": "PR001 150万 价格是否合理?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -135,7 +135,7 @@
     },
     {
       "id": "e6-017",
-      "question": "PR204 200万 与历史价比较如何?",
+      "question": "PR004 200万 与历史价比较如何?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -143,7 +143,7 @@
     },
     {
       "id": "e6-018",
-      "question": "PR205 80万 价格偏离 ±10% 吗?",
+      "question": "PR005 80万 价格偏离 ±10% 吗?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -151,7 +151,7 @@
     },
     {
       "id": "e6-019",
-      "question": "PR202 是否高于市场参考价?",
+      "question": "PR002 是否高于市场参考价?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -159,7 +159,7 @@
     },
     {
       "id": "e6-020",
-      "question": "PR203 120万 价格趋势?",
+      "question": "PR003 120万 价格趋势?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -167,7 +167,7 @@
     },
     {
       "id": "e6-021",
-      "question": "PR201 比价结果?",
+      "question": "PR001 比价结果?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -175,7 +175,7 @@
     },
     {
       "id": "e6-022",
-      "question": "PR204 200万 价格是否异常?",
+      "question": "PR004 200万 价格是否异常?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -183,7 +183,7 @@
     },
     {
       "id": "e6-023",
-      "question": "PR205 价格 vs 供应商AC?",
+      "question": "PR005 价格 vs 供应商AC?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -191,7 +191,7 @@
     },
     {
       "id": "e6-024",
-      "question": "PR202 价格折扣空间?",
+      "question": "PR002 价格折扣空间?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -199,7 +199,7 @@
     },
     {
       "id": "e6-025",
-      "question": "PR203 总额拆分是否合理?",
+      "question": "PR003 总额拆分是否合理?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "price_analysis",
@@ -207,7 +207,7 @@
     },
     {
       "id": "e6-026",
-      "question": "PR201 审批节点有哪些?",
+      "question": "PR001 审批节点有哪些?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -215,7 +215,7 @@
     },
     {
       "id": "e6-027",
-      "question": "PR204 是否经过财务总监?",
+      "question": "PR004 是否经过财务总监?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -223,7 +223,7 @@
     },
     {
       "id": "e6-028",
-      "question": "PR205 部门经理批准了吗?",
+      "question": "PR005 部门经理批准了吗?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -231,7 +231,7 @@
     },
     {
       "id": "e6-029",
-      "question": "PR202 审批是否完整无代签?",
+      "question": "PR002 审批是否完整无代签?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -239,7 +239,7 @@
     },
     {
       "id": "e6-030",
-      "question": "PR203 审批链是否超时?",
+      "question": "PR003 审批链是否超时?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -247,7 +247,7 @@
     },
     {
       "id": "e6-031",
-      "question": "PR201 紧急口头批准是否补齐?",
+      "question": "PR001 紧急口头批准是否补齐?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -255,7 +255,7 @@
     },
     {
       "id": "e6-032",
-      "question": "PR204 CEO 是否介入?",
+      "question": "PR004 CEO 是否介入?",
       "expected_conclusion": "reject",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -263,7 +263,7 @@
     },
     {
       "id": "e6-033",
-      "question": "PR205 审批流程是否符合政策?",
+      "question": "PR005 审批流程是否符合政策?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -271,7 +271,7 @@
     },
     {
       "id": "e6-034",
-      "question": "PR202 是否有越级审批?",
+      "question": "PR002 是否有越级审批?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -279,7 +279,7 @@
     },
     {
       "id": "e6-035",
-      "question": "PR203 审批记录是否归档?",
+      "question": "PR003 审批记录是否归档?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "approval_chain",
@@ -287,7 +287,7 @@
     },
     {
       "id": "e6-036",
-      "question": "PR201 什么时候创建?",
+      "question": "PR001 什么时候创建?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -295,7 +295,7 @@
     },
     {
       "id": "e6-037",
-      "question": "PR204 哪个部门发起的?",
+      "question": "PR004 哪个部门发起的?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -303,7 +303,7 @@
     },
     {
       "id": "e6-038",
-      "question": "PR205 供应商是哪家?",
+      "question": "PR005 供应商是哪家?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -311,7 +311,7 @@
     },
     {
       "id": "e6-039",
-      "question": "PR202 关联哪些合同?",
+      "question": "PR002 关联哪些合同?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -319,7 +319,7 @@
     },
     {
       "id": "e6-040",
-      "question": "PR203 产品类别?",
+      "question": "PR003 产品类别?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -327,7 +327,7 @@
     },
     {
       "id": "e6-041",
-      "question": "PR201 状态如何?",
+      "question": "PR001 状态如何?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -335,7 +335,7 @@
     },
     {
       "id": "e6-042",
-      "question": "PR204 申请人是谁?",
+      "question": "PR004 申请人是谁?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -343,7 +343,7 @@
     },
     {
       "id": "e6-043",
-      "question": "PR205 是否包含培训费用?",
+      "question": "PR005 是否包含培训费用?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -351,7 +351,7 @@
     },
     {
       "id": "e6-044",
-      "question": "PR202 历史类似采购?",
+      "question": "PR002 历史类似采购?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",
@@ -359,7 +359,7 @@
     },
     {
       "id": "e6-045",
-      "question": "PR203 风险评估?",
+      "question": "PR003 风险评估?",
       "expected_conclusion": "approve",
       "expected_evidence_refs": [],
       "category": "general_qa",

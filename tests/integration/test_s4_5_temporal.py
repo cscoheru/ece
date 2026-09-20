@@ -176,19 +176,35 @@ def test_per_pr_relationships_unaffected_by_temporal() -> None:
     identity = resolve_identity(engine, "demo-user-procurement")
     if identity.entity_id is None:
         pytest.skip("demo-user-procurement not seeded")
+    # cut-040R-2 S1: resolve a demo PR at RUNTIME. This used to hardcode "PR201",
+    # which is exactly the display_id-hardcoding anti-pattern — it broke the
+    # moment a fresh replay put demo PRs back at PR001..PR200.
+    with engine.connect() as _conn:
+        _row = _conn.execute(
+            __import__("sqlalchemy").text(
+                "SELECT s.display_id FROM relationships r "
+                "JOIN entities s ON s.id = r.src_entity_id "
+                "WHERE s.source_system = 'demo:demo' "
+                "AND s.entity_type = 'purchase_request' "
+                "GROUP BY s.display_id ORDER BY s.display_id LIMIT 1"
+            )
+        ).first()
+    if not _row:
+        pytest.skip("no demo purchase_request with relationships; run make seed")
+    demo_pr = _row[0]
     # Try as_of 2020 and 2026 — both should return same non-temporal count
     pkg_2020 = assemble_context(
         engine=engine,
         user_ref="demo-user-procurement",
         intent="evaluate_purchase_request",
-        entities=[{"type": "purchase_request", "id": "PR201"}],
+        entities=[{"type": "purchase_request", "id": demo_pr}],
         as_of=date(2020, 6, 1),
     )
     pkg_2026 = assemble_context(
         engine=engine,
         user_ref="demo-user-procurement",
         intent="evaluate_purchase_request",
-        entities=[{"type": "purchase_request", "id": "PR201"}],
+        entities=[{"type": "purchase_request", "id": demo_pr}],
         as_of=date(2026, 9, 14),
     )
     # Both should have same non-temporal per-PR relationships

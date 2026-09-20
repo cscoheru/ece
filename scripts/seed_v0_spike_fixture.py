@@ -55,10 +55,17 @@ FIXTURE_NOTICE = (
     "NOT PRODUCT REFERENCE WORKFLOW"
 )
 
-# (entity_type, source_id, name, attributes)
-FIXTURE_ENTITIES: list[tuple[str, str, str, dict[str, object]]] = [
+# (entity_type, source_id, display_id, name, attributes)
+#
+# display_id is EXPLICIT for every fixture entity. The shared numeric namespace
+# (PR### / SUP### / POL### / U###) is allocated by `_next_display_id` = global
+# max+1; a surviving foreign entity raises that ceiling and shifts the whole
+# demo space on the next wipe+replay (cut-040R-2 S1 finding). `SPIKE-*` ids match
+# no allocation prefix, so this fixture can never perturb it.
+FIXTURE_ENTITIES: list[tuple[str, str, str, str, dict[str, object]]] = [
     (
         "purchase_request",
+        "SPIKE-PR-001",
         "SPIKE-PR-001",
         "V0 Spike Purchase Request",
         {
@@ -67,19 +74,21 @@ FIXTURE_ENTITIES: list[tuple[str, str, str, dict[str, object]]] = [
             "fixture_notice": FIXTURE_NOTICE,
         },
     ),
-    ("supplier", "SPIKE-SUP-A", "Spike Supplier A", {}),
-    ("supplier", "SPIKE-SUP-B", "Spike Supplier B", {}),
-    ("supplier", "SPIKE-SUP-C", "Spike Supplier C", {}),
-    ("policy", "SPIKE-POL-001", "Spike Procurement Policy", {}),
+    ("supplier", "SPIKE-SUP-A", "SPIKE-SUP-A", "Spike Supplier A", {}),
+    ("supplier", "SPIKE-SUP-B", "SPIKE-SUP-B", "Spike Supplier B", {}),
+    ("supplier", "SPIKE-SUP-C", "SPIKE-SUP-C", "Spike Supplier C", {}),
+    ("policy", "SPIKE-POL-001", "SPIKE-POL-001", "Spike Procurement Policy", {}),
     (
         "person",
         "spike-user-procurement",
+        "SPIKE-U-PROC",
         "Spike Procurement Buyer",
         {"department": "procurement", "roles": ["buyer"], "is_management": False},
     ),
     (
         "person",
         "spike-user-unrelated",
+        "SPIKE-U-UNREL",
         "Spike Unrelated User",
         {"department": "sales", "roles": [], "is_management": False},
     ),
@@ -138,7 +147,7 @@ def seed(engine) -> dict[str, object]:
     removed = _delete_own_rows(engine)
 
     created = 0
-    for entity_type, source_id, name, attrs in FIXTURE_ENTITIES:
+    for entity_type, source_id, display_id, name, attrs in FIXTURE_ENTITIES:
         result = upsert_entity(
             engine,
             entity_type=entity_type,
@@ -146,6 +155,7 @@ def seed(engine) -> dict[str, object]:
             source_system=SPIKE_SOURCE_SYSTEM,
             source_id=source_id,
             attributes=attrs,
+            display_id=display_id,   # explicit → never touches the shared namespace
         )
         created += 1 if result.created else 0
 
@@ -198,9 +208,14 @@ def self_check(engine) -> list[str]:
     """Return a list of failures (empty = OK). Never silently pass."""
     failures: list[str] = []
 
-    for _etype, source_id, _name, _attrs in FIXTURE_ENTITIES:
-        if _display_id_for(engine, source_id) is None:
+    for _etype, source_id, want_display_id, _name, _attrs in FIXTURE_ENTITIES:
+        got = _display_id_for(engine, source_id)
+        if got is None:
             failures.append(f"missing fixture entity: {source_id}")
+        elif got != want_display_id:
+            failures.append(
+                f"display_id drift: {source_id} expected {want_display_id!r}, got {got!r}"
+            )
 
     pr_display = _display_id_for(engine, "SPIKE-PR-001")
     if pr_display:

@@ -37,6 +37,27 @@ _DATASET_TO_ENTITY = {
 }
 
 
+def _deterministic_display_id(entity_type: str, idx: int) -> str:
+    """Stable display_id for a demo record: ``<PREFIX><idx+1:03d>``.
+
+    cut-040R-2 S1 (extension of the approved fix "B"): the default allocator
+    `_next_display_id` is a GLOBAL max+1 per entity_type. Any foreign entity of
+    the same type — a test fixture (`r4test` PR201, `r5test` SUP051), a kept
+    regression pair (`csv:r4-test-*` SUP052/053), or a spike fixture — raises
+    that ceiling, so the next `seed_from_demo_json` replay allocates a FRESH
+    block and shifts every demo display_id. That silently invalidated the frozen
+    E3/E4/E5 datasets (and is why those datasets once referenced PR201..PR230).
+
+    Demo records are an ordered JSON list, so their display_ids can be derived
+    deterministically instead: replaying always reproduces PR001..PR200,
+    SUP001..SUP050, etc., no matter what else lives in the table.
+    """
+    from ece.entities.pipeline import _DISPLAY_ID_PREFIX
+
+    prefix = _DISPLAY_ID_PREFIX.get(entity_type, entity_type.upper()[:3])
+    return f"{prefix}{idx + 1:03d}"
+
+
 def _normalize_record(record: object, idx: int, entity_type: str) -> tuple[str | None, str, dict[str, object]]:
     """Return (name, source_id, attributes) from a heterogeneous record.
 
@@ -169,6 +190,7 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
                     source_system=f"demo:{path.stem}",
                     source_id=source_id,
                     attributes=attrs,
+                    display_id=_deterministic_display_id(entity_type, idx),
                 )
                 counters[entity_type] += 1 if result.created else 0
             except Exception as e:
@@ -203,6 +225,28 @@ def seed_acl_entries(engine) -> dict[str, int]:
     Closes cut-039 R39.1 根因三连 #1: acl_entries 表 0 行。
     """
 
+    # cut-040R-2: derive the dedicated objects from the DB instead of hardcoding
+    # display_ids, using the SAME scope + ordering as gen_eval_datasets.py
+    # (`source_system='demo:demo'`, ORDER BY display_id). Hardcoded values
+    # ("PR003"/"SUP052") drifted out of sync with the generated dataset; deriving
+    # both sides makes the ACL rows and the dataset agree by construction.
+    with engine.connect() as conn:
+
+        def _nth(entity_type: str, n: int, fallback: str) -> str:
+            rows = conn.execute(
+                text(
+                    "SELECT display_id FROM entities "
+                    "WHERE entity_type = :t AND source_system = 'demo:demo' "
+                    "ORDER BY display_id LIMIT :lim"
+                ),
+                {"t": entity_type, "lim": n + 1},
+            ).fetchall()
+            return rows[n][0] if len(rows) > n else fallback
+
+        sup_2 = _nth("supplier", 1, "SUP002")
+        pr_acl = _nth("purchase_request", 2, "PR003")
+        con_acl = _nth("contract", 1, "CON002")
+
     rows = [
         # cut-040R-2 R40R2.2 (RC-9 — ACL 全域哑弹): object_type MUST use the
         # dataset's DOMAIN vocabulary. The API prefetches ACLs with
@@ -225,21 +269,21 @@ def seed_acl_entries(engine) -> dict[str, int]:
             "subject_type": "user",
             "subject_ref": "demo-user-procurement",
             "object_type": "supplier",
-            "object_ref": "SUP052",
+            "object_ref": sup_2,
             "effect": "allow",
         },
         {
             "subject_type": "user",
             "subject_ref": "demo-user-finance",
             "object_type": "purchase_request",
-            "object_ref": "PR003",  # dedicated (R40R2.4)
+            "object_ref": pr_acl,  # derived (demo-scoped)
             "effect": "allow",
         },
         {
             "subject_type": "user",
             "subject_ref": "demo-user-procurement",
             "object_type": "contract",
-            "object_ref": "CON002",  # dedicated (R40R2.4)
+            "object_ref": con_acl,  # derived (demo-scoped)
             "effect": "deny",
         },
     ]

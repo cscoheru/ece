@@ -12,6 +12,12 @@ Per TASKS.md S3.5 + EVALUATION.md §1:
 Generates cases based on actual demo seed. Falls back gracefully when
 relationships/temporal data not seeded.
 
+cut-040R-2 S1 fix: every entity query below is SCOPED to the demo fixture's
+source_system (`demo:demo` / `api:header`). Previously they enumerated by
+entity_type alone, so an unrelated fixture (the V0 spike, whose ids sort before
+`SUP001`) hijacked the first slots and skewed E1/E2. Consumers must say which
+fixture they mean — never rely on enumeration order.
+
 cut-035R2 R1' rebuild: E1/E2/E6 added (were never committed; rebuilt per
 EVALUATION.md §1 spec + cut-006r-report.md distribution).
 
@@ -636,28 +642,28 @@ def main() -> int:
         suppliers = conn.execute(
             text("""
                 SELECT display_id, name FROM entities
-                WHERE entity_type = 'supplier'
+                WHERE entity_type = 'supplier' AND source_system = 'demo:demo'
                 ORDER BY display_id
             """)
         ).fetchall()
         persons = conn.execute(
             text("""
                 SELECT display_id, name FROM entities
-                WHERE entity_type = 'person'
+                WHERE entity_type = 'person' AND source_system = 'api:header'
                 ORDER BY display_id
             """)
         ).fetchall()
         pr_ids = [r[0] for r in conn.execute(
             text("""
                 SELECT display_id FROM entities
-                WHERE entity_type = 'purchase_request'
+                WHERE entity_type = 'purchase_request' AND source_system = 'demo:demo'
                 ORDER BY display_id LIMIT 100
             """)
         ).fetchall()]
         contract_ids = [r[0] for r in conn.execute(
             text("""
                 SELECT display_id FROM entities
-                WHERE entity_type = 'contract'
+                WHERE entity_type = 'contract' AND source_system = 'demo:demo'
                 ORDER BY display_id LIMIT 20
             """)
         ).fetchall()]

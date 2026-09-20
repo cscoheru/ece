@@ -36,8 +36,19 @@ def test_ontology_gate_persists_rejection_via_upsert_relationship() -> None:
     before = count_rejections(engine)
 
     # Need entities first
-    upsert_entity(engine, "person", "S24 Test Person", "r4test", "X-S24-P-001")
-    upsert_entity(engine, "purchase_request", "S24 Test PR", "r4test", "PR-S24-R-001")
+    # cut-040R-2 S1: EXPLICIT non-numeric display_ids. Auto-allocation is a
+    # global max+1 per entity_type, so a fixture PR here raised the ceiling the
+    # demo wipe+replay allocates from and shifted every demo display_id —
+    # silently invalidating the frozen E3/E4/E5 datasets. These assertions do
+    # not depend on the display_id value.
+    upsert_entity(
+        engine, "person", "S24 Test Person", "r4test", "X-S24-P-001",
+        display_id="S24-P-001",
+    )
+    upsert_entity(
+        engine, "purchase_request", "S24 Test PR", "r4test", "PR-S24-R-001",
+        display_id="S24-PR-001",
+    )
 
     # Bad triple: person SELECTS purchase_request (not in ontology)
     inserted, reason = upsert_relationship(

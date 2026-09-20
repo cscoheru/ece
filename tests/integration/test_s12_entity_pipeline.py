@@ -26,10 +26,18 @@ def test_upsert_entity_then_upsert_again_returns_existing() -> None:
             {"sid": source_id},
         )
 
-    r1 = upsert_entity(engine, "supplier", "R4 Test Co", "r4test", source_id)
+    # cut-040R-2 S1: explicit display_id — see test_s24_e2_security for why an
+    # auto-allocated id in a shared namespace breaks other fixtures' datasets.
+    r1 = upsert_entity(
+        engine, "supplier", "R4 Test Co", "r4test", source_id,
+        display_id="R4-ENTITY-TEST-001",
+    )
     assert r1.created is True
 
-    r2 = upsert_entity(engine, "supplier", "R4 Test Co RENAMED", "r4test", source_id)
+    r2 = upsert_entity(
+        engine, "supplier", "R4 Test Co RENAMED", "r4test", source_id,
+        display_id="R4-ENTITY-TEST-001",
+    )
     assert r2.created is False  # idempotent: same source_id
     # upsert_entity with DO NOTHING keeps original name (no UPDATE)
     with engine.connect() as conn:

@@ -96,13 +96,26 @@ def upsert_entity(
     source_system: str,
     source_id: str,
     attributes: dict[str, Any] | None = None,
+    display_id: str | None = None,
 ) -> EntityInsertResult:
-    """Insert or upsert one entity. ON CONFLICT (etype, sys, sid) DO NOTHING."""
+    """Insert or upsert one entity. ON CONFLICT (etype, sys, sid) DO NOTHING.
+
+    `display_id` (cut-040R-2 S1): optional EXPLICIT display_id. When omitted the
+    behaviour is unchanged (`_next_display_id` = global max+1 per entity_type).
+    A fixture that supplies its own id — e.g. "SPIKE-PR-001" — stays OUT of the
+    shared numeric namespace, so it cannot raise the ceiling that `demo:demo`
+    replays allocate from. Before this, a surviving foreign purchase_request
+    shifted the whole demo display_id space on the next wipe+replay and silently
+    invalidated the frozen E3/E4/E5 datasets.
+
+    The caller is responsible for the value being unique (there is a UNIQUE
+    index on `entities.display_id`).
+    """
     if not name or not source_id:
         raise ValueError("entity name and source_id are required")
 
     with engine.begin() as conn:
-        display_id = _next_display_id(engine, entity_type)
+        resolved_display_id = display_id or _next_display_id(engine, entity_type)
         normalized = _normalize_name(name)
 
         row = conn.execute(
@@ -115,7 +128,7 @@ def upsert_entity(
                 RETURNING display_id
             """),
             {
-                "display_id": display_id,
+                "display_id": resolved_display_id,
                 "etype": entity_type,
                 "name": name,
                 "norm": normalized,

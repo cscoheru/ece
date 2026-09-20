@@ -117,6 +117,7 @@ def test_g2_relationship_fixture_is_canonical() -> None:
                 FROM relationships r
                 JOIN entities s ON s.id = r.src_entity_id
                 WHERE s.entity_type = 'purchase_request'
+                  AND s.source_system = 'demo:demo'
                 GROUP BY s.display_id
                 HAVING count(*) != :want
                 ORDER BY s.display_id

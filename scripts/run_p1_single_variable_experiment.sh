@@ -18,6 +18,18 @@
 
 cd "$(dirname "$0")/.." || exit 1
 
+# SAFETY GATE: this script does `git checkout <commit> -- src/`, which SILENTLY
+# DESTROYS uncommitted changes under src/. That already happened once (an
+# uncommitted seed.py fix was reverted before it could be committed, so a
+# "green" run was measured on a state the commit did not contain). Refuse to run
+# on a dirty src/.
+if [ -n "$(git status --porcelain -- src/)" ]; then
+  echo "REFUSING TO RUN: src/ has uncommitted changes; this script would revert them."
+  echo "Commit or stash first."
+  git status --short -- src/
+  exit 2
+fi
+
 ARCHIVE=reports/eval-archive/2026-09-20-cut040R2/single-variable-v2
 mkdir -p "$ARCHIVE"
 RECORD="$ARCHIVE/EXPERIMENT_RECORD.txt"

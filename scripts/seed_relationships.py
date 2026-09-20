@@ -32,15 +32,46 @@ from ece.entities.pipeline import upsert_entity, upsert_relationship
 DEPARTMENTS = ["procurement", "finance", "sales", "D01"]
 
 
+# Explicit allowlist of the source_systems THIS fixture builds relationships on.
+#
+# cut-040R-2 S1 fix: `_fetch_display_ids` used to select by `entity_type` alone,
+# so it annexed ANY entity of the same type. Adding the V0 spike fixture (a
+# purchase_request) silently gave it six demo relationships and broke the
+# eval-asset guard G2. Scoping by an explicit allowlist expresses the intent
+# ("this fixture only touches its own entities") and cannot annex foreign
+# fixtures — same pattern as the wipe-predicate fix (precise predicate, never a
+# blacklist / LIKE sweep).
+_FIXTURE_SOURCE_SYSTEMS: dict[str, str] = {
+    "purchase_request": "demo:demo",
+    "supplier": "demo:demo",
+    "product": "demo:demo",
+    "policy": "demo:demo",
+    "department": "demo:seed_departments",
+    "person": "api:header",
+}
+
+
 def _fetch_display_ids(engine, entity_type: str) -> list[str]:
-    """Fetch all display_ids for a given entity_type, sorted."""
+    """Fetch display_ids for an entity type, SCOPED to this fixture's own
+    source_system (see _FIXTURE_SOURCE_SYSTEMS). Sorted.
+
+    Fails loudly on an unmapped entity_type rather than silently reverting to an
+    unscoped scan.
+    """
+    source_system = _FIXTURE_SOURCE_SYSTEMS.get(entity_type)
+    if source_system is None:
+        raise KeyError(
+            f"no fixture source_system mapped for entity_type={entity_type!r}. "
+            "Add it to _FIXTURE_SOURCE_SYSTEMS — do NOT fall back to an unscoped "
+            "scan (that annexes foreign fixtures)."
+        )
     with engine.connect() as conn:
         rows = conn.execute(
             text(
                 "SELECT display_id FROM entities "
-                "WHERE entity_type = :t ORDER BY display_id"
+                "WHERE entity_type = :t AND source_system = :s ORDER BY display_id"
             ),
-            {"t": entity_type},
+            {"t": entity_type, "s": source_system},
         ).fetchall()
     return [r[0] for r in rows]
 
