@@ -1,0 +1,21 @@
+Loaded 30 cases from data/eval/e5_temporal.json
+
+=== E5 Temporal Results ===
+Total:    30
+Correct:  0
+Wrong:    30
+Accuracy: 0.0%
+
+--- First 10 Failures ---
+  {'case': 'e5-001', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-002', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-003', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-004', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-005', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-006', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-007', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-008', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-009', 'reason': 'count 0 expected 5'}
+  {'case': 'e5-010', 'reason': 'count 0 expected 5'}
+
+*** UNDER 95% target: 0.0% ***

@@ -1,0 +1,21 @@
+Loaded 100 cases from data/eval/e3_context.json
+
+=== E3 Context Completeness Results ===
+Total:    100
+Correct:  15
+Wrong:    85
+Accuracy: 15.0%
+
+--- First 10 Failures ---
+  {'case': 'e3-001', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-002', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-003', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-004', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-005', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-006', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-007', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-008', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-009', 'reason': 'expected ok, got insufficient_context'}
+  {'case': 'e3-010', 'reason': 'expected ok, got insufficient_context'}
+
+*** UNDER 90% target: 15.0% (R3: report under-target with gap analysis) ***

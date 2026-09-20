@@ -67,6 +67,21 @@ PY
   uv run python scripts/run_e2_permission.py --data data/eval/e2_permission.json \
     --base-url http://127.0.0.1:8765 2>&1 | grep -E "Total cases|Failures|Exposures|PASS|FAIL"
   echo ""
+  echo "--- [3b] E3 / E4 / E5 (R40R2.7 后 runner 已不崩; 原始 stdout 归档) ---"
+  for e in 3 4 5; do
+    f=$(ls scripts/run_e${e}_*.py)
+    uv run python "$f" --data data/eval/e${e}_*.json > "$A/R40R2.7/E${e}.txt" 2>&1
+    ec=$?
+    echo "E$e exit=$ec :: $(grep -E 'Accuracy:|Correct:' "$A/R40R2.7/E${e}.txt" | tr '\n' ' ')"
+  done
+  echo ""
+  echo "  E3/E5 的真实失败性质 (R40R2.7 已定位, **未修**):"
+  echo "    E3 = 15.0% — 数据集过期 (display_id 漂移); 从当前 DB 重生成后 = 100% (诊断证据: /tmp/regen)"
+  echo "    E4 = 100% — **vacuous** (对象缺失 -> 0 关系 -> 落在 [0,100] 内即通过)"
+  echo "    E5 = 0.0%  — **真实失败**: expected 5 / 实测 6 (多出者来自测试创建的关系)"
+  echo "                + as_of 过滤对 valid=[None,None] 行返回 0"
+  echo "    本轮**未修改**数据集/阈值/expected —— 按判词要求 STOP 交裁定"
+  echo ""
   echo "--- [4] 终点 DB 指纹 + 实体数 (见文件头说明: 与 [0] 必然不同, 因 uuid 重生成) ---"
   echo "fingerprint: $(fingerprint)"
   echo "entities   : $(count_entities)"

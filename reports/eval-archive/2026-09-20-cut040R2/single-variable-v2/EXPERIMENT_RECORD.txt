@@ -1,10 +1,10 @@
 ===================================================================
-cut-040R-2 P1' — 严格单变量实验记录
+cut-040R-2 单变量实验记录 (rev3: SHA-256 指纹 + read-set 完整覆盖)
 ===================================================================
-目的: 证明在【固定 DB 状态 + 固定数据集】下, 两臂的唯一差异是源码。
+目的: 证明在【固定 DB 状态 + 固定数据集 + 同一运行时】下, 两臂的唯一差异是源码。
 
 baseline commit : c92316370b87343ba76c5776f9d56eb05e3f7be3
-fixed commit    : 32a0b920b014c50543c92d826b00c262f11def9b
+fixed commit    : f3a66391a762411943b79818d0027c5eb081e8c5
                   (037260b = 六根因修复; HEAD 仅追加注释 + P2 测试修复)
 dataset         : data/eval/e2_permission.json
 dataset sha256  : 7f82340adcbca4118aae51ad20090a0c40fd75f8301e1e7cd59c2a9d5ca9670c
@@ -16,14 +16,14 @@ fingerprint     : scripts/db_state_fingerprint.sql — SHA-256 over the COMPLETE
                   ordered by (scope, row_text). 输出格式: sha256|entities_rows|aliases_rows|acl_rows
 deps evidence   : P1_DEPENDENCY_MATRIX.md (E2 read-set ⊆ fingerprint scope, 逐项)
 
-F0 (两臂开始前)      : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+F0 (两臂开始前)      : f20d9b8c3059d9d4a791b01b8c4395a4dfb9f5c2d49f10c57cedee39c670dd6b|439|1|3
 
 --- ARM A: baseline 源码 (c92316370b87343ba76c5776f9d56eb05e3f7be3) @ :8766 ---
-F1 (ARM A 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+F1 (ARM A 结束后)    : f20d9b8c3059d9d4a791b01b8c4395a4dfb9f5c2d49f10c57cedee39c670dd6b|439|1|3
 ARM A exit code      : 2
 
---- ARM B: fixed 源码 (32a0b920b014c50543c92d826b00c262f11def9b) @ :8767 ---
-F2 (ARM B 结束后)    : 13f4b221ebe3daaff2e69d68aada51a91ce14894907f37070bd860832340b2b6|435|1|3
+--- ARM B: fixed 源码 (f3a66391a762411943b79818d0027c5eb081e8c5) @ :8767 ---
+F2 (ARM B 结束后)    : f20d9b8c3059d9d4a791b01b8c4395a4dfb9f5c2d49f10c57cedee39c670dd6b|439|1|3
 ARM B exit code      : 0
 
 ===================================================================

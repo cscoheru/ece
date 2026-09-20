@@ -5,13 +5,13 @@ Per EVALUATION.md §1:
 - 0 wrong relations (errors connecting unrelated entities)
 - Multi-hop expansion correct
 
-cut-040R RC-5 fix: bypasses HTTP /api/v1/context (v0.1 missing endpoint).
-Calls assemble_context() Python function directly to get real accuracy
-numbers. The HTTP path is preserved as smoke (env-not-ready exit 3)
-if --base-url is unreachable.
+cut-040R-2 R40R2.7 (runner ↔ runtime contract fix):
+  `assemble_context()` returns a **ContextPackage dataclass**, not a dict — see
+  `src/ece/context/assembly.py`. This runner used to call `pkg.get(...)`, which
+  raised `AttributeError: 'ContextPackage' object has no attribute 'get'`.
+  Fix: convert via `.to_dict()`. Test semantics and expectations unchanged.
 
-Note: E4 depends on relationships table being seeded. With current
-demo seed (0 relationships), E4 trivially passes (all expected_count_min=0).
+Note: E4 depends on the relationships table being seeded (scripts/seed_relationships.py).
 """
 from __future__ import annotations
 
@@ -39,18 +39,17 @@ def main() -> int:
     failures: list[dict] = []
 
     for case in cases:
-        # cut-040R RC-5 fix: call assemble_context() directly. /api/v1/context
-        # endpoint doesn't exist in v0.1 (per cut-039 R39.1 RC-5). Direct
-        # Python call gives real accuracy numbers for the eval gate.
         engine = get_engine()
         try:
+            # R40R2.7: assemble_context() returns ContextPackage (dataclass);
+            # .to_dict() restores the dict shape this runner expects.
             pkg = assemble_context(
                 engine=engine,
                 user_ref=case["user"],
                 intent="evaluate_purchase_request",
                 entities=[{"type": "purchase_request", "id": case["from"]}],
                 as_of=None,
-            )
+            ).to_dict()
         except Exception as e:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
             continue

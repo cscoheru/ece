@@ -1,11 +1,11 @@
 ===================================================================
 cut-040R-2 最终工程验收 (Codex 第三轮补充判词 §七)
-date : 2026-09-20T17:11:27+08:00
-HEAD : 32a0b920b014c50543c92d826b00c262f11def9b
+date : 2026-09-20T17:29:28+08:00
+HEAD : f3a66391a762411943b79818d0027c5eb081e8c5
 ===================================================================
 
 --- [0] 起点 DB 指纹 + 实体数 ---
-fingerprint: 171d1f23b43564bc2173306fdd5b5e84e01975b6e2f7b50b21a270e57f9592f7|439|1|3
+fingerprint: cf9fda6e4dd7749b9d221ccf11568a07a42f679fb95ae58a93a3ad183d326e51|439|1|3
 entities   : 439
 
 --- [1] 完整 pytest ---
@@ -25,13 +25,25 @@ Failures:           0
 Exposures:          0
 *** PASS: 0 Unauthorized Exposure, 0 permission failure (cut-006 R2) ***
 
+--- [3b] E3 / E4 / E5 (R40R2.7 后 runner 已不崩; 原始 stdout 归档) ---
+E3 exit=1 :: Correct:  15 Accuracy: 15.0% 
+E4 exit=0 :: Correct:  30 Accuracy: 100.0% 
+E5 exit=1 :: Correct:  0 Accuracy: 0.0% 
+
+  E3/E5 的真实失败性质 (R40R2.7 已定位, **未修**):
+    E3 = 15.0% — 数据集过期 (display_id 漂移); 从当前 DB 重生成后 = 100% (诊断证据: /tmp/regen)
+    E4 = 100% — **vacuous** (对象缺失 -> 0 关系 -> 落在 [0,100] 内即通过)
+    E5 = 0.0%  — **真实失败**: expected 5 / 实测 6 (多出者来自测试创建的关系)
+                + as_of 过滤对 valid=[None,None] 行返回 0
+    本轮**未修改**数据集/阈值/expected —— 按判词要求 STOP 交裁定
+
 --- [4] 终点 DB 指纹 + 实体数 (见文件头说明: 与 [0] 必然不同, 因 uuid 重生成) ---
-fingerprint: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
+fingerprint: bb9b3d0b7948b358e37294349883940a05bee68e19a5e1354928d1200104e3dd|439|1|3
 entities   : 439
 
 --- [4b] E2 运行前后的 DB 指纹 (应与 P1 的 F0==F1==F2 一致: **相同**) ---
-before E2 run: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
-after  E2 run: 9a153c8e5fe4e5cfaf8355f71d2f86c3b66270516985663467bd6bb1f42ba969|439|1|3
+before E2 run: bb9b3d0b7948b358e37294349883940a05bee68e19a5e1354928d1200104e3dd|439|1|3
+after  E2 run: bb9b3d0b7948b358e37294349883940a05bee68e19a5e1354928d1200104e3dd|439|1|3
 => UNCHANGED — E2 runner 不写库, 与 P1 的 F0==F1==F2 一致 ✅
 
 --- [5a] 污染检查: 重名实体 (P2 判据, 应为 0) ---
@@ -54,16 +66,12 @@ entities after  2nd run: 439
 
 
 --- [6] git status ---
- M TASKS.md
- M reports/eval-archive/2026-09-20-cut040R2/single-variable-v2/EXPERIMENT_RECORD.txt
- M scripts/db_state_fingerprint.sql
- M scripts/run_p1_single_variable_experiment.sh
- M tests/integration/test_cut040r2_state_integrity.py
- M tests/integration/test_s14_seed_idempotent.py
-?? reports/eval-archive/2026-09-20-cut040R2/FINAL_ACCEPTANCE/
-?? reports/eval-archive/2026-09-20-cut040R2/P1_DEPENDENCY_MATRIX.md
-?? scripts/db_surface_dump.sql
-?? scripts/run_final_acceptance.sh
+ M reports/eval-archive/2026-09-20-cut040R2/FINAL_ACCEPTANCE/acceptance.txt
+ M scripts/run_e3_context.py
+ M scripts/run_e4_relationships.py
+ M scripts/run_e5_temporal.py
+ M scripts/run_final_acceptance.sh
+?? reports/eval-archive/2026-09-20-cut040R2/R40R2.7/
 
 --- [7] P1 单变量实验记录 (最近一次) ---
 ===================================================================
@@ -101,6 +109,6 @@ DB 状态恒定性判定
 目的: 证明跨 pytest 的指纹变化**全部来自 entities.id (uuid) 重生成**, 而非决策状态变化。
 wipe+replay 测试 exit code: 0
 surface 行数: before=443 after=443
-差异行数    : 844
+差异行数    : 842
 差异是否**仅**限于 id 字段 (第 2 列)?
   => YES — 除 id 外内容完全一致; 指纹变化 100% 由 uuid 重生成解释 ✅

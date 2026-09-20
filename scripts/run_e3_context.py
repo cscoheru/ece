@@ -5,12 +5,20 @@ Per EVALUATION.md §1:
 - ≥ 90% task gets all Required Context
 - On miss: must report insufficient_context
 
-cut-040R RC-5 fix: bypasses HTTP /api/v1/context (v0.1 missing endpoint).
-Calls assemble_context() Python function directly to get real accuracy
-numbers. The HTTP path is preserved as smoke (env-not-ready exit 3)
-if --base-url is unreachable.
+cut-040R-2 R40R2.7 (runner ↔ runtime contract fix):
+  `assemble_context()` returns a **ContextPackage dataclass**, not a dict — see
+  `src/ece/context/assembly.py` (11 fields + `.to_dict()`). This runner used to
+  call `pkg.get(...)`, which raised
+  `AttributeError: 'ContextPackage' object has no attribute 'get'`.
+  Fix: convert via `.to_dict()`, which preserves the dict shape the helpers
+  below (`_collect_refs` / `_check_case`) were written against.
+  Test semantics and expectations are unchanged.
 
-Without API server, returns 3 (env-not-ready; per cut-006R §4.3 proxy bypass).
+  (Historical note: an earlier revision bypassed HTTP /api/v1/context on the
+  belief that the endpoint did not exist in v0.1. It does exist — it was added
+  in bdf30ec and returns 422 on bad params, not 404. The direct-Python path is
+  kept because it removes the HTTP layer as a variable, not because the
+  endpoint is missing.)
 """
 from __future__ import annotations
 
@@ -80,18 +88,17 @@ def main() -> int:
 
     for case in cases:
         root = case.get("root", {})
-        # cut-040R RC-5 fix: call assemble_context() directly. /api/v1/context
-        # endpoint doesn't exist in v0.1 (per cut-039 R39.1 RC-5). Direct
-        # Python call gives real accuracy numbers for the eval gate.
         engine = get_engine()
         try:
+            # R40R2.7: assemble_context() returns ContextPackage (dataclass).
+            # .to_dict() restores the dict shape the helpers below expect.
             pkg = assemble_context(
                 engine=engine,
                 user_ref=case["user"],
                 intent=case["intent"],
                 entities=[root] if root.get("id") else [],
                 as_of=None,
-            )
+            ).to_dict()
         except Exception as e:
             failures.append({"case": case["id"], "stage": "request", "error": str(e)})
             continue
