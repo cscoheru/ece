@@ -1,0 +1,9 @@
+Loaded 30 cases from data/eval/e4_relationships.json
+Traceback (most recent call last):
+  File "/Users/kjonekong/projects/domainAgentECE/ece/scripts/run_e4_relationships.py", line 91, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/kjonekong/projects/domainAgentECE/ece/scripts/run_e4_relationships.py", line 58, in main
+    rels = pkg.get("relationships", [])
+           ^^^^^^^
+AttributeError: 'ContextPackage' object has no attribute 'get'

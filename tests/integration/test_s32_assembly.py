@@ -29,7 +29,10 @@ def test_assemble_returns_package_with_identity(engine) -> None:
     assert pkg.user["id"] == "demo-user-procurement"
     assert pkg.user["department"] == "procurement"
     assert "procurement_manager" in pkg.user["roles"]
-    assert pkg.user["is_management"] is True
+    # cut-040R-2 R40R2.3: demo-user-procurement holds the "procurement_manager"
+    # JOB TITLE, which is not a management role — is_management is an explicit
+    # attribute and defaults to False.
+    assert pkg.user["is_management"] is False
     assert pkg.request_id  # uuid
     assert pkg.package_id.startswith("ctx_")
 

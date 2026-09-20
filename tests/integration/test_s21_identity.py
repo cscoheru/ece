@@ -55,5 +55,8 @@ def test_identity_upsert_then_resolve_returns_match() -> None:
     assert ident.department == "D01"
     assert "procurement_manager" in ident.roles
     assert "测试用户" in ident.aliases
-    # is_management derived from roles
-    assert ident.is_management is True
+    # cut-040R-2 R40R2.3: is_management is an EXPLICIT stored attribute
+    # (default False), never derived from role-name substrings.
+    # "procurement_manager" is a job title, not a management signal — the six
+    # management-classification E2 cases require this to be False.
+    assert ident.is_management is False

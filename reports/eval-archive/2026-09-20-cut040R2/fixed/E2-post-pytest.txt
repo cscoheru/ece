@@ -1,0 +1,9 @@
+Loaded 61 cases from data/eval/e2_permission.json
+
+=== E2 Permission Suite Results ===
+Total cases:        61
+Failures:           0
+Exposures:          0
+Failure+Exposure %: 0.0%
+
+*** PASS: 0 Unauthorized Exposure, 0 permission failure (cut-006 R2) ***

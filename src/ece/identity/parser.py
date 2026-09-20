@@ -26,7 +26,7 @@ class Identity:
     roles: list[str] = field(default_factory=list)
     aliases: list[str] = field(default_factory=list)
     source_system: str = "api:header"
-    is_management: bool = False  # derived: any role contains 'manager' (set after init)
+    is_management: bool = False  # cut-040R-2 R40R2.3: EXPLICIT seed attribute, never derived from role names
 
 
 def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
@@ -82,7 +82,14 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
         ).fetchall()
         aliases: list[str] = [r[0] for r in alias_rows]
 
-        is_management = any("manager" in r.lower() for r in roles)
+        # cut-040R-2 R40R2.3 (RC-8 — 空操作修复): is_management MUST be an
+        # explicit stored attribute, never derived from a role-name substring.
+        # The previous `any("manager" in r.lower() for r in roles)` made every
+        # *_manager job title (procurement_manager, finance_manager) count as
+        # management — engine.py's R40R.1 "tightening" only moved that same
+        # substring from the engine into the parser, so it was a no-op and all
+        # six management-classification cases (expected deny) still leaked.
+        is_management = bool(attrs.get("is_management", False))
 
         return Identity(
             user_ref=x_user_id,
@@ -103,15 +110,20 @@ def upsert_identity(
     department: str,
     roles: list[str],
     aliases: list[str] | None = None,
+    is_management: bool = False,
 ) -> str:
     """Insert or update a person identity from API header info.
 
     Returns display_id. ON CONFLICT (entity_type, source_system, source_id) DO NOTHING
     then re-fetch display_id (entities pipeline style).
+
+    cut-040R-2 R40R2.3: `is_management` is stored as an explicit attribute
+    (default False) so the permission engine never has to infer it from role
+    names.
     """
     from ece.entities.pipeline import upsert_entity
 
-    attrs = {"department": department, "roles": roles}
+    attrs = {"department": department, "roles": roles, "is_management": is_management}
     upsert_entity(
         engine,
         entity_type="person",

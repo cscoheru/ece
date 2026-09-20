@@ -153,6 +153,20 @@ def _gen_e2(pr_ids: list[str], contract_ids: list[str], supplier_ids: list[str])
     sup_obj = supplier_ids[0] if supplier_ids else "SUP001"
     sup_obj_2 = supplier_ids[1] if len(supplier_ids) > 1 else "SUP002"
 
+    # cut-040R-2 R40R2.4 (RC-7 — dataset self-contradiction): the ACL-explicit
+    # cases must use DEDICATED objects. An ACL row is keyed on
+    # (subject, object) only — it carries no classification — so sharing an
+    # object with a classification case makes the two expectations
+    # unsatisfiable at once:
+    #   e2-060 (finance, PR001, department, ALLOW) vs e2-010/e2-049
+    #     (finance, PR001, department, DENY)          ← identical triple
+    #   e2-061 (procurement, CON001, confidential, DENY) vs e2-021
+    #     (procurement, CON001, confidential, ALLOW)  ← identical triple
+    # Dedicated objects are used by no other E2 case. src/ece/seed.py
+    # seed_acl_entries() hardcodes the same pair (PR003 / CON002) — keep in sync.
+    pr_obj_acl = pr_ids[2] if len(pr_ids) > 2 else "PR0003"
+    con_obj_acl = contract_ids[1] if len(contract_ids) > 1 else "CON0002"
+
     # ── 44 permission_check cases ─────────────────────────────────────────
     # Pattern: 4 users × 6 classifications × ~2 objects (cross-dept induction)
     # Demo-user-procurement owns dept-classified PRs; finance/engineering/other are denied
@@ -270,10 +284,12 @@ def _gen_e2(pr_ids: list[str], contract_ids: list[str], supplier_ids: list[str])
     acl_explicit_cases = [
         (user_procurement, "supplier", sup_obj_2, "restricted", True,
          "ACL-ALLOW-CROSS-DEPT: procurement user explicitly allowed restricted supplier #2"),
-        (user_finance, "purchase_request", pr_obj, "department", True,
-         "ACL-ALLOW-READONLY: finance explicitly granted read-only access to procurement PR"),
-        (user_procurement, "contract", con_obj, "confidential", False,
-         "ACL-DENY-TEST: procurement explicitly denied access to this specific contract"),
+        # R40R2.4: dedicated object (PR003) — no other case shares this pair.
+        (user_finance, "purchase_request", pr_obj_acl, "department", True,
+         "ACL-ALLOW-READONLY: finance explicitly granted read-only access to a dedicated procurement PR"),
+        # R40R2.4: dedicated object (CON002) — no other case shares this pair.
+        (user_procurement, "contract", con_obj_acl, "confidential", False,
+         "ACL-DENY-TEST: procurement explicitly denied access to a dedicated contract"),
     ]
     for user, obj_type, obj_ref, cls, allowed, reason in acl_explicit_cases:
         cases.append({

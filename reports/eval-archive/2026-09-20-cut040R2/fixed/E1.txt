@@ -1,0 +1,14 @@
+Loaded 65 cases from data/eval/e1_resolution.json
+
+=== E1 Entity Resolution Results ===
+Total:    65
+Correct:  62
+Wrong:    3
+Accuracy: 95.4%
+
+--- First 10 Failures ---
+  [e1-002] {'case': 'e1-002', 'mention': 'R4-Acme', 'expected': True, 'got': False, 'reason': 'resolved mismatch'}
+  [e1-003] {'case': 'e1-003', 'mention': 'R4-Globex', 'expected': True, 'got': False, 'reason': 'resolved mismatch'}
+  [e1-054] {'case': 'e1-054', 'mention': '无限极', 'expected': False, 'got': True, 'reason': 'resolved mismatch'}
+
+*** PASS: >= 95% R3 acceptance ***

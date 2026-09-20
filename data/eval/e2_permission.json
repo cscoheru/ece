@@ -599,21 +599,21 @@
       "id": "e2-060",
       "user_ref": "demo-user-finance",
       "object_type": "purchase_request",
-      "object_ref": "PR001",
+      "object_ref": "PR003",
       "classification": "department",
       "expected_allowed": true,
       "category": "acl_explicit",
-      "reason": "ACL-ALLOW-READONLY: finance explicitly granted read-only access to procurement PR"
+      "reason": "ACL-ALLOW-READONLY: finance explicitly granted read-only access to a dedicated procurement PR"
     },
     {
       "id": "e2-061",
       "user_ref": "demo-user-procurement",
       "object_type": "contract",
-      "object_ref": "CON001",
+      "object_ref": "CON002",
       "classification": "confidential",
       "expected_allowed": false,
       "category": "acl_explicit",
-      "reason": "ACL-DENY-TEST: procurement explicitly denied access to this specific contract"
+      "reason": "ACL-DENY-TEST: procurement explicitly denied access to a dedicated contract"
     }
   ]
 }

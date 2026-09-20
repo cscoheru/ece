@@ -1,0 +1,12 @@
+Loaded 65 cases from data/eval/e1_resolution.json
+
+=== E1 Entity Resolution Results ===
+Total:    65
+Correct:  64
+Wrong:    1
+Accuracy: 98.5%
+
+--- First 10 Failures ---
+  [e1-054] {'case': 'e1-054', 'mention': '无限极', 'expected': False, 'got': True, 'reason': 'resolved mismatch'}
+
+*** PASS: >= 95% R3 acceptance ***

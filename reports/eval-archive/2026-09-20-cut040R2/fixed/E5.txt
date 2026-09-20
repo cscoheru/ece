@@ -1,0 +1,21 @@
+Loaded 30 cases from data/eval/e5_temporal.json
+
+=== E5 Temporal Results ===
+Total:    30
+Correct:  0
+Wrong:    30
+Accuracy: 0.0%
+
+--- First 10 Failures ---
+  {'case': 'e5-001', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-002', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-003', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-004', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-005', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-006', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-007', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-008', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-009', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+  {'case': 'e5-010', 'stage': 'request', 'error': "'str' object has no attribute 'isoformat'"}
+
+*** UNDER 95% target: 0.0% ***

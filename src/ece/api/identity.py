@@ -81,13 +81,22 @@ def permissions_check(
 
     engine = get_engine()
     identity = resolve_identity(engine, user_ref)
-    if identity.entity_id is None:
-        # Unknown user -> default deny
-        return PermissionCheckResponse(
-            allowed=False,
-            reason="unknown user (entity not found)",
-            matched_rule="default-deny",
-        )
+
+    # cut-040R-2 R40R2.6 (RC-11 — 未知身份): an unknown user_ref resolves to a
+    # BARE Identity (no department, no roles, is_management=False) and is then
+    # evaluated by the normal classification matrix — it is NOT early-denied.
+    #
+    # Rationale: dataset cases e2-004/008/044/048 say public and internal are
+    # visible to "all users", including U_other_dept. The previous early-deny
+    # made those four fail while contributing nothing to anti-probing: an
+    # unknown user can never match an ACL subject (subject_ref would have to
+    # equal their ref), so the decision depends only on the classification and
+    # on empty dept/roles. Every unknown user therefore gets an identical
+    # answer — no existence signal leaks.
+    #
+    # Note: endpoints that return object existence (e.g. /entities/{id}) keep
+    # their own unknown-user 404 handling; this change is scoped to
+    # /permissions/check.
 
     # Load ACL entries for object
     with engine.connect() as conn:

@@ -25,7 +25,12 @@ DEFAULT_CLASSIFICATION_MATRIX: dict[str, dict[str, str | list[str]]] = {
     # expected-allowed silently failed at the matrix miss (default-deny).
     "internal":      {"default": "allow"},
     "department":    {"default": "allow_dept"},
-    "restricted":    {"default": "allow_dept"},
+    # cut-040R-2 R40R2.5 (RC-10 — restricted 错置): restricted = DENY unless an
+    # explicit ACL allow exists. It was previously allow_dept, which leaked
+    # e2-025 (procurement + PR001 + restricted, expected deny). Dataset: 6 of
+    # the 7 restricted cases expect deny; the 7th (e2-059) is allowed by an
+    # explicit ACL row, which fires before this matrix is consulted.
+    "restricted":    {"default": "deny"},
     "management":    {"default": "allow_management"},
     "confidential":  {"default": "allow_dept"},  # cut-040 R40.1b
     "finance":       {"default": "allow_role", "roles": ["finance_manager", "cfo"]},

@@ -95,6 +95,23 @@ _TEST_USERS: list[dict[str, str | list[str]]] = [
         "department": "sales",  # 'sales' dept; not procurement/finance
         "roles": ["buyer"],
     },
+    {
+        # cut-040R-2 R40R2.3: dedicated admin/ingestion identity.
+        #
+        # POST /entities is gated on `is_management or "admin" in roles`. The
+        # three users above must NOT be management — the six
+        # management-classification E2 cases all expect deny — so the ingestion
+        # tests cannot borrow them any more. Before R40R2.3 they "worked" only
+        # because `is_management` was derived from the substring "manager" in
+        # "procurement_manager", i.e. they depended on the bug.
+        #
+        # This user is deliberately NOT management (admin ≠ management); it is
+        # authorized via the explicit "admin" role, and it appears in no E2 case.
+        "source_id": "demo-user-admin",
+        "name": "Demo Admin",
+        "department": "it",
+        "roles": ["admin"],
+    },
 ]
 
 
@@ -161,7 +178,19 @@ def seed_from_demo_json(engine, path: Path) -> dict[str, object]:
                     "error": str(e),
                 })
 
-    return {"created_by_type": dict(counters), "skipped": skipped}
+    # cut-040R-2 R40R2.1 (RC-6 — 状态洗库): the department injection lives
+    # INSIDE this function so the idempotent replay self-heals. Previously it
+    # was only called from run_seed(), so any test that wipes `demo:%`
+    # entities and replays seed_from_demo_json (e.g.
+    # test_s14_seed_idempotent) destroyed attributes.department and never
+    # restored it — E2 then measured a scrubbed DB, neutralizing R40.1c.
+    dept_updated = _seed_entity_departments(engine)
+
+    return {
+        "created_by_type": dict(counters),
+        "skipped": skipped,
+        "attributes_department_updated": dept_updated,
+    }
 
 
 def seed_acl_entries(engine) -> dict[str, int]:
@@ -175,36 +204,60 @@ def seed_acl_entries(engine) -> dict[str, int]:
     """
 
     rows = [
-        # e2-059: alice (procurement) allowed SUP052 (restricted) via explicit ALLOW
+        # cut-040R-2 R40R2.2 (RC-9 — ACL 全域哑弹): object_type MUST use the
+        # dataset's DOMAIN vocabulary. The API prefetches ACLs with
+        # `WHERE object_type = :otype` and every E2 case passes a domain type
+        # (purchase_request / supplier / contract) — never 'entity'. The
+        # previous 'entity' rows were therefore dead in E2: e2-059/060/061
+        # never saw their own ACL.
+        #
+        # cut-040R-2 R40R2.4 (RC-7 — dataset self-contradiction): e2-060 and
+        # e2-061 use DEDICATED objects. An ACL row is keyed on
+        # (subject, object) only, so sharing an object with a classification
+        # case makes the expectations unsatisfiable:
+        #   - e2-060 (finance, PR001, department, ALLOW) vs e2-010/049
+        #     (finance, PR001, department, DENY) — same triple, opposite want
+        #   - e2-061 (procurement, CON001, confidential, DENY) vs e2-021
+        #     (procurement, CON001, confidential, ALLOW) — same triple
+        # Dedicated objects PR003 / CON002 are referenced by no other E2 case.
+        # e2-059 is safe: SUP052 has no conflicting classification case.
         {
             "subject_type": "user",
             "subject_ref": "demo-user-procurement",
-            "object_type": "entity",
+            "object_type": "supplier",
             "object_ref": "SUP052",
             "effect": "allow",
         },
-        # e2-060: finance allowed PR001 (department) via explicit ALLOW
         {
             "subject_type": "user",
             "subject_ref": "demo-user-finance",
-            "object_type": "entity",
-            "object_ref": "PR001",
+            "object_type": "purchase_request",
+            "object_ref": "PR003",  # dedicated (R40R2.4)
             "effect": "allow",
         },
-        # e2-061: procurement DENIED CON001 (confidential) via explicit DENY
-        # Closes one of the 6 cut-039 R39.1 unauthorized exposures
         {
             "subject_type": "user",
             "subject_ref": "demo-user-procurement",
-            "object_type": "entity",
-            "object_ref": "CON001",
+            "object_type": "contract",
+            "object_ref": "CON002",  # dedicated (R40R2.4)
             "effect": "deny",
         },
     ]
     counters: Counter[str] = Counter()
+    tag = "demo:cut-040-test-acl"
     with engine.begin() as conn:
+        # cut-040R-2 R40R2.2: DELETE-then-INSERT instead of ON CONFLICT DO
+        # NOTHING. The object_type vocabulary changed ('entity' → domain types),
+        # and the old rows would survive an ON CONFLICT insert as dead duplicates
+        # — still filtering to zero hits but polluting the table. Delete is
+        # scoped to this seed's own tag so no other ACL row is touched.
+        deleted = conn.execute(
+            text("DELETE FROM acl_entries WHERE source_system = :tag"),
+            {"tag": tag},
+        ).rowcount
+        counters["replaced"] += deleted
         for r in rows:
-            result = conn.execute(
+            conn.execute(
                 text(
                     """
                     INSERT INTO acl_entries
@@ -213,9 +266,9 @@ def seed_acl_entries(engine) -> dict[str, int]:
                     ON CONFLICT DO NOTHING
                     """
                 ),
-                {**r, "source_system": "demo:cut-040-test-acl"},
+                {**r, "source_system": tag},
             )
-            counters["created" if result.rowcount else "skipped"] += 1
+            counters["created"] += 1
     return dict(counters)
 
 
@@ -268,7 +321,8 @@ def run_seed() -> dict[str, object]:
 
     cut-040 additions:
     - _seed_entity_departments() injects attributes.department per entity_type
-      (R40.1c)
+      (R40.1c) — now called from INSIDE seed_from_demo_json (R40R2.1) so the
+      idempotent replay self-heals
     - seed_acl_entries() seeds 3 acl_entries for E2 'acl_explicit' cases
       (R40.1a)
     """
@@ -276,8 +330,9 @@ def run_seed() -> dict[str, object]:
     out = seed_from_demo_json(engine, Path("data/dataset/demo.json"))
     users = seed_test_users(engine)
     out["test_users"] = users
-    # cut-040 R40.1c: inject attributes.department (post-seed UPDATE)
-    out["attributes_department_updated"] = _seed_entity_departments(engine)
+    # cut-040R-2 R40R2.1: attributes.department is now injected inside
+    # seed_from_demo_json (out["attributes_department_updated"]), so it is not
+    # re-injected here.
     # cut-040 R40.1a: seed 3 acl_entries for E2 explicit-acl cases
     out["acl_entries"] = seed_acl_entries(engine)
     return out

@@ -32,7 +32,13 @@ def test_post_entities_bulk_upsert_positive_path(client: TestClient) -> None:
                 }
             ]
         },
-        headers={"X-User-Id": "demo-user-procurement"},
+        # cut-040R-2 R40R2.3: POST /entities is gated on management-or-admin.
+        # demo-user-procurement is deliberately NOT management (the six
+        # management-classification E2 cases require deny), so the ingestion
+        # tests use the dedicated admin identity instead. They previously
+        # passed only because is_management was derived from the "manager"
+        # substring in "procurement_manager".
+        headers={"X-User-Id": "demo-user-admin"},
     )
     assert r.status_code == 200, f"POST /entities (bulk happy path) failed: {r.status_code} {r.text}"
     body = r.json()
@@ -55,7 +61,7 @@ def test_post_entities_unknown_type_returns_200_with_errors(client: TestClient) 
     r = client.post(
         "/api/v1/entities",
         json={"items": [{"type": "unknown:connector", "name": "X", "source_id": "X"}]},
-        headers={"X-User-Id": "demo-user-procurement"},
+        headers={"X-User-Id": "demo-user-admin"},  # R40R2.3: management-or-admin gate
     )
     assert r.status_code == 200, f"unexpected status: {r.status_code} {r.text}"
     body = r.json()
