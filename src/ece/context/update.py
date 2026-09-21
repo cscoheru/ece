@@ -1,0 +1,113 @@
+"""S4 (V0 Technical Spike) — `apply_context_update`.
+
+Per `docs/v0/V0_EXECUTION_SPEC.md` §8 (Context Update) and §9 step [6].
+Per the binding acceptance criteria for S4 (审验者裁定, 2026-09-21).
+
+Hard contract enforced here (and asserted by `tests/integration/test_v0_apply_context_update.py`):
+
+  - **Re-read is the criterion.** A test that only inspects the UPDATE rowcount is not
+    a valid S4 test. The point is to prove that a fresh `assemble_context(...)` reads
+    the new business state back.
+  - **Address by `source_id` + `source_system`, not display_id.** FER history: display_ids
+    drift and silently invalidate tests.
+  - **`review_evidence_id` is singular.** The caller chooses one; S2's
+    `get_evidence_for_decision` is sorted deterministically.
+  - **No new entity is inserted.** The function UPDATEs an existing row; if zero rows
+    match, it raises rather than ghost-writing.
+"""
+from __future__ import annotations
+
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+
+__all__ = ["apply_context_update"]
+
+_REVIEW_KEYS = (
+    "review_status",
+    "review_decision_id",
+    "review_evidence_id",
+    "review_updated_at",
+)
+
+_UPDATE_SQL = text("""
+    UPDATE entities
+    SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object(
+        'review_status',      CAST(:review_status AS text),
+        'review_decision_id', CAST(:review_decision_id AS text),
+        'review_evidence_id', CAST(:review_evidence_id AS text),
+        'review_updated_at',  CAST(:review_updated_at AS text))
+    WHERE id = :entity_id
+""")
+
+
+def apply_context_update(
+    engine: Engine,
+    source_id: str,
+    source_system: str,
+    decision: Mapping[str, Any],
+    evidence_id: str,
+) -> None:
+    """Write the four `review_*` keys onto the entity identified by `(source_id, source_system)`.
+
+    Raises:
+      * `ValueError` — no entity matches, or more than one matches (refuses to guess).
+      * `ValueError` — `decision` is missing required keys.
+      * `RuntimeError` — the UPDATE did not affect exactly one row (defensive: a
+        future schema change must not silently write zero rows).
+    """
+    decision_value = decision["decision_value"]
+    decision_id = decision["decision_id"]
+    if not decision_value or not decision_id:
+        raise ValueError("decision['decision_value'] and decision['decision_id'] are required")
+    if not evidence_id:
+        raise ValueError("evidence_id is required")
+
+    entity_id = _resolve_entity_id(engine, source_id, source_system)
+    updated_at = datetime.now(UTC).isoformat()
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            _UPDATE_SQL,
+            {
+                "review_status": decision_value,
+                "review_decision_id": decision_id,
+                "review_evidence_id": evidence_id,
+                "review_updated_at": updated_at,
+                "entity_id": entity_id,
+            },
+        )
+    if result.rowcount != 1:
+        # Defensive: SQL must affect exactly the one row we resolved.
+        # A future schema change must not silently write nothing.
+        raise RuntimeError(
+            f"UPDATE affected {result.rowcount} rows; expected 1 (entity_id={entity_id})"
+        )
+
+
+def _resolve_entity_id(engine: Engine, source_id: str, source_system: str) -> Any:
+    """Resolve (source_id, source_system) to the entity's primary key.
+
+    Refuses to guess on ambiguity: zero matches and multiple matches both raise.
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id FROM entities "
+                "WHERE source_id = :sid AND source_system = :sys"
+            ),
+            {"sid": source_id, "sys": source_system},
+        ).all()
+    if not rows:
+        raise ValueError(
+            f"no entity with source_id={source_id!r} source_system={source_system!r}"
+        )
+    if len(rows) > 1:
+        raise ValueError(
+            f"{len(rows)} entities match source_id={source_id!r} "
+            f"source_system={source_system!r}; refusing to guess which one to update"
+        )
+    return rows[0][0]
