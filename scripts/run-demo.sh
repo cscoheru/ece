@@ -55,16 +55,16 @@ make db-upgrade || fail "db-upgrade 失败"
 make seed || fail "seed 失败（db 未空？先 make rev + make seed）"
 uv run python scripts/ingest_demo_docs.py || fail "ingest_demo_docs 失败"
 
-# Step 4: 跑 S6 三件证据（确定性 + E2 + 反查）
-step "[4/5] 三件证据验证（S6 PASS 同套）"
-echo "  --- 确定性 N=10 byte-equal ---"
-uv run pytest tests/evaluation/test_s6_determinism.py -v 2>&1 | tail -20 || fail "S6 确定性测试失败"
+# Step 4: 跑 V0 spike 三件证据（确定性 + E2 + 反查）
+step "[4/5] V0 spike 三件证据验证"
+echo "  --- 确定性 N=10 byte-equal (V0 evidence persistence) ---"
+uv run pytest tests/integration/test_v0_evidence_persistence.py -v 2>&1 | tail -20 || fail "V0 evidence persistence 测试失败"
 
-echo "  --- E2 权限不漏 ---"
+echo "  --- E2 权限不漏 (61 cases) ---"
 uv run python scripts/run_e2_permission.py 2>&1 | tail -15 || fail "E2 权限测试失败"
 
-echo "  --- 4-hop Evidence 反查 ---"
-uv run pytest tests/evaluation/test_s6_evidence_reversal.py -v 2>&1 | tail -20 || fail "S6 Evidence 反查失败"
+echo "  --- 4-hop Evidence 反查 (V0 specialized) ---"
+uv run pytest tests/integration/test_v0_specialized.py -v 2>&1 | tail -20 || fail "V0 specialized 测试失败"
 
 # Step 5: MCP stdio 启动验证（证明部署形态可对接）
 step "[5/5] MCP stdio 启动验证"
@@ -79,7 +79,9 @@ echo ""
 echo "接下来 6 步现场演示（45 min）："
 echo ""
 echo "1. 三件证据开篇 (5 min)"
-echo "   uv run pytest tests/evaluation/test_s6_*.py -v"
+echo "   uv run pytest tests/integration/test_v0_evidence_persistence.py -v"
+echo "   uv run pytest tests/integration/test_v0_specialized.py -v"
+echo "   uv run python scripts/run_e2_permission.py"
 echo ""
 echo "2. 张三 PR + POL-2026-03 (8 min)"
 echo "   启动 Claude Desktop/Cline + MCP stdio"

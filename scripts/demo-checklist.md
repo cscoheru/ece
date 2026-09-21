@@ -60,8 +60,8 @@ bash scripts/run-demo.sh
 ### Step 1: 三件证据开篇（5 min）
 
 ```bash
-uv run pytest tests/evaluation/test_s6_determinism.py -v
-uv run pytest tests/evaluation/test_s6_evidence_reversal.py -v
+uv run pytest tests/integration/test_v0_evidence_persistence.py -v
+uv run pytest tests/integration/test_v0_specialized.py -v
 uv run python scripts/run_e2_permission.py
 ```
 

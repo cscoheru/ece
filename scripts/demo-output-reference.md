@@ -73,11 +73,11 @@ Running upgrade  -> xxxx (head)
 
 ## Step 4: 三件证据
 
-### 4.1 S6 确定性测试
+### 4.1 V0 确定性测试 (`test_v0_evidence_persistence.py`)
 
 **预期末尾**:
 ```
-test_s6_determinism.py::test_byte_equal_10_runs PASSED
+test_v0_evidence_persistence.py::... PASSED
 ====== N passed in X.Xs ======
 ```
 
@@ -97,16 +97,16 @@ E2 unauthorized context exposure: 0
 - ✅ 看到 "0 failed" 和 "0" → 通过
 - ❌ 任何 failed 或 unauthorized exposure > 0 → 不能演示
 
-### 4.3 S6 Evidence 反查
+### 4.3 V0 Evidence 反查 (`test_v0_specialized.py`)
 
 **预期末尾**:
 ```
-test_s6_evidence_reversal.py::test_4_hop_reversal PASSED
+test_v0_specialized.py::... PASSED
 ====== N passed in X.Xs ======
 ```
 
 **判定**:
-- ✅ 看到 4-hop test PASSED → 通过
+- ✅ 看到 4-hop / evidence 相关 test PASSED → 通过
 
 ---
 
