@@ -247,6 +247,61 @@ def test_ambiguous_subject_fails_loudly() -> None:
         persist_evidence(get_engine(), ctx, _decision(decision_id, ctx, _conditions()))
 
 
+def test_subject_entity_filter_is_enforced(cleanup: list[str]) -> None:
+    """Negative control for the type filter that earlier mutation testing found uncovered.
+
+    The original seven tests all happen to use a single purchase_request as subject, so
+    nothing distinguishes "the filter picked the PR" from "the filter ignored every type".
+    These two cases close that gap.
+
+    Case ① — no purchase_request at all. `_subject_entity` would otherwise return nothing
+    or pick wrong; the guard must refuse.
+    Case ② — a purchase_request among other entities. The filter must pick the PR and
+    the row's `source` must come from the PR's `src`, not from whatever happens to be
+    first in the list.
+    """
+    # ① zero purchase_request, only a supplier — the filter must bite.
+    decision_id = f"dec_{uuid.uuid4()}"
+    cleanup.append(decision_id)
+    ctx = _context(package_id="ctx_000000000000000000000006")
+    ctx.entities = [
+        {
+            "ref": "SUP-SYNTHETIC-A",
+            "type": "supplier",
+            "name": "Supplier A",
+            "attrs": {"name": "Supplier A"},
+            "src": {"system": FIXTURE_SYSTEM, "record_id": "SPIKE-SUP-A"},
+        }
+    ]
+    with pytest.raises(ValueError, match="exactly one"):
+        persist_evidence(get_engine(), ctx, _decision(decision_id, ctx, _conditions()))
+
+    # ② a purchase_request mixed with a supplier — the filter must pick the PR.
+    # The supplier is intentionally placed at index 0 so a broken "return
+    # ctx.entities[0]" implementation cannot accidentally pass on fixture shape.
+    decision_id_pr = f"dec_{uuid.uuid4()}"
+    cleanup.append(decision_id_pr)
+    ctx_mixed = _context(package_id="ctx_000000000000000000000007", subject_count=0)
+    pr_entity = _context(package_id="ctx_000000000000000000000007", subject_count=1).entities[0]
+    pr_src = pr_entity["src"]
+    ctx_mixed.entities = [
+        {
+            "ref": "SUP-SYNTHETIC-B",
+            "type": "supplier",
+            "name": "Supplier B",
+            "attrs": {"name": "Supplier B"},
+            "src": {"system": "other:system", "record_id": "SUPPLIER-B"},
+        },
+        pr_entity,
+    ]
+    rows = persist_evidence(get_engine(), ctx_mixed, _decision(decision_id_pr, ctx_mixed, _conditions()))
+    assert {r["source_record_id"] for r in rows} == {pr_src["record_id"]}, (
+        "the subject filter must pick the purchase_request and source from its src, "
+        "not from whatever entity happens to be first"
+    )
+    assert {r["source_system"] for r in rows} == {pr_src["system"]}
+
+
 def test_missing_entity_provenance_fails_loudly() -> None:
     """Negative control: Evidence with no source is not evidence."""
     decision_id = f"dec_{uuid.uuid4()}"
