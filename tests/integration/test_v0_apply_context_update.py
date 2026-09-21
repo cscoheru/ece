@@ -254,3 +254,33 @@ def test_no_new_entity_inserted() -> None:
         f"entity count changed: before={before} after={after} — apply_context_update "
         "must not INSERT"
     )
+
+
+def test_auto_approved_decision_value_propagates_through(
+    evidence_cleanup: list[str],
+) -> None:
+    """Coverage for the decision_value branch the original four mutations missed.
+
+    With every test using `amount=1_280_000, qc=1`, decision_value is always "review_required".
+    A bind that hardcoded `"review_required"` would pass them all. Here we construct an
+    `auto_approved` decision (amount below threshold; quote_count check passes; the AND fails)
+    and prove the re-read carries the exact string — not a coerced literal.
+    """
+    display_id = _pr_display_id()
+    ctx = _build_ctx_with_pr(display_id)
+    decision, evidence_id = _produce_decision_and_first_evidence_id(ctx, 500_000, 1)
+    evidence_cleanup.append(decision["decision_id"])
+    assert decision["decision_value"] == "auto_approved", (
+        "test premise broken: expected the AND-fail branch; got "
+        f"{decision['decision_value']}"
+    )
+
+    apply_context_update(
+        get_engine(), PR_SOURCE_ID, FIXTURE_SYSTEM, decision, evidence_id,
+    )
+
+    attrs, _ = _read_pr_attrs()
+    assert attrs["review_status"] == "auto_approved", (
+        "apply_context_update must propagate decision['decision_value'] verbatim; "
+        "this proves the bind is not a hardcoded literal"
+    )
