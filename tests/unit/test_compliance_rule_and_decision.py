@@ -65,6 +65,8 @@ def test_rule_emits_two_conditions_with_six_keys_each() -> None:
             {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
             {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
         ],
+        request_period_start="2026-07-01",
+        request_period_end="2026-09-30",
         today="2026-09-22",
     )
 
@@ -114,9 +116,9 @@ def test_rule_byte_equal_across_10_calls() -> None:
     ]
     today = "2026-09-22"
 
-    first = evaluate_rule_R_COMP_AUDIT(control, evidence_set, today)
+    first = evaluate_rule_R_COMP_AUDIT(control, evidence_set, "2026-07-01", "2026-09-30", today)
     for _ in range(9):
-        again = evaluate_rule_R_COMP_AUDIT(control, evidence_set, today)
+        again = evaluate_rule_R_COMP_AUDIT(control, evidence_set, "2026-07-01", "2026-09-30", today)
         assert again == first, (
             "rule must be deterministic across calls; got non-equal output"
         )
@@ -130,17 +132,35 @@ def test_rule_byte_equal_across_10_calls() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Boundary matrix: truth-table completeness (4 canonical cases)
+# Boundary matrix: truth-table completeness (8 cases — cut-044R1 R1-B1)
 # ---------------------------------------------------------------------------
+#
+# cut-044R1 R1-B1: rule now filters evidence by **request audit-period
+# intersection** with evidence period. `today` is still in signature
+# (reserved for future staleness checks) but does NOT participate in
+# filtering — see `evaluate_rule_R_COMP_AUDIT` docstring.
+#
+# Cases:
+#   1. canonical_full_coverage              → sufficient, 3 evidence
+#   2. ctl002_missing_finance                → gap_list, 2 evidence (both fail)
+#   3. ctl003_missing_hr_and_finance        → gap_list, 2 evidence (count ok, coverage fail)
+#   4. request_before_evidence              → gap_list, 0 evidence (no intersection)
+#   5. request_after_evidence               → gap_list, 0 evidence (no intersection)
+#   6. request_partial_intersection         → sufficient, 3 evidence (all 3 still overlap)
+#   7. request_full_containment             → sufficient, 3 evidence (request ⊇ evidence)
+#   8. today_after_request_period_end       → sufficient, 3 evidence (today reserved-only)
 
 
-_BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = [
-    # (control_id, required_systems, evidence_min, today, expected_value, evidence_set, expected_keyword)
-    # CTL-001 fully covered → sufficient
+_BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, str, list[dict], str, str]] = [
+    # (control_id, required_systems, evidence_min,
+    #  request_period_start, request_period_end, today,
+    #  expected_value, evidence_set, expected_keyword)
+    # 1. canonical — full coverage, canonical period overlaps evidence period fully
     (
         "COMP-CTL-001",
         ["erp-system", "hr-system", "finance-system"],
         3,
+        "2026-07-01", "2026-09-30",
         "2026-09-22",
         "evidence_package_sufficient",
         [
@@ -150,11 +170,12 @@ _BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = 
         ],
         "无缺口",
     ),
-    # CTL-002 missing finance → gap_list
+    # 2. CTL-002 missing finance → gap_list (count=2<3, coverage missing finance)
     (
         "COMP-CTL-002",
         ["erp-system", "hr-system", "finance-system"],
         3,
+        "2026-07-01", "2026-09-30",
         "2026-09-22",
         "gap_list",
         [
@@ -163,11 +184,12 @@ _BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = 
         ],
         "存在缺口",
     ),
-    # CTL-003 missing hr-system → gap_list
+    # 3. CTL-003 missing hr and finance → gap_list (count ok=2, coverage missing hr+finance)
     (
         "COMP-CTL-003",
         ["erp-system", "hr-system", "finance-system"],
         3,
+        "2026-07-01", "2026-09-30",
         "2026-09-22",
         "gap_list",
         [
@@ -176,12 +198,13 @@ _BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = 
         ],
         "存在缺口",
     ),
-    # CTL-001 with today OUTSIDE audit period → 0 evidence in period → gap_list
+    # 4. Request period FULLY BEFORE evidence period → no intersection → 0 evidence
     (
         "COMP-CTL-001",
         ["erp-system", "hr-system", "finance-system"],
         3,
-        "2026-01-15",  # outside 2026-07-01..2026-09-30
+        "2026-01-01", "2026-06-30",  # request fully before evidence 2026-07-01..2026-09-30
+        "2026-09-22",
         "gap_list",
         [
             {"system": "erp-system",    "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
@@ -189,6 +212,71 @@ _BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = 
             {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
         ],
         "存在缺口",
+    ),
+    # 5. Request period FULLY AFTER evidence period → no intersection → 0 evidence
+    (
+        "COMP-CTL-001",
+        ["erp-system", "hr-system", "finance-system"],
+        3,
+        "2026-10-01", "2026-12-31",  # request fully after evidence 2026-07-01..2026-09-30
+        "2026-09-22",
+        "gap_list",
+        [
+            {"system": "erp-system",    "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+        ],
+        "存在缺口",
+    ),
+    # 6. Request period PARTIAL INTERSECTION with evidence period
+    #    request=2026-08-15..2026-09-15 overlaps evidence 2026-07-01..2026-09-30
+    #    → all 3 evidence packages still overlap → sufficient
+    (
+        "COMP-CTL-001",
+        ["erp-system", "hr-system", "finance-system"],
+        3,
+        "2026-08-15", "2026-09-15",  # partial intersection
+        "2026-09-22",
+        "evidence_package_sufficient",
+        [
+            {"system": "erp-system",    "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+        ],
+        "无缺口",
+    ),
+    # 7. Request period FULL CONTAINMENT of evidence period
+    #    request=2026-06-01..2026-12-31 ⊇ evidence 2026-07-01..2026-09-30 → sufficient
+    (
+        "COMP-CTL-001",
+        ["erp-system", "hr-system", "finance-system"],
+        3,
+        "2026-06-01", "2026-12-31",  # full containment
+        "2026-09-22",
+        "evidence_package_sufficient",
+        [
+            {"system": "erp-system",    "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+        ],
+        "无缺口",
+    ),
+    # 8. today AFTER request_period_end (today no longer used for filtering —
+    #    reserved for future staleness checks). All evidence still in
+    #    intersection → sufficient.
+    (
+        "COMP-CTL-001",
+        ["erp-system", "hr-system", "finance-system"],
+        3,
+        "2026-07-01", "2026-08-31",  # request period ends before today
+        "2026-09-22",  # today > request_period_end → still allowed
+        "evidence_package_sufficient",
+        [
+            {"system": "erp-system",    "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+            {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
+        ],
+        "无缺口",
     ),
 ]
 
@@ -198,6 +286,8 @@ _BOUNDARY_MATRIX: list[tuple[str, list[str], int, str, str, list[dict], str]] = 
         "control_id",
         "required_systems",
         "evidence_min",
+        "request_period_start",
+        "request_period_end",
         "today",
         "expected_value",
         "evidence_set",
@@ -209,12 +299,19 @@ def test_rule_truth_table_decision_value(
     control_id: str,
     required_systems: list[str],
     evidence_min: int,
+    request_period_start: str,
+    request_period_end: str,
     today: str,
     expected_value: str,
     evidence_set: list[dict],
     expected_keyword: str,
 ) -> None:
-    """Criterion 2: 4 cases covering the rule's truth-table boundaries."""
+    """Criterion 2: 8 cases covering rule's request-period intersection logic.
+
+    cut-044R1 R1-B1: filter is by request-period ∩ evidence-period
+    intersection (not by today coverage). `today` is reserved for future
+    staleness checks but currently does NOT participate in filtering.
+    """
     conditions = evaluate_rule_R_COMP_AUDIT(
         control={
             "id": control_id,
@@ -222,19 +319,21 @@ def test_rule_truth_table_decision_value(
             "evidence_min": evidence_min,
         },
         evidence_set=evidence_set,
+        request_period_start=request_period_start,
+        request_period_end=request_period_end,
         today=today,
     )
     decision = build_decision(conditions, _context())
     assert decision["decision_value"] == expected_value, (
-        f"control_id={control_id} today={today}: "
-        f"expected {expected_value}, got {decision['decision_value']!r}"
+        f"control_id={control_id} request=({request_period_start}..{request_period_end}) "
+        f"today={today}: expected {expected_value}, got {decision['decision_value']!r}"
     )
     assert decision["rule_id"] == RULE_ID
     assert decision["decision_key"] == DECISION_KEY
     reason = decision["reason"]
     assert expected_keyword in reason, (
-        f"control_id={control_id} today={today}: "
-        f"reason {reason!r} does not contain expected keyword {expected_keyword!r}"
+        f"control_id={control_id} request=({request_period_start}..{request_period_end}) "
+        f"today={today}: reason {reason!r} does not contain {expected_keyword!r}"
     )
 
 
@@ -255,6 +354,8 @@ def test_reason_string_is_pure_and_free_of_time_uuid() -> None:
             {"system": "hr-system",     "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
             {"system": "finance-system", "control_id": "COMP-CTL-001", "period_start": "2026-07-01", "period_end": "2026-09-30"},
         ],
+        request_period_start="2026-07-01",
+        request_period_end="2026-09-30",
         today="2026-09-22",
     )
     decision = build_decision(conditions, _context())

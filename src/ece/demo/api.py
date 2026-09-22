@@ -388,6 +388,56 @@ def generate_scenario(
             server_today = date.today().isoformat()
         req.params["today"] = server_today
 
+    # cut-044R1 R1-B1 — request audit-period validation. Compliance spec
+    # declares `period_start` + `period_end` in params_schema with strict
+    # YYYY-MM-DD format. Mirror R8-B1 canonical round-trip for BOTH fields,
+    # plus reversal check (period_start <= period_end). Reject 422 if any
+    # check fails — fail fast at API boundary, not in rule layer. Rule layer
+    # trusts the validated form (wrapper reads `params["period_start"]` /
+    # `params["period_end"]` directly).
+    #
+    # Scope: only validate fields actually present. Specs that don't declare
+    # `period_start` / `period_end` in params_schema (e.g. procurement,
+    # knowledge) never enter this block because the keys are absent.
+    if "period_start" in req.params or "period_end" in req.params:
+        from datetime import date as _date
+        canonical_period: dict[str, str] = {}
+        for _pfield in ("period_start", "period_end"):
+            _raw = str(req.params.get(_pfield, "") or "")
+            try:
+                _parsed = _date.fromisoformat(_raw)
+            except ValueError:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"{_pfield} must be strict YYYY-MM-DD, got {_raw!r}"
+                    ),
+                ) from None
+            # R8-B1 mirror: canonical round-trip — parsed.isoformat() must
+            # equal raw input. Rejects ISO 8601 forms other than YYYY-MM-DD
+            # (basic `20260922`, week-date `2026-W38-2`, ordinal `2026-265`)
+            # which would silently flow into reason text as different
+            # strings than the parsed date represents.
+            if _parsed.isoformat() != _raw:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"{_pfield} must be strict YYYY-MM-DD (canonical), "
+                        f"got {_raw!r} (parsed as {_parsed.isoformat()!r}); "
+                        "non-canonical ISO 8601 forms are not accepted to keep "
+                        "the value safe to embed in business reason text"
+                    ),
+                ) from None
+            canonical_period[_pfield] = _raw
+        if canonical_period["period_start"] > canonical_period["period_end"]:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"period_start ({canonical_period['period_start']!r}) "
+                    f"must be <= period_end ({canonical_period['period_end']!r})"
+                ),
+            )
+
     # cut-043R R5-B4 — when route_root_via_params is true, the routing field
     # is the SINGLE source of root identity. The legacy `root_source_id` /
     # `pr_source_id` overrides MUST be rejected (they would silently route

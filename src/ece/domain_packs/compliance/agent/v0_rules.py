@@ -59,25 +59,20 @@ DECISION_ID_PREFIX = "dec_"
 _CONDITION_KEYS = ("name", "expr", "actual", "threshold", "passed", "claim")
 
 
-def _in_period(evidence: dict, today: str) -> bool:
-    """True iff today falls inside evidence.period_start..period_end (inclusive)."""
-    period_start = str(evidence.get("period_start", "") or "")
-    period_end = str(evidence.get("period_end", "") or "")
-    if not period_start or not period_end:
-        return False
-    return period_start <= today <= period_end
-
-
 def evaluate_rule_R_COMP_AUDIT(  # noqa: N802 (spec-mandated name per PRD §6)
     control: dict[str, Any],
     evidence_set: list[dict[str, Any]],
-    today: str,  # ISO date string 'YYYY-MM-DD' — kept string for determinism + JSONB round-trip
+    request_period_start: str,
+    request_period_end: str,
+    today: str,  # ISO date string 'YYYY-MM-DD' — kept string for determinism + JSONB round-trip.
+    # RESERVED: kept in signature for API stability + future staleness checks,
+    # but does NOT participate in filtering — see docstring §3 (cut-044R1 R1-B1).
 ) -> list[dict[str, Any]]:
     """Evaluate R-COMP-AUDIT.
 
     Always returns two conditions, in a fixed order:
 
-        0. evidence_count_meets_threshold   — passes iff count(evidence_in_period) >= control.evidence_min
+        0. evidence_count_meets_threshold   — passes iff count(evidence_in_audit) >= control.evidence_min
         1. system_coverage_complete         — passes iff control.required_systems ⊆ covered_systems
 
     Each condition carries all six keys `evaluated_conditions` needs downstream:
@@ -99,35 +94,55 @@ def evaluate_rule_R_COMP_AUDIT(  # noqa: N802 (spec-mandated name per PRD §6)
         - period_start: str (ISO date 'YYYY-MM-DD')
         - period_end:   str (ISO date 'YYYY-MM-DD')
 
-    `today` is the caller's audit-period anchor date (not system-time). The
-    rule must be pure, so we never read datetime.now() here — that would
-    break N=10 byte-equal determinism.
+    `request_period_start` / `request_period_end` (cut-044R1 R1-B1):
+    caller-supplied audit period. The API boundary MUST validate them as
+    strict YYYY-MM-DD canonical round-trip + reversal check (mirror of
+    cut-043R4 R8-B1). The rule filters by **intersection** — an evidence
+    package is in-audit iff its `[period_start, period_end]` overlaps the
+    request `[request_period_start, request_period_end]` window:
+        ev.period_start <= request_period_end AND ev.period_end >= request_period_start
+    Intersection (rather than containment) is the cut-044R1 design decision —
+    see plan §2.1. Audit semantics: "evidence with any overlap of the audit
+    window is in-scope for scrutiny."
+
+    `today` (cut-044R1 R1-B1): reserved for future staleness checks
+    (e.g. "reject evidence older than N days from today"). Currently it
+    does NOT participate in filtering — the audit period + intersection
+    filter alone decide inclusion. The parameter is kept in signature for
+    API stability (callers already pass it) and to avoid a breaking
+    change to other tests that import this function.
     """
     control_id = str(control.get("id", control.get("source_id", "")))
     required_systems = list(control.get("required_systems", []) or [])
     evidence_min = int(control.get("evidence_min", 0))
 
-    # Filter to evidence that (a) targets this control and (b) falls in the
-    # audit period (today is within period_start..period_end inclusive).
-    in_period: list[dict[str, Any]] = []
+    # cut-044R1 R1-B1: filter by audit-period INTERSECTION, not by today
+    # coverage. evidence_in_audit = evidence_set entries whose
+    # [period_start, period_end] window has any overlap with the request
+    # audit [request_period_start, request_period_end]. Empty strings are
+    # treated as "no overlap" (defensive; API already rejects empties as 422).
+    in_audit: list[dict[str, Any]] = []
     for ev in evidence_set:
         if str(ev.get("control_id", "")) != control_id:
             continue
-        if not _in_period(ev, today):
+        ev_ps = str(ev.get("period_start", "") or "")
+        ev_pe = str(ev.get("period_end", "") or "")
+        if not ev_ps or not ev_pe:
             continue
-        in_period.append(ev)
+        if ev_ps <= request_period_end and ev_pe >= request_period_start:
+            in_audit.append(ev)
 
-    count = len(in_period)
-    covered_systems = {str(ev.get("system", "")) for ev in in_period if ev.get("system")}
+    count = len(in_audit)
+    covered_systems = {str(ev.get("system", "")) for ev in in_audit if ev.get("system")}
     required_set = set(required_systems)
 
     met_count = count >= evidence_min
     coverage_complete = required_set.issubset(covered_systems) if required_set else (count >= evidence_min)
 
     count_claim = (
-        f"控制项 {control_id} 期间内证据 {count} 条, 已达阈值 ≥ {evidence_min} 条"
+        f"控制项 {control_id} 审计期间内证据 {count} 条, 已达阈值 ≥ {evidence_min} 条"
         if met_count
-        else f"控制项 {control_id} 期间内证据 {count} 条, 不足阈值 ≥ {evidence_min} 条"
+        else f"控制项 {control_id} 审计期间内证据 {count} 条, 不足阈值 ≥ {evidence_min} 条"
     )
     sorted_covered = sorted(covered_systems) if covered_systems else []
     sorted_required = sorted(required_set) if required_set else []
@@ -225,10 +240,13 @@ def _build_reason(
 
 
 # cut-044 — pack self-registration via the ece.demo rule registry.
-# The pure function `evaluate_rule_R_COMP_AUDIT(control, evidence_set, today)`
-# keeps its signature (locked by tests/unit/test_compliance_rule_and_decision.py);
-# we adapt it to the generic `(ctx, params) -> conditions` registry contract by
-# pulling control + evidence_set from the assembled Context and params dict.
+# The pure function `evaluate_rule_R_COMP_AUDIT(control, evidence_set,
+# request_period_start, request_period_end, today)` keeps its signature
+# (locked by tests/unit/test_compliance_rule_and_decision.py); we adapt it
+# to the generic `(ctx, params) -> conditions` registry contract by pulling
+# control + evidence_set from the assembled Context and params dict, and
+# routing `period_start` / `period_end` through to the rule's intersection
+# filter (cut-044R1 R1-B1).
 #
 # Import is a runtime side-effect, delayed to module bottom so pack modules
 # don't form an import cycle with the engine.
@@ -268,7 +286,19 @@ def _register_for_demo() -> None:
             )
 
         today = str(params.get("today") or "2026-09-22")
-        return evaluate_rule_R_COMP_AUDIT(control_entity, evidence_set, today)
+        # cut-044R1 R1-B1: API boundary (api.py) already validates
+        # period_start / period_end as strict YYYY-MM-DD canonical round-trip
+        # + period_start <= period_end (422 otherwise). By the time we reach
+        # this wrapper both fields are guaranteed non-empty + canonical.
+        request_period_start = str(params.get("period_start") or "")
+        request_period_end = str(params.get("period_end") or "")
+        return evaluate_rule_R_COMP_AUDIT(
+            control_entity,
+            evidence_set,
+            request_period_start,
+            request_period_end,
+            today,
+        )
 
     register_rule(
         RULE_ID,

@@ -152,33 +152,48 @@ def _isolate_attrs() -> None:
 
 
 @pytest.mark.parametrize(
-    (
-        "control_id",
-        "user_id",
-        "expected_value",
-        "expected_evidence_count",
-        "expected_keyword",
-    ),
+    ("control_id", "user_id", "expected_value", "expected_evidence_count",
+     "expected_keyword", "request_period"),
     [
         # COMP-CTL-001 + comp-alice: 3 evidence packages covering all 3 systems
-        # → both conditions pass → evidence_package_sufficient, 2 evidence rows.
-        ("COMP-CTL-001", "comp-alice", "evidence_package_sufficient", 2, "无缺口"),
+        # + request period overlaps evidence period → both conditions pass
+        # → evidence_package_sufficient, 2 evidence rows.
+        ("COMP-CTL-001", "comp-alice", "evidence_package_sufficient", 2, "无缺口",
+         ("2026-07-01", "2026-09-30")),
         # COMP-CTL-002 + comp-alice: 2 evidence packages (both from erp only)
         # → count=2 < 3 fail, coverage={erp} ⊄ {erp,hr,finance} fail → both fail
         # → 0 evidence rows → gap_list (zero_evidence_decisions allowlist).
-        ("COMP-CTL-002", "comp-alice", "gap_list", 0, "存在缺口"),
+        ("COMP-CTL-002", "comp-alice", "gap_list", 0, "存在缺口",
+         ("2026-07-01", "2026-09-30")),
         # COMP-CTL-003 + comp-alice: 3 evidence packages (1 erp + 2 hr),
         # coverage={erp,hr} ⊄ {erp,hr,finance} (missing finance)
         # → count passes, coverage fails → 1 evidence row (count only).
-        ("COMP-CTL-003", "comp-alice", "gap_list", 1, "存在缺口"),
+        ("COMP-CTL-003", "comp-alice", "gap_list", 1, "存在缺口",
+         ("2026-07-01", "2026-09-30")),
         # COMP-CTL-001 + comp-eve: DENIED pre-rule (PRD §7 纪律 #2)
-        ("COMP-CTL-001", "comp-eve", "no_permission", 0, "无权访问"),
+        ("COMP-CTL-001", "comp-eve", "no_permission", 0, "无权访问",
+         ("2026-07-01", "2026-09-30")),
+        # R1-B1 cut-044R1: request period FULLY BEFORE evidence period
+        # → no intersection → 0 evidence → gap_list (allowlist)
+        ("COMP-CTL-001", "comp-alice", "gap_list", 0, "存在缺口",
+         ("2026-01-01", "2026-06-30")),
+        # R1-B1 cut-044R1: request period FULLY AFTER evidence period
+        # → no intersection → 0 evidence → gap_list (allowlist)
+        ("COMP-CTL-001", "comp-alice", "gap_list", 0, "存在缺口",
+         ("2026-10-01", "2026-12-31")),
+        # R1-B1 cut-044R1: request period PARTIAL INTERSECTION with evidence
+        # period → all 3 evidence still overlap → sufficient
+        ("COMP-CTL-001", "comp-alice", "evidence_package_sufficient", 2, "无缺口",
+         ("2026-08-15", "2026-09-15")),
     ],
     ids=[
         "ctl001_alice_full_coverage_sufficient",
         "ctl002_alice_count_and_coverage_fail_gap_list",
         "ctl003_alice_coverage_only_fails_gap_list",
         "ctl001_eve_denied_pre_rule_no_permission",
+        "R1_B1_request_before_evidence_gap_list",
+        "R1_B1_request_after_evidence_gap_list",
+        "R1_B1_request_partial_intersection_sufficient",
     ],
 )
 def test_compliance_boundary_truth_table(
@@ -188,8 +203,9 @@ def test_compliance_boundary_truth_table(
     expected_value: str,
     expected_evidence_count: int,
     expected_keyword: str,
+    request_period: tuple[str, str],
 ) -> None:
-    """cut-044 binding invariant.
+    """cut-044 binding invariant + cut-044R1 R1-B1 audit-period semantics.
 
     Each 200 case asserts:
       1. `decision_value == expected_value`
@@ -200,7 +216,12 @@ def test_compliance_boundary_truth_table(
     R5-B1 conformance (compliance is NOT requires_server_today_anchor): today
     is caller-supplied via params (caller chooses the audit period); we
     pass SERVER_TODAY to land inside the audit windows in the fixture.
+
+    R1-B1 conformance: filter uses request-period ∩ evidence-period
+    intersection. Cases 5/6 prove 0-intersection → 0 evidence → gap_list;
+    case 7 proves partial intersection still preserves sufficient.
     """
+    period_start, period_end = request_period
     resp = client.post(
         "/api/v1/demo/scenarios/generate",
         headers={"X-User-Id": user_id},
@@ -209,15 +230,15 @@ def test_compliance_boundary_truth_table(
             "scenario": "default",
             "params": {
                 "control_id": control_id,
-                "period_start": "2026-07-01",
-                "period_end": "2026-09-30",
+                "period_start": period_start,
+                "period_end": period_end,
                 "today": SERVER_TODAY,
             },
         },
     )
     assert resp.status_code == 200, (
-        f"control_id={control_id} user_id={user_id}: expected 200, "
-        f"got {resp.status_code}; body={resp.text[:300]}"
+        f"control_id={control_id} user_id={user_id} period=({period_start}..{period_end}): "
+        f"expected 200, got {resp.status_code}; body={resp.text[:300]}"
     )
     body = resp.json()
 
@@ -226,14 +247,14 @@ def test_compliance_boundary_truth_table(
     #    constants fall through (decision §1 row 1: mapper not touched).
     decision_value = body.get("decision_value") or body.get("conclusion")
     assert decision_value == expected_value, (
-        f"control_id={control_id} user_id={user_id}: "
+        f"control_id={control_id} user_id={user_id} period=({period_start}..{period_end}): "
         f"decision_value={decision_value!r} != expected={expected_value!r}"
     )
 
     # 2. evidence count (cut-044 plan: gap_list on zero_evidence_decisions allowlist)
     evidence = body.get("evidence", [])
     assert len(evidence) == expected_evidence_count, (
-        f"control_id={control_id} user_id={user_id}: "
+        f"control_id={control_id} user_id={user_id} period=({period_start}..{period_end}): "
         f"evidence count={len(evidence)} != expected={expected_evidence_count}; "
         f"evidence={evidence!r}"
     )
@@ -241,7 +262,7 @@ def test_compliance_boundary_truth_table(
     # 3. reason keyword (business-language probe, no technical terms)
     reason = body.get("reason", "")
     assert expected_keyword in reason, (
-        f"control_id={control_id} user_id={user_id}: "
+        f"control_id={control_id} user_id={user_id} period=({period_start}..{period_end}): "
         f"reason {reason!r} does not contain expected keyword {expected_keyword!r}"
     )
 
@@ -274,12 +295,28 @@ def test_compliance_boundary_truth_table(
         ({"control_id": "comp/ctl-001"}, "control_id"),
         # Space in identifier → fails _SAFE_IDENTIFIER regex
         ({"control_id": "COMP CTL 001"}, "control_id"),
+        # R1-B1: empty period_start → 422 at API boundary
+        ({"control_id": "COMP-CTL-001", "period_start": "", "period_end": "2026-09-30",
+          "today": SERVER_TODAY}, "period_start"),
+        # R1-B1: malformed period_start → 422 (canonical round-trip)
+        ({"control_id": "COMP-CTL-001", "period_start": "banana",
+          "period_end": "2026-09-30", "today": SERVER_TODAY}, "period_start"),
+        # R1-B1: reversed period → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "2026-09-30",
+          "period_end": "2026-07-01", "today": SERVER_TODAY}, "period_start"),
+        # R1-B1: non-canonical ISO form (basic `20260922`) → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "20260922",
+          "period_end": "2026-09-30", "today": SERVER_TODAY}, "period_start"),
     ],
     ids=[
         "path_traversal_422",
         "empty_control_id_422",
         "slash_separator_422",
         "space_in_identifier_422",
+        "R1_B1_empty_period_start_422",
+        "R1_B1_malformed_period_start_422",
+        "R1_B1_reversed_period_422",
+        "R1_B1_non_canonical_iso_period_422",
     ],
 )
 def test_compliance_boundary_422_zero_write(
@@ -293,6 +330,9 @@ def test_compliance_boundary_422_zero_write(
       - root.attrs byte-equal
       - REQUIRES_SYSTEM count byte-equal
       - evidence_records count byte-equal
+
+    R1-B1 cut-044R1: 4 audit-period 422 cases verify strict YYYY-MM-DD
+    canonical round-trip + period_start <= period_end at the API boundary.
     """
     before_attrs_001 = _read_root_attrs("COMP-CTL-001")
     before_rs_001 = _count_relationships_from_root(

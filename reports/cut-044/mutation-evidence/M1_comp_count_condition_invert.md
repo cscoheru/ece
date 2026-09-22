@@ -18,9 +18,9 @@ tests/integration/test_compliance_boundary.py [31mF[0m[31m                   
 
 =================================== FAILURES ===================================
 [31m[1m_ test_compliance_boundary_truth_table[ctl001_alice_full_coverage_sufficient] __[0m
-[1m[31mtests/integration/test_compliance_boundary.py[0m:228: in test_compliance_boundary_truth_table
+[1m[31mtests/integration/test_compliance_boundary.py[0m:249: in test_compliance_boundary_truth_table
     [0m[94massert[39;49;00m decision_value == expected_value, ([90m[39;49;00m
-[1m[31mE   AssertionError: control_id=COMP-CTL-001 user_id=comp-alice: decision_value='gap_list' != expected='evidence_package_sufficient'[0m
+[1m[31mE   AssertionError: control_id=COMP-CTL-001 user_id=comp-alice period=(2026-07-01..2026-09-30): decision_value='gap_list' != expected='evidence_package_sufficient'[0m
 [1m[31mE   assert 'gap_list' == 'evidence_package_sufficient'[0m
 [1m[31mE     [0m
 [1m[31mE     [0m[91m- evidence_package_sufficient[39;49;00m[90m[39;49;00m[0m
@@ -32,8 +32,8 @@ tests/integration/test_compliance_boundary.py [31mF[0m[31m                   
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 [36m[1m=========================== short test summary info ============================[0m
-[31mFAILED[0m tests/integration/test_compliance_boundary.py::[1mtest_compliance_boundary_truth_table[ctl001_alice_full_coverage_sufficient][0m - AssertionError: control_id=COMP-CTL-001 user_id=comp-alice: decision_value=...
-[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.69s[0m[31m =========================[0m
+[31mFAILED[0m tests/integration/test_compliance_boundary.py::[1mtest_compliance_boundary_truth_table[ctl001_alice_full_coverage_sufficient][0m - AssertionError: control_id=COMP-CTL-001 user_id=comp-alice period=(2026-07-...
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.72s[0m[31m =========================[0m
 
 ```
 
@@ -54,7 +54,7 @@ tests/integration/test_compliance_boundary.py [32m.[0m[33m                   
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.50s[0m[33m =========================[0m
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.46s[0m[33m =========================[0m
 
 ```
 
@@ -65,4 +65,4 @@ Test passes: **True**
 
 - [x] RED captured: `AssertionError` in stdout = True
 - [x] GREEN restored: test passes = True
-- [x] File restored: pre/post md5 match = True (`08ea99a7`)
+- [x] File restored: pre/post md5 match = True (`d9d01a5d`)

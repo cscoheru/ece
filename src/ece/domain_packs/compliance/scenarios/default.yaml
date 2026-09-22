@@ -29,6 +29,14 @@ decision_key: review_status
 # cut-044 — control 身份由 params 决定 (audit period 也是 caller-supplied).
 root_params_fields:
   - control_id
+# cut-044R1 R1-B1 — `period_start` / `period_end` are REAL audit-period params
+# (not decoration). API boundary enforces strict YYYY-MM-DD canonical round-trip
+# + period_start <= period_end (422 otherwise — mirror of cut-043R4 R8-B1 for
+# the server anchor). Rule filters evidence by **intersection** with these
+# fields: an evidence package is in-audit iff its [period_start, period_end]
+# window overlaps the request [period_start, period_end] window. `today` is
+# reserved for future staleness checks but currently does NOT participate in
+# filtering — see v0_rules.py docstring §3 and plan §2.1.
 params_schema:
   control_id: str
   period_start: str
