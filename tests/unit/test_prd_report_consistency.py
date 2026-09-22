@@ -199,3 +199,84 @@ def test_report_includes_local_origin_pass_10_evidence(report_text: str) -> None
         "cut-045-report.md §6.4 must show PASS=10 SKIP=0 FAIL=0 against "
         "the local-origin reverse-proxy (cut-045R1 R3-B3 fix)"
     )
+
+
+# ---------------------------------------------------------------------------
+# cut-045R2 — corln.rana.asia domain + state model discipline
+# ---------------------------------------------------------------------------
+
+
+def test_prd_mentions_corln_rana_asia(prd_text: str) -> None:
+    """PRD must mention the canonical demo domain `corln.rana.asia`.
+
+    cut-045R2 (Codex §1.R3-B3) makes Phase 9 the completion gate:
+    PASS=10 SKIP=0 FAIL=0 against the real `https://corln.rana.asia` URL.
+    The PRD must reflect this canonical domain so reviewers / future
+    maintainers see what URL Phase 9 runs against.
+    """
+    assert "corln.rana.asia" in prd_text, (
+        "PRD must mention the canonical demo domain `corln.rana.asia` "
+        "(cut-045R2 Phase 9 completion gate runs against this URL)"
+    )
+
+
+def test_prd_ack_no_cut_046_state_model(prd_text: str) -> None:
+    """PRD §11 must explicitly acknowledge the state model discipline (NO CUT-046).
+
+    cut-045R2 §0 state model: `cut-045` is the TERMINAL cut. There is NO
+    `cut-046`. Only `cut-045R*` rework cycles are allowed. The PRD must
+    surface this discipline (in §11 trail row or §3 硬约束) so future
+    cycles do not propose `cut-046` / Sprint 5/6 candidates / V0/V3 PRD
+    regression as scope creep.
+    """
+    # State model phrases that must appear somewhere in the PRD
+    required_phrases = (
+        "NO CUT-046",
+        "cut-045R*",
+    )
+    missing = [p for p in required_phrases if p not in prd_text]
+    assert not missing, (
+        f"PRD missing state model discipline phrases: {missing}. "
+        "Per cut-045R2 §0: cut-045 is the TERMINAL cut; there is NO cut-046. "
+        "Only `cut-045R*` rework cycles are allowed. The PRD must surface "
+        "this so future cycles do not propose cut-046 / Sprint 5/6 candidates "
+        "/ V0/V3 PRD regression as scope creep."
+    )
+
+
+def test_prd_has_cut_045_r2_trail_row(prd_text: str) -> None:
+    """PRD §11 must have a trail row for cut-045R2 (2026-09-23).
+
+    Per cut-045R2 R3-B4 (consistency discipline): every cycle must leave
+    a §11 trail row documenting its self-check + state model discipline.
+    cut-045R2 is the cycle that introduces the NO CUT-046 state model,
+    so its trail row is mandatory.
+    """
+    trail_row_pattern = re.compile(
+        r"\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*\*\*cut-045R2", re.IGNORECASE
+    )
+    assert trail_row_pattern.search(prd_text), (
+        "PRD §11 missing cut-045R2 trail row — every cycle must leave a "
+        "trail row documenting self-check + state model discipline "
+        "(per R3-B4 consistency discipline). Pattern: "
+        "| YYYY-MM-DD | **cut-045R2** | ..."
+    )
+
+
+def test_checklist_mentions_corln_rana_asia_domain(prd_text: str) -> None:
+    """PRD §3 硬约束 must mention that the deployment is to `corln.rana.asia`.
+
+    cut-045R2 (Phase 9) targets `https://corln.rana.asia`. The PRD §3
+    硬约束 must reference this domain so the founder-facing checklist
+    and the PRD align on the same target URL.
+    """
+    # §3 mentions the deployment target
+    section_3_match = re.search(
+        r"## 3\..*?(?=\n## )", prd_text, re.DOTALL
+    )
+    assert section_3_match, "PRD §3 missing entirely"
+    section_3 = section_3_match.group(0)
+    assert "corln.rana.asia" in section_3, (
+        "PRD §3 硬约束 must reference the `corln.rana.asia` deployment "
+        "target (cut-045R2 Phase 9 completion gate runs against this URL)"
+    )

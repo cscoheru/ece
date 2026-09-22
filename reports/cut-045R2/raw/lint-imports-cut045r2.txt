@@ -1,0 +1,10 @@
+[1mContracts[0m
+[1m---------[0m
+
+[1mAnalyzed 62 files, 84 dependencies.[0m
+[1m-----------------------------------[0m
+
+Domain pack isolation [32mKEPT[0m
+Engine core isolation [32mKEPT[0m
+
+Contracts: 2 kept, 0 broken.
