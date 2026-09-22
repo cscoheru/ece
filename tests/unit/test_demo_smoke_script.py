@@ -66,11 +66,17 @@ def test_smoke_script_uses_demo_base_url_env(smoke_source: str) -> None:
     assert "DEMO_BASE_URL" in smoke_source, (
         "smoke script must use DEMO_BASE_URL env (directive §5.1)"
     )
-    # Should use os.environ / os.getenv
-    assert re.search(
-        r"os\.(?:environ|getenv)\s*\(\s*['\"]DEMO_BASE_URL",
-        smoke_source,
-    ), "smoke script must read DEMO_BASE_URL via os.environ / os.getenv"
+    # Allow: os.environ["DEMO_BASE_URL"], os.environ.get("DEMO_BASE_URL", ...),
+    # os.getenv("DEMO_BASE_URL", ...), or DEMO_BASE_URL reference inside os.environ.getenv chain.
+    patterns = (
+        r'os\.environ(?:\.get)?\s*\(\s*["\']DEMO_BASE_URL',
+        r"os\.getenv\s*\(\s*['\"]DEMO_BASE_URL",
+    )
+    if not any(re.search(p, smoke_source) for p in patterns):
+        pytest.fail(
+            "smoke script must read DEMO_BASE_URL via os.environ[...] / "
+            "os.environ.get(...) / os.getenv(...) — none found."
+        )
 
 
 def test_smoke_script_has_hardcoded_localhost_fallback(smoke_source: str) -> None:
