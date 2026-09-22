@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cut-044R1 — Compliance pack **TRUE** same-origin smoke.
+"""cut-044R2 — Compliance pack **TRUE** same-origin smoke.
 
 Codex R1-B3 (round-1 HOLD) finding: the original cut-044 smoke script used
 `API_BASE = http://127.0.0.1:8765` and called `/api/*` directly from the
@@ -16,8 +16,8 @@ script fixes the regression by adopting the cut-042R2 R2-F3 pattern:
   3. A new check `_check_origin_host_header` proves the proxy chain is
      actually wired (POST → same origin → upstream via 127.0.0.1:8765).
 
-Smoke checks (8 total: 4 original + 3 R1-B1 audit-period boundary + 1
-same-origin-host-header proof):
+Smoke checks (10 total: 4 original + 3 R1-B1 audit-period boundary + 2 R2
+API boundary + 1 same-origin-host-header proof):
 
   ORIGINAL cut-044 checks (4):
     1. Compliance domain auto-discovered in /domains
@@ -31,22 +31,33 @@ same-origin-host-header proof):
     7. R1-B1 request BEFORE evidence period via same origin → gap_list
        (audit-period intersection, 0 evidence → zero_evidence_decisions allowlist)
 
+  R2-B1 + R2-B2 NEW API boundary checks (2):
+    8. R2-B1 missing BOTH period fields via same origin → 422
+       (spec-driven required-field enforcement; previously bypassed)
+    9. R2-B2 malformed today="not-a-date" via same origin → 422
+       (strict YYYY-MM-DD canonical round-trip on `today`)
+
   TRUE same-origin proof check (1):
-    8. SPA index.html + GET /domains both reachable from the same origin port
+   10. SPA index.html + GET /domains both reachable from the same origin port
 
 DB-dependent: requires the seeded `comp:v0-compliance-fixture` data. On
 DB-unreachable, checks 2/3/4/7 SKIP (mirrors cut-042R2 R2-F3 SKIP semantics).
-Check 1 is DB-light; checks 5/6 do NOT need DB (validation runs before
-materializer); check 8 is fully DB-independent.
+Check 1 is DB-light; checks 5/6/8/9 do NOT need DB (validation runs before
+materializer); check 10 is fully DB-independent.
 
-cut-044R1 conformance:
+cut-044R2 conformance:
   - caller-supplies today via params (compliance does NOT have
-    `requires_server_today_anchor`)
+    `requires_server_today_anchor`); but today is now strict YYYY-MM-DD
+    canonical at the API boundary (R2-B2 fix).
   - control_id via params (`route_root_via_params: true`)
   - check 3 (denied branch): comp-eve has explicit engine ACL DENY row on
     COMP-CTL-001 (seeded by `seed_compliance_fixture.py`)
   - checks 5/6: api.py strict YYYY-MM-DD canonical round-trip +
     period_start <= period_end (mirror of cut-043R4 R8-B1)
+  - check 8 (R2-B1): spec.params_schema is contract source; missing
+    BOTH period fields triggers 422 (caller cannot bypass validation).
+  - check 9 (R2-B2): caller-supplied today must pass strict canonical
+    round-trip, identical to period_start/period_end.
 
 Usage:
   uv run uvicorn ece.main:app --host 127.0.0.1 --port 8765 &
@@ -88,7 +99,7 @@ PROXY_PREFIXES = (
 class _ProxyHandler(BaseHTTPRequestHandler):
     """Same-origin server: SPA static files + /api/ reverse-proxy."""
 
-    server_version = "cut-044R1-origin-proxy/1.0"
+    server_version = "cut-044R2-origin-proxy/1.0"
 
     def log_message(self, fmt: str, *args: object) -> None:
         pass
@@ -425,6 +436,69 @@ def _check_r1_b1_request_before_evidence_gap_list() -> tuple[bool, str]:
     return True, f"conclusion={conclusion} (R1-B1 audit-period intersection verified)"
 
 
+def _check_r2_b1_missing_both_period_422() -> tuple[bool, str]:
+    """R2-B1 — missing BOTH period fields → 422 (spec-driven requirement).
+
+    Previously the R1-B1 trigger was caller-behavior-driven
+    (`if "period_start" in req.params or "period_end" in req.params:`),
+    so omitting BOTH period fields bypassed validation entirely and the
+    rule layer silently returned 200/gap_list. R2 fix: spec.params_schema
+    is the contract source — when a pack declares period_start /
+    period_end in its schema, BOTH are REQUIRED. DB-independent.
+    """
+    status, payload = _post_json(
+        "/api/v1/demo/scenarios/generate",
+        {
+            "domain": "compliance",
+            "scenario": "default",
+            "params": {
+                "control_id": "COMP-CTL-001",
+                # both period_start and period_end MISSING
+                "today": TODAY,
+            },
+        },
+        {"X-User-Id": "comp-alice"},
+    )
+    if status != 422:
+        return False, (
+            f"status={status} (expected 422 — R2-B1 spec-driven requirement; "
+            f"caller cannot omit BOTH period fields); payload={payload[:200]!r}"
+        )
+    return True, "status=422 (R2-B1 spec-driven required-field enforcement via origin)"
+
+
+def _check_r2_b2_malformed_today_422() -> tuple[bool, str]:
+    """R2-B2 — malformed today → 422 (strict YYYY-MM-DD canonical round-trip).
+
+    Previously the R1-B1 block only validated period_start / period_end.
+    `today="not-a-date"` returned 200, breaking the audit-period API
+    contract. R2 fix: today (when caller-supplied, i.e. spec declares it
+    in params_schema and is NOT requires_server_today_anchor) MUST also
+    pass strict canonical round-trip. DB-independent.
+    """
+    status, payload = _post_json(
+        "/api/v1/demo/scenarios/generate",
+        {
+            "domain": "compliance",
+            "scenario": "default",
+            "params": {
+                "control_id": "COMP-CTL-001",
+                "period_start": "2026-07-01",
+                "period_end": "2026-09-30",
+                "today": "not-a-date",  # R2-B2: malformed
+            },
+        },
+        {"X-User-Id": "comp-alice"},
+    )
+    if status != 422:
+        return False, (
+            f"status={status} (expected 422 — R2-B2 strict today canonical "
+            f"round-trip; today='not-a-date' must be rejected); "
+            f"payload={payload[:200]!r}"
+        )
+    return True, "status=422 (R2-B2 strict today canonical round-trip via origin)"
+
+
 _SMOKE_CHECKS = [
     # R1-B3 TRUE same-origin proof (proxy chain visible)
     ("R1-B3 SPA index.html reachable from origin (proxy proof)", _check_origin_index_html),
@@ -437,6 +511,9 @@ _SMOKE_CHECKS = [
     ("R1-B1 reversed period_start > period_end via origin → 422", _check_r1_b1_reversed_period_422),
     ("R1-B1 empty period_start via origin → 422", _check_r1_b1_empty_period_422),
     ("R1-B1 request_before_evidence via origin → gap_list (audit-period intersection)", _check_r1_b1_request_before_evidence_gap_list),
+    # R2-B1 + R2-B2 NEW API boundary checks (via same-origin proxy)
+    ("R2-B1 missing BOTH period fields via origin → 422 (spec-driven required-field)", _check_r2_b1_missing_both_period_422),
+    ("R2-B2 malformed today='not-a-date' via origin → 422 (strict YYYY-MM-DD canonical)", _check_r2_b2_malformed_today_422),
 ]
 
 
@@ -457,7 +534,7 @@ def main() -> int:
             print(f"FAIL — origin server did not come up at {ORIGIN_BASE}")
             return 1
 
-        print(f"=== cut-044R1 TRUE same-origin smoke ===")
+        print(f"=== cut-044R2 TRUE same-origin smoke ===")
         print(f"  origin base:   {ORIGIN_BASE}")
         print(f"  API upstream:  {API_UPSTREAM}")
         print(f"  proxy pattern: cut-042R2 R2-F3 (ThreadingHTTPServer + /api/ reverse-proxy)")
@@ -482,7 +559,7 @@ def main() -> int:
                 failed += 1
 
         print()
-        print(f"cut-044R1 same-origin smoke: PASS={passed} SKIP={skipped} FAIL={failed}")
+        print(f"cut-044R2 same-origin smoke: PASS={passed} SKIP={skipped} FAIL={failed}")
         if failed:
             return 1
         return 0

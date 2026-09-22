@@ -388,55 +388,114 @@ def generate_scenario(
             server_today = date.today().isoformat()
         req.params["today"] = server_today
 
-    # cut-044R1 R1-B1 — request audit-period validation. Compliance spec
-    # declares `period_start` + `period_end` in params_schema with strict
-    # YYYY-MM-DD format. Mirror R8-B1 canonical round-trip for BOTH fields,
-    # plus reversal check (period_start <= period_end). Reject 422 if any
-    # check fails — fail fast at API boundary, not in rule layer. Rule layer
-    # trusts the validated form (wrapper reads `params["period_start"]` /
-    # `params["period_end"]` directly).
+    # cut-044R2 R2-B1 / R2-B2 — spec-driven required-date validation.
+    # Replaces the cut-044R1 R1-B1 trigger ("if caller sends EITHER period
+    # field"). The R1 trigger was caller-behavior-driven and let the caller
+    # silently omit BOTH period fields, bypassing validation; the rule
+    # layer then returned 200/gap_list with zero-write but an invalid
+    # audit request (R2-B1 finding).
     #
-    # Scope: only validate fields actually present. Specs that don't declare
-    # `period_start` / `period_end` in params_schema (e.g. procurement,
-    # knowledge) never enter this block because the keys are absent.
-    if "period_start" in req.params or "period_end" in req.params:
+    # R2 fix: derive ALL date-field requirements from `spec.params_schema`.
+    # Any date field declared in params_schema is REQUIRED (non-empty)
+    # and MUST pass strict `YYYY-MM-DD` canonical round-trip. The block
+    # covers three date fields:
+    #   - period_start, period_end  (R2-B1: BOTH required)
+    #   - today                      (R2-B2: caller-supplied, required when
+    #                                 declared and pack is NOT server-anchored)
+    #
+    # Specs that declare NONE of these (e.g. procurement, knowledge) never
+    # enter this block. The `requires_server_today_anchor=true` packs
+    # already validated ECE_SERVER_TODAY_ANCHOR above and inject into
+    # req.params["today"], so `today` is not caller-supplied for those
+    # packs — this block treats that as "today is server-injected, skip".
+    spec_declares_period = (
+        "period_start" in spec.params_schema
+        or "period_end" in spec.params_schema
+    )
+    spec_declares_today_caller_supplied = (
+        "today" in spec.params_schema and not spec.requires_server_today_anchor
+    )
+
+    if spec_declares_period or spec_declares_today_caller_supplied:
         from datetime import date as _date
-        canonical_period: dict[str, str] = {}
-        for _pfield in ("period_start", "period_end"):
-            _raw = str(req.params.get(_pfield, "") or "")
+
+        # R2-B1: audit-period BOTH required + canonical + reversal check.
+        if spec_declares_period:
+            canonical_period: dict[str, str] = {}
+            for _pfield in ("period_start", "period_end"):
+                _raw = str(req.params.get(_pfield, "") or "")
+                if not _raw:
+                    # R2-B1: spec.params_schema declares this field →
+                    # caller MUST supply it. Empty/missing = 422.
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"{_pfield} is required for pack={spec.pack!r} "
+                            f"(declared in params_schema); got missing/empty"
+                        ),
+                    )
+                try:
+                    _parsed = _date.fromisoformat(_raw)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"{_pfield} must be strict YYYY-MM-DD, got {_raw!r}"
+                        ),
+                    ) from None
+                # R8-B1 mirror: canonical round-trip — parsed.isoformat()
+                # must equal raw input. Rejects basic `20260922`,
+                # week-date `2026-W38-2`, ordinal `2026-265` etc.
+                if _parsed.isoformat() != _raw:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"{_pfield} must be strict YYYY-MM-DD (canonical), "
+                            f"got {_raw!r} (parsed as {_parsed.isoformat()!r}); "
+                            "non-canonical ISO 8601 forms are not accepted to keep "
+                            "the value safe to embed in business reason text"
+                        ),
+                    ) from None
+                canonical_period[_pfield] = _raw
+            if canonical_period["period_start"] > canonical_period["period_end"]:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"period_start ({canonical_period['period_start']!r}) "
+                        f"must be <= period_end ({canonical_period['period_end']!r})"
+                    ),
+                )
+
+        # R2-B2: today strict canonical round-trip (caller-supplied only).
+        if spec_declares_today_caller_supplied:
+            _raw = str(req.params.get("today", "") or "")
+            if not _raw:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"today is required for pack={spec.pack!r} "
+                        f"(declared in params_schema, caller-supplied); "
+                        "got missing/empty"
+                    ),
+                )
             try:
                 _parsed = _date.fromisoformat(_raw)
             except ValueError:
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        f"{_pfield} must be strict YYYY-MM-DD, got {_raw!r}"
+                        f"today must be strict YYYY-MM-DD, got {_raw!r}"
                     ),
                 ) from None
-            # R8-B1 mirror: canonical round-trip — parsed.isoformat() must
-            # equal raw input. Rejects ISO 8601 forms other than YYYY-MM-DD
-            # (basic `20260922`, week-date `2026-W38-2`, ordinal `2026-265`)
-            # which would silently flow into reason text as different
-            # strings than the parsed date represents.
             if _parsed.isoformat() != _raw:
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        f"{_pfield} must be strict YYYY-MM-DD (canonical), "
+                        f"today must be strict YYYY-MM-DD (canonical), "
                         f"got {_raw!r} (parsed as {_parsed.isoformat()!r}); "
-                        "non-canonical ISO 8601 forms are not accepted to keep "
-                        "the value safe to embed in business reason text"
+                        "non-canonical ISO 8601 forms are not accepted"
                     ),
                 ) from None
-            canonical_period[_pfield] = _raw
-        if canonical_period["period_start"] > canonical_period["period_end"]:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"period_start ({canonical_period['period_start']!r}) "
-                    f"must be <= period_end ({canonical_period['period_end']!r})"
-                ),
-            )
 
     # cut-043R R5-B4 — when route_root_via_params is true, the routing field
     # is the SINGLE source of root identity. The legacy `root_source_id` /

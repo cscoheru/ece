@@ -307,6 +307,23 @@ def test_compliance_boundary_truth_table(
         # R1-B1: non-canonical ISO form (basic `20260922`) → 422
         ({"control_id": "COMP-CTL-001", "period_start": "20260922",
           "period_end": "2026-09-30", "today": SERVER_TODAY}, "period_start"),
+        # R2-B1: missing BOTH period fields → 422 (spec-driven requirement)
+        ({"control_id": "COMP-CTL-001", "today": SERVER_TODAY}, "period_start"),
+        # R2-B1: missing only period_start → 422
+        ({"control_id": "COMP-CTL-001", "period_end": "2026-09-30",
+          "today": SERVER_TODAY}, "period_start"),
+        # R2-B1: missing only period_end → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "2026-07-01",
+          "today": SERVER_TODAY}, "period_end"),
+        # R2-B2: missing today → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "2026-07-01",
+          "period_end": "2026-09-30"}, "today"),
+        # R2-B2: malformed today → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "2026-07-01",
+          "period_end": "2026-09-30", "today": "not-a-date"}, "today"),
+        # R2-B2: non-canonical ISO form (basic `20260922`) on today → 422
+        ({"control_id": "COMP-CTL-001", "period_start": "2026-07-01",
+          "period_end": "2026-09-30", "today": "20260922"}, "today"),
     ],
     ids=[
         "path_traversal_422",
@@ -317,6 +334,12 @@ def test_compliance_boundary_truth_table(
         "R1_B1_malformed_period_start_422",
         "R1_B1_reversed_period_422",
         "R1_B1_non_canonical_iso_period_422",
+        "R2_B1_missing_both_period_422",
+        "R2_B1_missing_only_period_start_422",
+        "R2_B1_missing_only_period_end_422",
+        "R2_B2_missing_today_422",
+        "R2_B2_malformed_today_422",
+        "R2_B2_non_canonical_iso_today_422",
     ],
 )
 def test_compliance_boundary_422_zero_write(
@@ -333,6 +356,11 @@ def test_compliance_boundary_422_zero_write(
 
     R1-B1 cut-044R1: 4 audit-period 422 cases verify strict YYYY-MM-DD
     canonical round-trip + period_start <= period_end at the API boundary.
+    R2-B1 cut-044R2: 3 missing-period-field 422 cases verify spec-driven
+    required-field enforcement (caller cannot omit BOTH/period_start/
+    period_end without 422).
+    R2-B2 cut-044R2: 3 today 422 cases (missing / malformed / non-canonical
+    ISO form) verify strict canonical round-trip on `today`.
     """
     before_attrs_001 = _read_root_attrs("COMP-CTL-001")
     before_rs_001 = _count_relationships_from_root(

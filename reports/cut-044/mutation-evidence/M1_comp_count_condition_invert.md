@@ -54,7 +54,7 @@ tests/integration/test_compliance_boundary.py [32m.[0m[33m                   
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.46s[0m[33m =========================[0m
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.51s[0m[33m =========================[0m
 
 ```
 
@@ -65,4 +65,4 @@ Test passes: **True**
 
 - [x] RED captured: `AssertionError` in stdout = True
 - [x] GREEN restored: test passes = True
-- [x] File restored: pre/post md5 match = True (`d9d01a5d`)
+- [x] File restored: pre/post md5 match = True (`ecf6eb84`)

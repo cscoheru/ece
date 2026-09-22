@@ -35,7 +35,18 @@ cut-044 Codex R0 HOLD 4 阻断全部修正: R1-B1 审计期间改为真参数 (A
 | `.claude/projects/.../domainAgentECE-cut-044-closure.md` | 修改 (attribution) | 全文重写 + R0 HOLD 警告 | ✅ |
 | `.claude/projects/.../MEMORY.md` | 修改 (index pointer) | cut-044 entry 加 R0 HOLD 警告 | ✅ |
 
-**总文件数**: 10 修改 (ece sub-repo) + 3 修改 (parent PRD + memory files) = **13 文件** (含新增 closure 报告).
+**总文件数**: 11 修改 (ece sub-repo: 10 modified + 1 new closure report) + 1 修改 (parent PRD) + 2 修改 (memory files) = **14 文件**.
+
+> **R2-B3 校正 (cut-044R2)**: 原始 R1 closure 写 "13 文件" 是算术错误
+> (10 modified ece + 3 modified 父仓). 实际: ece sub-repo commit 含 11 files
+> (10 modified + 1 new `cut-044R1-closure.md`), 加 parent PRD 1 + memory 2,
+> 总数应为 **14**. 本刀 (cut-044R2) 已修正本行.
+>
+> **R2-B3 边界保证措辞校正**: cut-044R1 closure 早期文档描述 wrapper 边界
+> 时使用了 "guaranteed non-empty canonical" 措辞, 后被 R2 黑盒
+> (missing BOTH period fields → 200 silent execution) 证伪. cut-044R2 改为
+> **spec-driven validation** — 边界保证来自 `spec.params_schema` 是合同来源,
+> 而非 caller 行为触发. 详见 cut-044R2-closure.md §2.
 
 ---
 

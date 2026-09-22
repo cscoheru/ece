@@ -286,10 +286,19 @@ def _register_for_demo() -> None:
             )
 
         today = str(params.get("today") or "2026-09-22")
-        # cut-044R1 R1-B1: API boundary (api.py) already validates
-        # period_start / period_end as strict YYYY-MM-DD canonical round-trip
-        # + period_start <= period_end (422 otherwise). By the time we reach
-        # this wrapper both fields are guaranteed non-empty + canonical.
+        # cut-044R1 R1-B1 + cut-044R2 R2-B1/R2-B2 — API boundary (api.py)
+        # spec-driven validation guarantees that, by the time this wrapper
+        # runs:
+        #   - period_start AND period_end are both present (R2-B1) AND
+        #     strict YYYY-MM-DD canonical (R1-B1) AND non-reversed;
+        #   - today is present (R2-B2) AND strict YYYY-MM-DD canonical.
+        # If any check fails, api.py returns 422 BEFORE the loop runs and
+        # this wrapper never executes. The OR-fallback to empty string
+        # below is purely defensive (in case the wrapper is invoked from a
+        # non-API path during testing); the rule's intersection filter will
+        # still produce 0 evidence for empty strings → gap_list on the
+        # zero_evidence_decisions allowlist. The API contract is the source
+        # of truth; the wrapper trusts it.
         request_period_start = str(params.get("period_start") or "")
         request_period_end = str(params.get("period_end") or "")
         return evaluate_rule_R_COMP_AUDIT(
