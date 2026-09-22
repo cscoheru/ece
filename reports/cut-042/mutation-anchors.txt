@@ -1,0 +1,113 @@
+# cut-042 Mutation Anchors — 5/5 bitten
+# Date: 2026-09-22
+# Per PRD §5 #5: ≥3 mutation anchors all bitten. cut-042 actually exercised 5.
+
+# Anchor #1: revert _subject_entity subject_entity_type kwarg → hardcoded wrong literal
+# Expected: test_subject_entity_filter_is_enforced (test_v0_evidence_persistence.py:250)
+# Mutation: changed _subject_entity(ctx, subject_entity_type) → _subject_entity(ctx, "supplier")
+# Result: 1 failed (case ① DID NOT RAISE ValueError when supplier-only entities present)
+
+        Case ② — a purchase_request among other entities. The filter must pick the PR and
+        the row's `source` must come from the PR's `src`, not from whatever happens to be
+        first in the list.
+        """
+        # ① zero purchase_request, only a supplier — the filter must bite.
+        decision_id = f"dec_{uuid.uuid4()}"
+        cleanup.append(decision_id)
+        ctx = _context(package_id="ctx_000000000000000000000006")
+        ctx.entities = [
+            {
+                "ref": "SUP-SYNTHETIC-A",
+                "type": "supplier",
+                "name": "Supplier A",
+                "attrs": {"name": "Supplier A"},
+                "src": {"system": FIXTURE_SYSTEM, "record_id": "SPIKE-SUP-A"},
+            }
+        ]
+>       with pytest.raises(ValueError, match="exactly one"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/integration/test_v0_evidence_persistence.py:276: Failed
+=========================== short test summary info ============================
+FAILED tests/integration/test_v0_evidence_persistence.py::test_subject_entity_filter_is_enforced
+============================== 1 failed in 0.28s ===============================
+
+
+# Anchor #2: re-add static pack import to v0/loop.py
+# Mutation: from ece.domain_packs.procurement.agent.v0_rules import evaluate_rule_R_SPIKE_REVIEW
+# Result: ImportError (circular import) — entire test_v0_loop.py collection failed
+    from ece.demo.api import router as api_router
+src/ece/demo/api.py:21: in <module>
+    from ece.demo.loop import run_demo_loop
+src/ece/demo/loop.py:21: in <module>
+    from ece.v0.loop import (
+E   ImportError: cannot import name '_run_demo_loop_impl' from partially initialized module 'ece.v0.loop' (most likely due to a circular import) (/Users/kjonekong/projects/domainAgentECE/ece/src/ece/v0/loop.py)
+=========================== short test summary info ============================
+ERROR tests/integration/test_v0_loop.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.33s
+
+
+# Anchor #3: hardcode registry R-SPIKE-REVIEW to always-review
+# Mutation: register_rule(...) when rule_id=='R-SPIKE-REVIEW' forces evaluate_fn + build_decision_fn
+# Result: test_auto_approved_path_also_propagates_decision_value_through FAILED (assert 'review_required' == 'auto_approved')
+        # JSONB *number* — `CAST(text) AS jsonb` would store it as a *string* and trip the
+        # rule's int comparison.
+        new_attrs = {**spike_fixture_seed, "amount": 500_000}
+        with get_engine().begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE entities SET attributes = CAST(:a AS jsonb) "
+                    "WHERE source_id = :sid AND source_system = :sys"
+                ),
+                {"a": json.dumps(new_attrs), "sid": PR_SOURCE_ID, "sys": FIXTURE_SYSTEM},
+            )
+        try:
+            result = run_v0_loop(ALLOWED_USER, PR_SOURCE_ID)
+            evidence_cleanup.append(result.decision["decision_id"])
+    
+>           assert result.decision["decision_value"] == "auto_approved"
+E           AssertionError: assert 'review_required' == 'auto_approved'
+E             
+E             - auto_approved
+E             + review_required
+
+tests/integration/test_v0_loop.py:202: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_v0_loop.py::test_auto_approved_path_also_propagates_decision_value_through
+============================== 1 failed in 0.75s ===============================
+
+
+# Anchor #4: mapper leaks decision_id
+# Mutation: to_business() returns dict with extra 'decision_id': (decision or {}).get('decision_id', '')
+# Result: test_response_must_not_leak_internal_ids FAILED (decision_id substring in response text)
+tests/integration/test_demo_api_contract.py:166: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_demo_api_contract.py::test_response_must_not_leak_internal_ids
+========================= 1 failed, 1 warning in 0.68s =========================
+
+
+# Anchor #5: botay wrapper passes params as positional dict
+# Mutation: run_v0_loop calls _run_demo_loop_impl(..., {"_result_factory": V0LoopResult}) — positional dict, frozen dataclass rejects
+# Result: 6 tests in test_v0_loop.py FAILED with TypeError at v0/loop.py:127
+
+src/ece/v0/loop.py:127: TypeError
+=========================== short test summary info ============================
+FAILED tests/integration/test_v0_loop.py::test_happy_path_runs_all_six_steps_and_re_read_matches_decision
+FAILED tests/integration/test_v0_loop.py::test_denied_branch_returns_no_permitted_context_and_does_not_modify_db
+FAILED tests/integration/test_v0_loop.py::test_auto_approved_path_also_propagates_decision_value_through
+FAILED tests/integration/test_v0_loop.py::test_loop_module_does_not_route_decision_through_an_llm
+FAILED tests/integration/test_v0_loop.py::test_re_read_asks_the_assembly_path_again
+FAILED tests/integration/test_v0_loop.py::test_loop_result_carries_every_step_product
+========================= 6 failed, 1 passed in 0.67s ==========================
+
+
+# Summary
+# 5/5 mutation anchors bitten. All reverted to GREEN baseline before final commit.

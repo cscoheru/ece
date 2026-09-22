@@ -1,0 +1,24 @@
+# cut-042 — Procurement "evaluate_purchase_request" scenario spec.
+#
+# This YAML is the **scenario-spec** counterpart to
+# `context_specs/evaluate_purchase_request.yaml` (which is the Context-Spec).
+# ScenarioSpec wires the six-step loop; ContextSpec wires the assembly path.
+# Both coexist deliberately — different scopes.
+#
+# Per cut-042 PRD §5 #1: subject_entity_type / rule_id / intent /
+# decision_key are read from this spec, never hardcoded in engine.
+
+pack: procurement
+spec: evaluate_purchase_request
+root_entity:
+  type: purchase_request
+  id_field: source_id
+subject_entity_type: purchase_request
+rule_id: R-SPIKE-REVIEW
+decision_key: review_status
+denied_users:
+  - spike-user-unrelated
+  - demo-user-unrelated
+params_schema:
+  amount: int
+  quote_count: int

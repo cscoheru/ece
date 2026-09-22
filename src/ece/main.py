@@ -20,6 +20,7 @@ from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
 from ece.api.search import router as search_router
+from ece.demo.api import router as demo_router
 
 app = FastAPI(
     title="ECE v0",
@@ -42,6 +43,8 @@ app.include_router(actions_router)
 # S6: audit trace (JSON) + debug UI (private deployment only)
 app.include_router(audit_router)
 app.include_router(debug_router)
+# cut-042: /demo/* generic multi-domain live runner (PRD §5)
+app.include_router(demo_router)
 
 
 @app.get("/healthz")

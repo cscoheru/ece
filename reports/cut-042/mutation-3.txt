@@ -1,0 +1,25 @@
+        # JSONB *number* — `CAST(text) AS jsonb` would store it as a *string* and trip the
+        # rule's int comparison.
+        new_attrs = {**spike_fixture_seed, "amount": 500_000}
+        with get_engine().begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE entities SET attributes = CAST(:a AS jsonb) "
+                    "WHERE source_id = :sid AND source_system = :sys"
+                ),
+                {"a": json.dumps(new_attrs), "sid": PR_SOURCE_ID, "sys": FIXTURE_SYSTEM},
+            )
+        try:
+            result = run_v0_loop(ALLOWED_USER, PR_SOURCE_ID)
+            evidence_cleanup.append(result.decision["decision_id"])
+    
+>           assert result.decision["decision_value"] == "auto_approved"
+E           AssertionError: assert 'review_required' == 'auto_approved'
+E             
+E             - auto_approved
+E             + review_required
+
+tests/integration/test_v0_loop.py:202: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_v0_loop.py::test_auto_approved_path_also_propagates_decision_value_through
+============================== 1 failed in 0.75s ===============================

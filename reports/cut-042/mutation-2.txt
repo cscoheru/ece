@@ -1,0 +1,10 @@
+    from ece.demo.api import router as api_router
+src/ece/demo/api.py:21: in <module>
+    from ece.demo.loop import run_demo_loop
+src/ece/demo/loop.py:21: in <module>
+    from ece.v0.loop import (
+E   ImportError: cannot import name '_run_demo_loop_impl' from partially initialized module 'ece.v0.loop' (most likely due to a circular import) (/Users/kjonekong/projects/domainAgentECE/ece/src/ece/v0/loop.py)
+=========================== short test summary info ============================
+ERROR tests/integration/test_v0_loop.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.33s

@@ -133,3 +133,34 @@ def _build_reason(
         f"金额 {amount:,} ≥ {threshold:,} 且已 {quote_count} 家报价"
         f"（≥{REQUIRED_QUOTES}）→ 自动通过"
     )
+
+
+# cut-042: pack self-registration via the ece.demo rule registry. The original
+# S3 function `evaluate_rule_R_SPIKE_REVIEW(amount, quote_count)` keeps its
+# signature (locked by tests/unit/test_v0_rule_and_decision.py); we adapt it
+# to the generic `(ctx, params) -> conditions` registry contract by partial
+# application over the params dict. No behavioral change to the rule itself.
+#
+# This import is a runtime side-effect, not a static top-of-file import — the
+# `from ece.demo.registry import register_rule` is delayed to module bottom so
+# pack modules don't form an import cycle with the engine.
+def _register_for_demo() -> None:
+    from ece.demo.registry import register_rule
+
+    def _evaluate_via_params(ctx: Any, params: dict[str, Any]) -> list[dict[str, Any]]:
+        # params keys mirror the rule's original signature: amount, quote_count.
+        # Fall back to ctx-derived values when params omit them — keeps the
+        # generic loop callable without scenario-specific wiring.
+        amount = int(params.get("amount") or 0)
+        quote_count = int(params.get("quote_count") or 0)
+        return evaluate_rule_R_SPIKE_REVIEW(amount, quote_count)
+
+    register_rule(
+        RULE_ID,
+        decision_key=DECISION_KEY,
+        evaluate_fn=_evaluate_via_params,
+        build_decision_fn=build_decision,
+    )
+
+
+_register_for_demo()

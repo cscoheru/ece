@@ -328,6 +328,96 @@ X-User-Id: demo-user-procurement
 **多租户隔离 (cut-019)**：与 `/audit` 一致 — 多租户模式下需要 `X-Org-Id` 头
 与 trace.org_id 匹配；不匹配 `403` 跨 org 阻止。
 
+## 8.5. Demo（cut-042，跨域通用）
+
+公开 SPA 调用的实时六步闭环接口。业务命名（禁内部字段 `decision_id` /
+`input_context_ref` / `package_id` / `evidence_id` / `context_request_id` /
+`ctx_` / `dec_` / `ev_` 前缀外露）。
+
+### GET /api/v1/demo/domains
+
+已注册域清单（每个含业务标签 + 该域的 scenario 文件清单）。
+
+请求：
+```
+GET /api/v1/demo/domains
+X-User-Id: <caller>
+```
+
+响应 `200`：
+```json
+{
+  "domains": [
+    {
+      "name": "procurement",
+      "label": "采购合规审查",
+      "scenarios": ["default"]
+    }
+  ]
+}
+```
+
+### POST /api/v1/demo/scenarios/generate
+
+实时跑六步闭环（assemble → rule → decision → evidence → update → re-read），
+返回业务命名结论 + 证据 + 状态变化。
+
+请求：
+```
+POST /api/v1/demo/scenarios/generate
+Content-Type: application/json
+X-User-Id: <caller>
+
+{
+  "domain": "procurement",
+  "scenario": "default",
+  "params": {"amount": 1500000, "quote_count": 2}
+}
+```
+
+响应 `200`（allowed user）：
+```json
+{
+  "domain": "procurement",
+  "scenario": "default",
+  "conclusion": "review_required",
+  "conclusion_label": "需人工复核",
+  "reason": "金额 1,500,000 ≥ 1,000,000 且仅 2 家报价（需 3 家）→ 需人工复核",
+  "evidence": [{"claim": "...", "observed": 1500000, "threshold": 1000000,
+                "source_record_id": "PR-001", "source_system": "procurement.legacy",
+                "actor": "<caller>", "recorded_at": "ISO-8601"}],
+  "state_change": {"before": "pending", "after": "review_required", "key": "review_status"},
+  "actor": "<caller>",
+  "denied_for": ["<other-user>"],
+  "elapsed_ms": 47.2,
+  "generated_at": "ISO-8601"
+}
+```
+
+响应 `200`（denied user）：
+```json
+{
+  "conclusion": "no_permission",
+  "conclusion_label": "无权查看",
+  "reason": "denied",
+  "evidence": [],
+  "state_change": {"before": null, "after": "pending", "key": "review_status"},
+  "actor": "<caller>",
+  "denied_for": ["<caller>"],
+  "elapsed_ms": 1.7,
+  "generated_at": "ISO-8601"
+}
+```
+
+错误：
+- `422` 域或 scenario 不存在
+- `500` DB 未连接 / seed 缺失
+
+契约测试：`tests/integration/test_demo_api_contract.py`（6 tests，禁止内部字段外露 +
+N=5 byte-equal 确定性 + denied 零副作用 + 真实运行 `elapsed_ms > 0`）。
+部署契约：SPA 部署在 user 自有服务器（nginx 反代 `/api/`），单源部署规避 CORS，
+见 `docs/demo-platform/DEPLOY_USER_PROXY.md`。
+
 ## 9. 健康
 
 `GET /healthz`（进程存活）· `GET /readyz`（DB 连通 + migrations 版本一致 + LLM 端点可达（若配置））。

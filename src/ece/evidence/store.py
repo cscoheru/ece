@@ -55,13 +55,18 @@ _SELECT_BY_DECISION = text("""
 # `ctx_<24hex>` used by the other objects.
 _EVIDENCE_ID_PREFIX = "ev_"
 
-_SUBJECT_ENTITY_TYPE = "purchase_request"
+# cut-042: subject entity type was hardcoded as `purchase_request`. Now passed
+# per-call via `persist_evidence(..., subject_entity_type=...)` so the loop can
+# be reused across packs without touching this module's behavior contract.
+_DEFAULT_SUBJECT_ENTITY_TYPE = "purchase_request"
 
 
 def persist_evidence(
     engine: Engine,
     ctx: ContextPackage,
     decision: Mapping[str, Any],
+    *,
+    subject_entity_type: str = _DEFAULT_SUBJECT_ENTITY_TYPE,
 ) -> list[dict[str, Any]]:
     """Write one Evidence row per PASSED condition of `decision`.
 
@@ -71,8 +76,8 @@ def persist_evidence(
 
     Assumptions, each of which raises rather than guessing:
 
-    * **Exactly one `purchase_request`** in the Context. Every Evidence row points at
-      one subject, and the V0 fixture has one PR. Zero or several would make the
+    * **Exactly one subject entity** (param `subject_entity_type`) in the Context.
+      Every Evidence row points at one subject. Zero or several would make the
       subject ambiguous, so this refuses instead of picking one.
     * **`ctx.user.id` is set.** That is the original `X-User-Id` (see
       `Identity.user_ref`), and it is what §7's `actor_user_ref` records.
@@ -91,7 +96,7 @@ def persist_evidence(
         raise ValueError("decision['evaluated_conditions'] must be a list")
 
     actor_user_ref = _actor(ctx)
-    subject = _subject_entity(ctx)
+    subject = _subject_entity(ctx, subject_entity_type)
     source = subject.get("src") or {}
     source_system = str(source.get("system") or "")
     source_record_id = str(source.get("record_id") or "")
@@ -160,11 +165,11 @@ def _actor(ctx: ContextPackage) -> str:
     return str(actor)
 
 
-def _subject_entity(ctx: ContextPackage) -> dict[str, Any]:
-    subjects = [e for e in ctx.entities if e.get("type") == _SUBJECT_ENTITY_TYPE]
+def _subject_entity(ctx: ContextPackage, subject_entity_type: str) -> dict[str, Any]:
+    subjects = [e for e in ctx.entities if e.get("type") == subject_entity_type]
     if len(subjects) != 1:
         raise ValueError(
-            f"expected exactly one {_SUBJECT_ENTITY_TYPE!r} in the Context, "
+            f"expected exactly one {subject_entity_type!r} in the Context, "
             f"found {len(subjects)} — Evidence needs an unambiguous subject"
         )
     return subjects[0]

@@ -1,0 +1,10 @@
+
+src/ece/v0/loop.py:127: TypeError
+=========================== short test summary info ============================
+FAILED tests/integration/test_v0_loop.py::test_happy_path_runs_all_six_steps_and_re_read_matches_decision
+FAILED tests/integration/test_v0_loop.py::test_denied_branch_returns_no_permitted_context_and_does_not_modify_db
+FAILED tests/integration/test_v0_loop.py::test_auto_approved_path_also_propagates_decision_value_through
+FAILED tests/integration/test_v0_loop.py::test_loop_module_does_not_route_decision_through_an_llm
+FAILED tests/integration/test_v0_loop.py::test_re_read_asks_the_assembly_path_again
+FAILED tests/integration/test_v0_loop.py::test_loop_result_carries_every_step_product
+========================= 6 failed, 1 passed in 0.67s ==========================

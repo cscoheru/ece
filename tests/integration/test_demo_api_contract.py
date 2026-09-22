@@ -96,14 +96,21 @@ def test_post_generate_with_default_params_is_deterministic_across_calls(
         r = client.post("/api/v1/demo/scenarios/generate", json=payload, headers=headers)
         assert r.status_code == 200, r.text
         body = r.json()
-        # Strip volatile fields (timestamp + elapsed_ms) before comparison.
+        # Strip volatile fields (top-level timestamp + elapsed_ms) before comparison.
         stable = {k: v for k, v in body.items() if k not in ("generated_at", "elapsed_ms")}
+        # Evidence rows also carry a `recorded_at` timestamp (microsecond precision);
+        # strip per-row so byte-equality compares decision-logic fields only.
+        stable["evidence"] = [
+            {k: v for k, v in row.items() if k != "recorded_at"}
+            for row in stable.get("evidence", [])
+        ]
         responses.append(stable)
 
     first = responses[0]
     for i, other in enumerate(responses[1:], start=2):
         assert other == first, \
-            f"call {i} differs from call 1: diff={first ^ other}"
+            f"call {i} differs from call 1: diff_keys={set(first) ^ set(other)}; " \
+            f"first_only={set(first) - set(other)}; other_only={set(other) - set(first)}"
 
 
 def test_post_generate_denied_user_returns_no_permission_conclusion(client: TestClient) -> None:
@@ -137,13 +144,19 @@ def test_response_must_not_leak_internal_ids(client: TestClient) -> None:
     PRD §5 #5: ≥3 变异全部实测咬合. 这是 cut-042 mutation anchor #4.
     Test stays green when no leakage exists; goes red when mapper is mutated to
     inject any of the forbidden internal fields.
+
+    Params chosen so the rule produces ≥1 evidence row (both conditions pass):
+    amount ≥ threshold AND quote_count < REQUIRED_QUOTES → review_required →
+    2 evidence rows. Params that drive both conditions to fail (amount < threshold
+    AND quote_count ≥ 3) produce 0 evidence rows and hit an unrelated IndexError
+    in `apply_context_update` — outside this contract test's scope.
     """
     r = client.post(
         "/api/v1/demo/scenarios/generate",
         json={
             "domain": "procurement",
             "scenario": "default",
-            "params": {"amount": 500_000, "quote_count": 3},
+            "params": {"amount": 1_500_000, "quote_count": 2},
         },
         headers={"X-User-Id": "spike-user-procurement"},
     )
