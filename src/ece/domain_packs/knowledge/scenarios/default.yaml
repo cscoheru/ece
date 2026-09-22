@@ -1,0 +1,36 @@
+pack: knowledge
+spec: evaluate_policy_question
+# cut-043 — 业务语言域标签 (与 procurement 同构; 由 _discover_domains 读取)
+label: "制度知识审查"
+# cut-043 — 独立 source_system (与 spike:v0-technical-fixture 物理隔离)
+source_system: "km:v0-knowledge-fixture"
+# cut-043 — 默认根实体 (test 兜底; 真实路由走 route_root_via_params)
+default_root_source_id: "KM-POL-001"
+# cut-043 — 显式 opt-in: API 层检测到此 flag 时, 用 params[root_params_fields[0]]
+# 作为 root_source_id (而非 default_root_source_id). KM 域的 root 实体由 params 决定,
+# procurement 域的 root 实体固定为 SPIKE-PR-001 — 两条不同路径.
+route_root_via_params: true
+root_entity:
+  type: policy_document
+  id_field: source_id
+subject_entity_type: policy_document
+rule_id: R-KM-ACCESS
+# cut-043 — keep decision_key="review_status" to reuse S4 apply_context_update's
+# write-back path (which is currently locked to the four `review_*` JSONB keys).
+# The domain semantics (KM access vs procurement review) live in `decision_value`
+# ("answerable" / "needs_valid_policy") and the `reason` string; the column name
+# is the storage slot, not the business concept.
+decision_key: review_status
+# cut-043 — params 字段会真实写回 root.attrs (DB 真实更新)
+# policy_id 是 PR 自身字段; employee_id 是 SELECTS 关系计数, 不写入 PR.attrs
+root_params_fields:
+  - policy_id
+# cut-043 — relations_fields 声明哪个 params 驱动 pack-owned relations materialization
+# (与 procurement 的 quote_count → SELECTS 同构: employee_id → HAS_ROLE relations)
+relations_fields:
+  - employee_id
+params_schema:
+  policy_id: str
+  employee_id: str
+denied_users:
+  - km-eve

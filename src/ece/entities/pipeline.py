@@ -8,7 +8,9 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from ece.domain_packs.procurement import is_allowed
+# cut-043 — ontology check is now per-source-system (km:* → knowledge, spike:* → procurement).
+# Falls back to procurement when no pack registered for the prefix.
+from ece.entities.ontology_resolver import is_allowed_for_system
 
 # entity_type -> display_id prefix mapping (per PRD 10)
 _DISPLAY_ID_PREFIX = {
@@ -191,10 +193,10 @@ def upsert_relationship(
 
         src_type, dst_type = src_row[0], dst_row[0]
 
-        if not is_allowed(src_type, relation, dst_type):
+        if not is_allowed_for_system(src_type, relation, dst_type, source_system):
             return False, (
                 f"ontology rejected: ({src_type})-[{relation}]->({dst_type}) "
-                f"not in procurement/ontology.py"
+                f"not in {source_system.split(':', 1)[0]} ontology"
             )
 
         ids = conn.execute(

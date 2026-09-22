@@ -1,7 +1,7 @@
-// cut-042R F6 — SPA skeleton (vanilla JS, zero CDN, zero build).
+// cut-042R F6 + cut-043 — SPA skeleton (vanilla JS, zero CDN, zero build).
 //
-// Three views: A (procurement, live via /api/v1/demo/*), B (knowledge
-// placeholder for cut-043), C (compliance placeholder for cut-044).
+// 三个视图: A (多域 live via /api/v1/demo/*), B (KM 架构说明), C (compliance placeholder).
+// cut-043: 视图 A 内增加域下拉, 根据当前域切换表单字段 (procurement / knowledge).
 //
 // Auth convention: caller supplies X-User-Id via the actor dropdown.
 // Body NEVER overrides the actor (cut-042R F1).
@@ -41,9 +41,61 @@
     });
   }
 
-  // ----- GET /api/v1/demo/domains (proof of life on load) -----
+  // ----- Domain-specific params form -----
+  // cut-043: 表单字段由当前域驱动; 业务语言 placeholder 严禁出现技术词.
+  function renderParamsForm(domain) {
+    var paramsEl = document.getElementById("params-container");
+    if (!paramsEl) return;
+    if (domain === "knowledge") {
+      paramsEl.innerHTML =
+        '<label><span>制度编号</span>' +
+        '<input name="policy_id" type="text" value="KM-POL-001" ' +
+        'placeholder="如 KM-POL-001"></label>' +
+        '<label><span>员工编号</span>' +
+        '<input name="employee_id" type="text" value="km-alice" ' +
+        'placeholder="如 km-alice"></label>' +
+        '<label><span>参照日期（YYYY-MM-DD）</span>' +
+        '<input name="today" type="text" value="2026-09-22" ' +
+        'placeholder="默认 2026-09-22"></label>';
+    } else {
+      // procurement default (also fallback)
+      paramsEl.innerHTML =
+        '<label><span>金额（元）</span>' +
+        '<input name="amount" type="number" value="1500000" min="0" step="1000"></label>' +
+        '<label><span>报价家数</span>' +
+        '<input name="quote_count" type="number" value="2" min="0" step="1"></label>';
+    }
+  }
+
+  function payloadForDomain(domain, fd) {
+    if (domain === "knowledge") {
+      var today = String(fd.get("today") || "2026-09-22").trim();
+      return {
+        domain: "knowledge",
+        scenario: "default",
+        params: {
+          policy_id: String(fd.get("policy_id") || ""),
+          employee_id: String(fd.get("employee_id") || ""),
+          today: today,
+        },
+      };
+    }
+    // procurement default
+    return {
+      domain: "procurement",
+      scenario: "default",
+      params: {
+        amount: Number(fd.get("amount") || 0),
+        quote_count: Number(fd.get("quote_count") || 0),
+      },
+    };
+  }
+
+  // ----- GET /api/v1/demo/domains (proof of life on load + populate domain select) -----
   function loadDomains() {
     var resultEl = document.getElementById("result");
+    var domainSel = document.getElementById("domain-select");
+
     fetch("/api/v1/demo/domains", { headers: { "Accept": "application/json" } })
       .then(function (r) {
         return r.json().then(function (body) {
@@ -51,8 +103,21 @@
         });
       })
       .then(function (out) {
-        var preview = (out.body && out.body.domains)
-          ? out.body.domains.map(function (d) { return d.name + " (" + d.label + ")"; }).join(", ")
+        var domains = (out.body && out.body.domains) ? out.body.domains : [];
+
+        // cut-043: populate domain select with auto-discovered packs.
+        if (domainSel && domains.length > 0) {
+          domainSel.innerHTML = domains
+            .map(function (d) {
+              return '<option value="' + d.name + '">' + d.label + "</option>";
+            })
+            .join("");
+          // Trigger initial form render for the first domain.
+          renderParamsForm(domainSel.value);
+        }
+
+        var preview = domains.length
+          ? domains.map(function (d) { return d.name + " (" + d.label + ")"; }).join(", ")
           : "(no domains)";
         resultEl.textContent =
           "[GET /api/v1/demo/domains → " + out.status + "]\n" +
@@ -65,6 +130,14 @@
       });
   }
 
+  // cut-043: domain change → re-render params form.
+  var domainSel = document.getElementById("domain-select");
+  if (domainSel) {
+    domainSel.addEventListener("change", function () {
+      renderParamsForm(domainSel.value);
+    });
+  }
+
   // ----- POST /api/v1/demo/scenarios/generate -----
   var form = document.getElementById("demo-form");
   if (form) {
@@ -72,17 +145,9 @@
       e.preventDefault();
       var fd = new FormData(form);
       var actor = String(fd.get("actor") || "");
-      var amount = Number(fd.get("amount") || 0);
-      var quoteCount = Number(fd.get("quote_count") || 0);
-
-      var payload = {
-        domain: "procurement",
-        scenario: "default",
-        params: {
-          amount: amount,
-          quote_count: quoteCount
-        }
-      };
+      var domainSelEl = document.getElementById("domain-select");
+      var domain = domainSelEl ? domainSelEl.value : "procurement";
+      var payload = payloadForDomain(domain, fd);
 
       var resultEl = document.getElementById("result");
       resultEl.textContent = "[POST /api/v1/demo/scenarios/generate → 等待响应…]";

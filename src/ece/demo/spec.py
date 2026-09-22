@@ -65,6 +65,10 @@ class ScenarioSpec:
     # cut-042R2 R2-F2 — relations_fields declares which params drive relations
     # materialization (e.g. quote_count → SELECTS relations count).
     relations_fields: tuple[str, ...] = ()
+    # cut-043 — explicit opt-in: when True, the API uses params[root_params_fields[0]]
+    # as the root entity identifier (rather than `default_root_source_id`). KM pack
+    # sets this; procurement does not (its root is fixed as SPIKE-PR-001).
+    route_root_via_params: bool = False
     # 既有
     params_schema: dict[str, Any] = field(default_factory=dict)
     denied_users: list[str] = field(default_factory=list)
@@ -150,6 +154,8 @@ def load_scenario_spec(pack: str, scenario: str) -> ScenarioSpec:
         root_params_fields=tuple(raw.get("root_params_fields") or ()),
         # cut-042R2 R2-F2
         relations_fields=tuple(raw.get("relations_fields") or ()),
+        # cut-043 — explicit opt-in flag for params-driven root routing.
+        route_root_via_params=bool(raw.get("route_root_via_params") or False),
         # 既有
         params_schema=dict(raw.get("params_schema") or {}),
         denied_users=list(raw.get("denied_users") or []),

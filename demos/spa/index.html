@@ -18,36 +18,55 @@
   </nav>
 
   <main>
-    <!-- View A — 采购合规 live, 真实调 /api/v1/demo/* -->
+    <!-- View A — 多域 live, 切域不改表单结构（cut-043 多域切换） -->
     <section id="view-a" class="view active" data-view="a">
-      <h2>采购合规审查 — Live Demo</h2>
+      <h2>多域实时演示 — 应用层</h2>
       <form id="demo-form">
         <label>
-          <span>用户身份</span>
-          <select name="actor" id="actor-select">
-            <option value="spike-user-procurement">spike-user-procurement (allowed)</option>
-            <option value="spike-user-unrelated">spike-user-unrelated (denied)</option>
+          <span>选择行业</span>
+          <!-- cut-043: domain select 由 loadDomains() 自动填充, 默认 procurement -->
+          <select name="domain" id="domain-select">
+            <option value="procurement">采购合规审查（载入中…）</option>
           </select>
         </label>
         <label>
-          <span>金额（元）</span>
-          <input name="amount" type="number" value="1500000" min="0" step="1000">
+          <span>用户身份</span>
+          <select name="actor" id="actor-select">
+            <!-- cut-043: 三个域的允许用户 + 拒绝用户选项合并显示 -->
+            <option value="spike-user-procurement">spike-user-procurement (采购·允许)</option>
+            <option value="spike-user-unrelated">spike-user-unrelated (采购·拒绝)</option>
+            <option value="km-alice">km-alice (知识管理·hr 角色)</option>
+            <option value="km-bob">km-bob (知识管理·finance 角色)</option>
+            <option value="km-eve">km-eve (知识管理·拒绝)</option>
+          </select>
         </label>
-        <label>
-          <span>报价家数</span>
-          <input name="quote_count" type="number" value="2" min="0" step="1">
-        </label>
+        <!-- cut-043: params 容器由 app.js 根据当前 domain 动态渲染 -->
+        <div id="params-container">
+          <label>
+            <span>金额（元）</span>
+            <input name="amount" type="number" value="1500000" min="0" step="1000">
+          </label>
+          <label>
+            <span>报价家数</span>
+            <input name="quote_count" type="number" value="2" min="0" step="1">
+          </label>
+        </div>
         <button type="submit">运行六步闭环</button>
       </form>
       <h3>响应</h3>
       <pre id="result">点击上方按钮触发一次 POST /api/v1/demo/scenarios/generate 调用。</pre>
     </section>
 
-    <!-- View B — 知识管理占位, cut-043 待交付 -->
+    <!-- View B — 知识管理视图（cut-043 已通过视图 A 域切换上线；此处保留架构说明） -->
     <section id="view-b" class="view" data-view="b" hidden>
-      <h2>知识管理</h2>
-      <p>cut-043 待交付（cut-042R 复审通过后启动）。</p>
-      <p>本视图将展示知识管理域的 /api/v1/demo/domains 候选与场景生成。</p>
+      <h2>知识管理 · 架构说明</h2>
+      <p>cut-043 已上线。视图 A 中选择「知识管理」即可实时运行六步闭环：</p>
+      <ul>
+        <li>输入：员工提问（员工编号）、制度版本（制度编号）</li>
+        <li>规则：政策版本在有效期内 <strong>且</strong> 员工具备访问角色 → 有据可答；过期或无权限 → 提示提供有效版本</li>
+        <li>结论：<code>answerable</code> / <code>needs_valid_policy</code> + 出处链（同构证据）</li>
+      </ul>
+      <p>测试样本：制度 <code>KM-POL-001</code>（有效，需 hr 角色）/ <code>KM-POL-002</code>（已过期）/ <code>KM-POL-003</code>（有效，需 finance 角色）</p>
     </section>
 
     <!-- View C — 企业合规占位, cut-044 待交付 -->

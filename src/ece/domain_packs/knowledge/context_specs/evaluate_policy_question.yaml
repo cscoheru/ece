@@ -1,0 +1,41 @@
+# S3.1 — Context Specification for evaluate_policy_question (Knowledge Management Pack)
+#
+# Per ARCHITECTURE §2.1 + PRD §40-41: each domain task declares its Required
+# Context as YAML; runtime loads → typed model; engine resolves.
+#
+# This spec drives the "员工提问 + 制度版本 → 是否能回答?" intent (PRD §6 row 2):
+#   policy_document → required_role + owning_department + referencing_policies
+#   person → roles + department
+#
+# 与 procurement 的 evaluate_purchase_request.yaml 同构; 字段集精简到 KM 必需.
+
+spec: evaluate_policy_question
+version: 1
+root_entity: policy_document
+
+requires:
+  user: true
+  entities:
+    - {type: role,         via: "REQUIRES_ROLE",    max_hops: 1}
+    - {type: person,       via: "OWNS",             max_hops: 1}
+    - {type: department,   via: "OWNS",             max_hops: 1}
+    - {type: policy_document, via: "REFERENCES",    max_hops: 1}
+  relationships:
+    - REQUIRES_ROLE
+    - OWNS
+    - REFERENCES
+    - HAS_ROLE
+    - BELONGS_TO
+  documents:
+    - {doc_type: policy_text, match: "policy_id matches root.source_id"}
+  structured_data:
+    - policy_version_history
+
+temporal:
+  mode: current
+
+limits:
+  max_entities: 60
+  max_relationships: 100
+  max_chunks: 30
+  max_rows: 200

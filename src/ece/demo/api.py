@@ -254,9 +254,69 @@ def generate_scenario(
     # F2: default root_source_id from spec, not hardcoded.
     # Allow request to override via params.root_source_id for tests that need
     # to drive other fixtures, but never fall through to a procurement default.
+    #
+    # cut-043 — honor `spec.root_params_fields[0]` when present: packs whose
+    # root entity is identified by a params field (e.g. KM's `policy_id`)
+    # declare it in `root_params_fields`. The API then routes `params[policy_id]`
+    # → root_source_id, so the rule layer sees the requested policy (not the
+    # pack's `default_root_source_id` fallback).
+    #
+    # cut-043 — explicit 422 at the boundary for empty/missing OR path-unsafe
+    # required params. Without this, the rule layer silently degrades on empty
+    # policy_id / employee_id (the loop just sees an empty policy and runs the
+    # rule with in_window=False / has_perm=False), which is a leaky abstraction.
+    # Path-unsafe values (../etc) must also be refused — the spec loader only
+    # validates pack/scenario names, not params values. Mirrors
+    # `_check_safe_identifier` in spec.py.
+    #
+    # Opt-in: only enforce when the spec explicitly declares `route_root_via_params: true`
+    # AND has at least one entry in `root_params_fields`. Procurement does NOT
+    # declare this flag (its root is fixed as SPIKE-PR-001), so this gate MUST NOT
+    # trigger there. KM sets the flag, opting in to params-driven routing.
+    #
+    # All declared params (root_params_fields + relations_fields) must be non-empty
+    # safe identifiers — these are the schema the pack declares it needs to function.
+    from ece.demo.spec import _SAFE_IDENTIFIER  # reuse the pack-name validator
+    root_id_field_used: str | None = None
+    if (
+        isinstance(req.params, dict)
+        and spec.route_root_via_params
+        and bool(spec.root_params_fields)
+    ):
+        all_required: tuple[str, ...] = (*spec.root_params_fields, *spec.relations_fields)
+        for required_field in all_required:
+            raw = req.params.get(required_field)
+            if not (isinstance(raw, str) and raw.strip()):
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"{required_field} is required and must be a non-empty "
+                        f"string for pack={spec.pack!r} (route_root_via_params=true); "
+                        f"got {raw!r}"
+                    ),
+                )
+            if not _SAFE_IDENTIFIER.match(raw):
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"{required_field} contains unsafe characters; must match "
+                        f"{_SAFE_IDENTIFIER.pattern} "
+                        f"(alphanumeric, dash, underscore only; "
+                        f"reject path separators and '..'); got {raw!r}"
+                    ),
+                )
+        root_id_field_used = spec.root_params_fields[0]
+
+    root_source_id_from_params: str = ""
+    if root_id_field_used:
+        raw_root = req.params.get(root_id_field_used)
+        if isinstance(raw_root, str) and raw_root.strip():
+            root_source_id_from_params = raw_root.strip()
+
     root_source_id = str(
         req.params.get("root_source_id")
         or req.params.get("pr_source_id")
+        or root_source_id_from_params
         or spec.default_root_source_id
     )
     if not root_source_id:
