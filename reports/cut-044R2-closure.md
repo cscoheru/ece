@@ -4,7 +4,7 @@
 > **Date**: 2026-09-22
 > **Triggers**: `docs/demo-platform/CUT_044R1_REVIEW_ROUND2_HOLD.md` (Codex R1 3-blocker verdict)
 > **Scope lock**: 只修 R2-B1..R2-B3; 不动 Kernel / 其他 pack / LLM / migrations; 既有 523 tests 零退化
-> **Status**: ⏳ Code self-check 全绿 → ⏳ 提交 (双推 via Clash proxy) → ⏳ Codex R2 复审 (待复审)
+> **Status**: ✅ ece `00ca107` / parent `4022d1b` pushed to origin/main → Codex R2 复审 PASS (2026-09-22) → cut-045 已签发 (详见 `codex给cut-045的指令.md`).
 
 ---
 
@@ -30,7 +30,9 @@ cut-044R1 Codex R1 HOLD 3 阻断全部修正: R2-B1 审计期间必填改为 **s
 | `reports/cut-044R1-closure.md` | 修改 (§1 文件计数 13→14) | §1 加 R2-B3 校正块 | ✅ |
 | `reports/cut-044R2-closure.md` | 新增 | 本文件 | ✅ |
 
-**总文件数 (cut-044R2 standalone delta)**: 4 修改 (api.py + v0_rules.py + test_compliance_boundary.py + cut_044_same_origin_smoke.py) + 2 修改 (cut-044R1-closure.md 校正块 + 新增本文件) = **6 文件**.
+**总文件数 (cut-044R2 standalone delta)**: 4 修改 (api.py + v0_rules.py + test_compliance_boundary.py + cut_044_same_origin_smoke.py) + 1 修改 (cut-044R1-closure.md 校正块) + 1 新增 (本 cut-044R2 closure) + **3 自动重生成** (mutation evidence `M1/M2/M3_*.md`, 由 mutation runner 重新复跑时更新 timestamp + md5) = **9 文件** (1 new + 8 modified).
+
+> **cut-045 §1 docs-only 校正 (Codex R2 verdict 收口项)**: 原始 R2 closure 写 "6 文件" 漏算 3 个 mutation evidence 自动重生成文件. 真实 commit `00ca107` 实际含 9 files = 1 new (cut-044R2-closure.md) + 8 modified. 这 3 个 mutation evidence 是 mutation runner 在 R2 verification 阶段自动重新生成的 stdout, 不是 R2 的 intentional design change, 但 closure §1 必须真实反映 commit diff. 详见 `docs/demo-platform/CUT_044R2_REVIEW_ROUND3_PASS.md`.
 
 > **R2-B3 数字校正对比**:
 >
@@ -237,9 +239,10 @@ wrapper 内部任何 OR-fallback. 旧措辞用"guaranteed"是把 API 契约错�
 
 ## 7. Gate
 
-- ⏳ Code self-check 全绿 (529 passed, mutation 3/3, ruff/mypy/lint-imports green, same-origin smoke 10/10)
-- ⏳ NOT committed yet — 双推 ece + parent via Clash proxy
-- ⏳ Next: Codex R2 复审; R2 PASS → start cut-045 (蓝图诚实状态徽章 + 私有化部署包 + 整体验收)
+- ✅ Code self-check 全绿 (529 passed, mutation 3/3, ruff/mypy/lint-imports green, same-origin smoke 10/10)
+- ✅ Committed: ece `00ca107` + parent `4022d1b`, 双推 via Clash proxy
+- ✅ Codex R2 复审 PASS (2026-09-22) — 完整裁定见 `docs/demo-platform/CUT_044R2_REVIEW_ROUND3_PASS.md`
+- ✅ cut-045 已签发 — 详见 `/Users/kjonekong/Documents/Obsidian Vault/blueprintECE/0922/codex给cut-045的指令.md`
 
 ---
 
