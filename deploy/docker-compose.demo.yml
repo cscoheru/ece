@@ -1,0 +1,77 @@
+# cut-045 — Demo deployment docker-compose for OWN demo server.
+#
+# Scope lock (Codex directive §0):
+#   - This is the "Demo Deployment Profile" for the founder's own server.
+#   - NOT a customer-private installer.
+#   - NOT multi-tenant, NOT K8s, NOT customer data-out-of-domain.
+#
+# Stack (per directive §4.1):
+#   - api service: same image as the V0 dev compose (Dockerfile in repo root)
+#   - db service: postgres:16-pgvector (same as V0)
+#
+# Differences vs docker-compose.yml (V0 dev):
+#   - api service has no public port binding (only reachable via nginx upstream)
+#   - db service has NO public port (postgres only on internal docker network)
+#   - restart: unless-stopped for both services (production-grade)
+#   - DATABASE_URL is built from POSTGRES_* env vars (no hardcoded creds)
+#   - ECE_SERVER_TODAY_ANCHOR injected via env
+#
+# Usage:
+#   cp deploy/.env.example deploy/.env  # edit values
+#   docker compose -f deploy/docker-compose.demo.yml --env-file deploy/.env up -d
+#   ./deploy/scripts/reset-demo-fixtures.sh  # alembic upgrade + seed three domains
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    # NOTE: No `ports:` section — the api service is only reachable via
+    # the nginx reverse proxy on the host's docker network. Direct bind to
+    # 8765:8000 is reserved for the V0 dev compose (docker-compose.yml).
+    expose:
+      - "8000"
+    volumes:
+      - ../demos/spa:/app/demos/spa:ro  # SPA served by nginx, but mounted read-only
+      - ../data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # DATABASE_URL is constructed from POSTGRES_* (no hardcoded creds).
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ECE_LOG_LEVEL: ${ECE_LOG_LEVEL:-INFO}
+      ECE_SERVER_TODAY_ANCHOR: ${ECE_SERVER_TODAY_ANCHOR}
+    restart: unless-stopped
+    healthcheck:
+      # python:3.12-slim lacks curl — use stdlib urllib (compose overrides Dockerfile HEALTHCHECK).
+      test: ["CMD", "python", "-c", "import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-pgvector
+    # NO ports: — postgres is reachable only from the api service on the
+    # internal docker network. Public access requires going through the
+    # nginx reverse proxy at /api/ (which itself never proxies to postgres).
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    name: ece_demo_postgres_data
