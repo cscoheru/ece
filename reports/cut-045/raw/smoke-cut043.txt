@@ -1,0 +1,8 @@
+=== cut-043R same-origin smoke (http://127.0.0.1:8765) ===
+
+  PASS — KM domain auto-discovered in /domains (domains=['compliance', 'knowledge', 'procurement'])
+  PASS — KM answerable (KM-POL-001 + km-alice) (conclusion=answerable evidence_count=2)
+  PASS — KM permission contrast (km-eve + KM-POL-001 → no_permission) (conclusion=no_permission evidence_count=0)
+  PASS — KM R5-B2 zero-evidence (km-eve + KM-POL-002 → needs_valid_policy) (conclusion=needs_valid_policy evidence_count=0)
+
+cut-043R same-origin smoke: PASS=4 SKIP=0 FAIL=0

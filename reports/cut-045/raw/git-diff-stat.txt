@@ -1,0 +1,15 @@
+ demos/spa/index.html                              |  60 ++-
+ demos/spa/styles.css                              |  13 +
+ deploy/.env.example                               |  33 ++
+ deploy/README.md                                  | 164 ++++++++
+ deploy/docker-compose.demo.yml                    |  77 ++++
+ deploy/nginx/corln.rana.asia.conf                 | 106 ++++++
+ deploy/scripts/reset-demo-fixtures.sh             |  51 +++
+ scripts/cut_045_demo_deployment_smoke.py          | 438 ++++++++++++++++++++++
+ tests/integration/test_demo_reset_script.py       |  94 +++++
+ tests/integration/test_three_domain_acceptance.py | 257 +++++++++++++
+ tests/unit/test_demo_smoke_script.py              | 175 +++++++++
+ tests/unit/test_deployment_compose.py             | 168 +++++++++
+ tests/unit/test_nginx_config.py                   | 132 +++++++
+ tests/unit/test_view_c_badges.py                  | 222 +++++++++++
+ 14 files changed, 1973 insertions(+), 17 deletions(-)

@@ -1,0 +1,30 @@
+=== cut-042R3 mutation runner — 6 anchors ===
+
+-> M1 re_read_through_assembly_skipped ...
+   status: OK
+
+-> M2 apply_context_update_skip_sql ...
+   status: OK
+
+-> M3 permission_acl_check_bypassed ...
+   status: OK
+
+-> M4 evaluated_conditions_inject_nondeterministic_amount ...
+   status: OK
+
+-> M5 jwt_decode_skips_signature_verification ...
+   status: OK
+
+-> M6 materialize_fn_disabled_in_loop ...
+   status: OK
+
+=== summary ===
+6/6 anchors OK
+  M1: OK
+  M2: OK
+  M3: OK
+  M4: OK
+  M5: OK
+  M6: OK
+
+index: reports/cut-042R3/mutation-evidence/README.md

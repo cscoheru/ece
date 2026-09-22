@@ -11,29 +11,29 @@ Replacing AND with OR loosens the conjunction: a case with one failing and one p
 ## RED (mutation applied)
 
 ```
-============================= test session starts ==============================
+[1m============================= test session starts ==============================[0m
 collected 1 item
 
-tests/integration/test_knowledge_boundary.py F                           [100%]
+tests/integration/test_knowledge_boundary.py [31mF[0m[31m                           [100%][0m
 
 =================================== FAILURES ===================================
-___ test_knowledge_boundary_truth_table[validity_fail_perm_pass_needs_valid] ___
-tests/integration/test_knowledge_boundary.py:255: in test_knowledge_boundary_truth_table
-    assert decision_value == expected_value, (
-E   AssertionError: policy_id=KM-POL-002 user_id=km-alice: decision_value='answerable' != expected='needs_valid_policy'
-E   assert 'answerable' == 'needs_valid_policy'
-E     
-E     - needs_valid_policy
-E     + answerable
-=============================== warnings summary ===============================
+[31m[1m___ test_knowledge_boundary_truth_table[validity_fail_perm_pass_needs_valid] ___[0m
+[1m[31mtests/integration/test_knowledge_boundary.py[0m:255: in test_knowledge_boundary_truth_table
+    [0m[94massert[39;49;00m decision_value == expected_value, ([90m[39;49;00m
+[1m[31mE   AssertionError: policy_id=KM-POL-002 user_id=km-alice: decision_value='answerable' != expected='needs_valid_policy'[0m
+[1m[31mE   assert 'answerable' == 'needs_valid_policy'[0m
+[1m[31mE     [0m
+[1m[31mE     [0m[91m- needs_valid_policy[39;49;00m[90m[39;49;00m[0m
+[1m[31mE     [92m+ answerable[39;49;00m[90m[39;49;00m[0m
+[33m=============================== warnings summary ===============================[0m
 .venv/lib/python3.12/site-packages/starlette/testclient.py:53
   /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-FAILED tests/integration/test_knowledge_boundary.py::test_knowledge_boundary_truth_table[validity_fail_perm_pass_needs_valid]
-========================= 1 failed, 1 warning in 0.51s =========================
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/integration/test_knowledge_boundary.py::[1mtest_knowledge_boundary_truth_table[validity_fail_perm_pass_needs_valid][0m - AssertionError: policy_id=KM-POL-002 user_id=km-alice: decision_value='answ...
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.55s[0m[31m =========================[0m
 
 ```
 
@@ -43,18 +43,18 @@ Marker `AssertionError` present: **True**
 ## GREEN (mutation reverted)
 
 ```
-============================= test session starts ==============================
+[1m============================= test session starts ==============================[0m
 collected 1 item
 
-tests/integration/test_knowledge_boundary.py .                           [100%]
+tests/integration/test_knowledge_boundary.py [32m.[0m[33m                           [100%][0m
 
-=============================== warnings summary ===============================
+[33m=============================== warnings summary ===============================[0m
 .venv/lib/python3.12/site-packages/starlette/testclient.py:53
   /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-========================= 1 passed, 1 warning in 0.46s =========================
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.49s[0m[33m =========================[0m
 
 ```
 

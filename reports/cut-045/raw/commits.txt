@@ -1,0 +1,4 @@
+f976a82 cut-045 sub-knife C (Production Same-origin Deployment Smoke)
+ea0c461 cut-045 sub-knife B (Demo Deployment Profile: deploy/* 新增)
+bbb7e8d cut-045 sub-knife A (View A/B/C 收口 SPA + 业务语言化)
+ac2b1f8 cut-045 sub-knife D (Tests First RED): 6 binding tests for demo deployment + view C

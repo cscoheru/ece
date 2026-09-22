@@ -1,0 +1,17 @@
+=== cut-044R2 TRUE same-origin smoke ===
+  origin base:   http://127.0.0.1:8089
+  API upstream:  http://127.0.0.1:8765
+  proxy pattern: cut-042R2 R2-F3 (ThreadingHTTPServer + /api/ reverse-proxy)
+
+  PASS — R1-B3 SPA index.html reachable from origin (proxy proof) (origin=http://127.0.0.1:8089 bytes=6833)
+  PASS — Compliance domain auto-discovered in /domains (domains=['compliance', 'knowledge', 'procurement'])
+  PASS — Compliance sufficient (COMP-CTL-001 + comp-alice) (conclusion=evidence_package_sufficient evidence_count=2)
+  PASS — Compliance permission contrast (comp-eve + COMP-CTL-001 → no_permission) (conclusion=no_permission)
+  PASS — Compliance coverage-only fail (COMP-CTL-003 + comp-alice → gap_list) (conclusion=gap_list)
+  PASS — R1-B1 reversed period_start > period_end via origin → 422 (status=422 (R1-B1 fail-fast at API boundary via origin))
+  PASS — R1-B1 empty period_start via origin → 422 (status=422 (R1-B1 fail-fast at API boundary via origin))
+  PASS — R1-B1 request_before_evidence via origin → gap_list (audit-period intersection) (conclusion=gap_list (R1-B1 audit-period intersection verified))
+  PASS — R2-B1 missing BOTH period fields via origin → 422 (spec-driven required-field) (status=422 (R2-B1 spec-driven required-field enforcement via origin))
+  PASS — R2-B2 malformed today='not-a-date' via origin → 422 (strict YYYY-MM-DD canonical) (status=422 (R2-B2 strict today canonical round-trip via origin))
+
+cut-044R2 same-origin smoke: PASS=10 SKIP=0 FAIL=0

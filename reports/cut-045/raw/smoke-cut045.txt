@@ -1,0 +1,24 @@
+[cut-045 deployment smoke] DEMO_BASE_URL=http://127.0.0.1:8765
+
+[SKIP] 1. SPA index.html reachable from origin (proxy proof)
+         SKIPPED — API-only origin (GET / → 404; SPA served by nginx in production, not by this uvicorn)
+[PASS] 2. /api/v1/demo/domains lists procurement + knowledge + compliance
+         domains=['compliance', 'knowledge', 'procurement']
+[PASS] 3. procurement valid (proc-alice → auto_approved|review_required)
+         conclusion=auto_approved
+[PASS] 4. procurement denied (spike-user-unrelated → no_permission)
+         conclusion=no_permission
+[PASS] 5. knowledge valid (km-alice + KM-POL-001 → answerable)
+         conclusion=answerable evidence=2
+[PASS] 6. knowledge denied (km-eve + KM-POL-001 → no_permission)
+         conclusion=no_permission
+[PASS] 7. compliance valid (comp-alice + COMP-CTL-001 → evidence_package_sufficient)
+         conclusion=evidence_package_sufficient
+[PASS] 8. compliance denied (comp-eve + COMP-CTL-001 → no_permission)
+         conclusion=no_permission
+[PASS] 9. 422 strict date (compliance today='not-a-date' → 422)
+         status=422 strict-date enforced (R2-B2)
+[SKIP] 10. zero external CDN (SPA serves static only)
+         SKIPPED — API-only origin (GET / → 404; SPA served by nginx in production, not by this uvicorn)
+
+PASS=8 SKIP=2 FAIL=0

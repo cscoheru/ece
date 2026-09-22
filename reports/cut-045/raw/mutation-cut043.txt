@@ -1,0 +1,18 @@
+=== cut-043 mutation runner — 3 KM anchors ===
+
+-> M1 km_validity_invert ...
+   status: OK
+
+-> M2 km_permission_invert ...
+   status: OK
+
+-> M3 km_decision_and_to_or ...
+   status: OK
+
+=== summary ===
+3/3 anchors OK
+  M1: OK
+  M2: OK
+  M3: OK
+
+index: reports/cut-043/mutation-evidence/README.md

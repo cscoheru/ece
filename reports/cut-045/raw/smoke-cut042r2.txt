@@ -1,0 +1,9 @@
+  PASS — SAME-ORIGIN index.html reachable
+  PASS — SPA zero external CDN
+  PASS — GET /api/v1/demo/domains via origin
+  PASS — POST review_required via origin (conclusion='review_required')
+  PASS — F1 denied branch via origin (conclusion='no_permission')
+
+cut-042R2 R2-F3 same-origin smoke: PASS=5 SKIP=0 FAIL=0
+  origin base: http://127.0.0.1:8088
+  API upstream: http://127.0.0.1:8765

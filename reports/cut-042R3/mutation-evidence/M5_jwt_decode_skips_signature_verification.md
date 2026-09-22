@@ -7,25 +7,25 @@
 ## RED (mutation applied)
 
 ```
-============================= test session starts ==============================
+[1m============================= test session starts ==============================[0m
 collected 1 item
 
-tests/integration/test_s13_jwt_auth.py F                                 [100%]
+tests/integration/test_s13_jwt_auth.py [31mF[0m[31m                                 [100%][0m
 
 =================================== FAILURES ===================================
-___________________ test_decode_jwt_token_invalid_signature ____________________
-tests/integration/test_s13_jwt_auth.py:75: in test_decode_jwt_token_invalid_signature
-    assert claims is None
-E   AssertionError: assert {'sub': 'alice', 'iat': 1790062163, 'exp': 1790065763} is None
-=============================== warnings summary ===============================
+[31m[1m___________________ test_decode_jwt_token_invalid_signature ____________________[0m
+[1m[31mtests/integration/test_s13_jwt_auth.py[0m:75: in test_decode_jwt_token_invalid_signature
+    [0m[94massert[39;49;00m claims [95mis[39;49;00m [94mNone[39;49;00m[90m[39;49;00m
+[1m[31mE   AssertionError: assert {'sub': 'alice', 'iat': 1790089739, 'exp': 1790093339} is None[0m
+[33m=============================== warnings summary ===============================[0m
 tests/integration/test_s13_jwt_auth.py::test_decode_jwt_token_invalid_signature
   /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 12 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
     return self._jws.encode(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-FAILED tests/integration/test_s13_jwt_auth.py::test_decode_jwt_token_invalid_signature
-========================= 1 failed, 1 warning in 0.07s =========================
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/integration/test_s13_jwt_auth.py::[1mtest_decode_jwt_token_invalid_signature[0m - AssertionError: assert {'sub': 'alice', 'iat': 1790089739, 'exp': 179009333...
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.07s[0m[31m =========================[0m
 
 ```
 
@@ -35,18 +35,18 @@ Marker `AssertionError` present: **True**
 ## GREEN (mutation reverted)
 
 ```
-============================= test session starts ==============================
+[1m============================= test session starts ==============================[0m
 collected 1 item
 
-tests/integration/test_s13_jwt_auth.py .                                 [100%]
+tests/integration/test_s13_jwt_auth.py [32m.[0m[33m                                 [100%][0m
 
-=============================== warnings summary ===============================
+[33m=============================== warnings summary ===============================[0m
 tests/integration/test_s13_jwt_auth.py::test_decode_jwt_token_invalid_signature
   /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 12 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
     return self._jws.encode(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-========================= 1 passed, 1 warning in 0.05s =========================
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.04s[0m[33m =========================[0m
 
 ```
 

@@ -1,0 +1,18 @@
+=== cut-044 mutation runner — 3 compliance anchors ===
+
+-> M1 comp_count_condition_invert ...
+   status: OK
+
+-> M2 comp_coverage_issubset_to_isdisjoint ...
+   status: OK
+
+-> M3 comp_decision_force_gap_list ...
+   status: OK
+
+=== summary ===
+3/3 anchors OK
+  M1: OK
+  M2: OK
+  M3: OK
+
+index: reports/cut-044/mutation-evidence/README.md

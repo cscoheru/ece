@@ -1,0 +1,2 @@
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+[33m[32m593 passed[0m, [33m[1m5 skipped[0m, [33m[1m3 deselected[0m, [33m[1m4 warnings[0m[33m in 46.24s[0m[0m

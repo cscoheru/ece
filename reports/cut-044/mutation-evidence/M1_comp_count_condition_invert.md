@@ -33,7 +33,7 @@ tests/integration/test_compliance_boundary.py [31mF[0m[31m                   
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_compliance_boundary.py::[1mtest_compliance_boundary_truth_table[ctl001_alice_full_coverage_sufficient][0m - AssertionError: control_id=COMP-CTL-001 user_id=comp-alice period=(2026-07-...
-[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.72s[0m[31m =========================[0m
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.74s[0m[31m =========================[0m
 
 ```
 
@@ -54,7 +54,7 @@ tests/integration/test_compliance_boundary.py [32m.[0m[33m                   
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.51s[0m[33m =========================[0m
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.47s[0m[33m =========================[0m
 
 ```
 
