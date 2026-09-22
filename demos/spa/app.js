@@ -1,7 +1,9 @@
-// cut-042R F6 + cut-043 — SPA skeleton (vanilla JS, zero CDN, zero build).
+// cut-042R F6 + cut-043 + cut-044 — SPA skeleton (vanilla JS, zero CDN, zero build).
 //
-// 三个视图: A (多域 live via /api/v1/demo/*), B (KM 架构说明), C (compliance placeholder).
+// 三个视图: A (多域 live via /api/v1/demo/*), B (kernel 架构说明 — 第三域 closure 后升级),
+//          C (蓝图 live — 域包演进时间线 + 状态徽章).
 // cut-043: 视图 A 内增加域下拉, 根据当前域切换表单字段 (procurement / knowledge).
+// cut-044: 视图 A 增加 compliance 分支 (audit-period 字段); view C 升级 live.
 //
 // Auth convention: caller supplies X-User-Id via the actor dropdown.
 // Body NEVER overrides the actor (cut-042R F1).
@@ -56,6 +58,22 @@
         '<input name="policy_id" type="text" value="KM-POL-001" ' +
         'placeholder="如 KM-POL-001"></label>' +
         '<p class="param-hint">员工身份由上方「调用方」下拉指定, 参照日期由服务器锚定.</p>';
+    } else if (domain === "compliance") {
+      // cut-044: compliance 的 today 是 caller-supplied "审计期间" 基准
+      // (与 KM 的 server-anchored today 语义不同 — R5-B1 镜像).
+      // 控制项身份来自 params.control_id (route_root_via_params); 员工
+      // 身份来自上方"调用方"下拉 (X-User-Id).
+      paramsEl.innerHTML =
+        '<label><span>控制项编号</span>' +
+        '<input name="control_id" type="text" value="COMP-CTL-001" ' +
+        'placeholder="如 COMP-CTL-001"></label>' +
+        '<label><span>审计期间起</span>' +
+        '<input name="period_start" type="date" value="2026-07-01"></label>' +
+        '<label><span>审计期间止</span>' +
+        '<input name="period_end" type="date" value="2026-09-30"></label>' +
+        '<label><span>裁定基准日</span>' +
+        '<input name="today" type="date" value="2026-09-22"></label>' +
+        '<p class="param-hint">员工身份由上方「调用方」下拉指定, 审计期间由业务方提供 (PRD §6 row 3).</p>';
     } else {
       // procurement default (also fallback)
       paramsEl.innerHTML =
@@ -75,6 +93,20 @@
         scenario: "default",
         params: {
           policy_id: String(fd.get("policy_id") || ""),
+        },
+      };
+    }
+    if (domain === "compliance") {
+      // cut-044: today 是 caller-supplied 审计基准 (与 KM 的 server-anchored
+      // 语义不同). control_id 由 params 决定 (route_root_via_params).
+      return {
+        domain: "compliance",
+        scenario: "default",
+        params: {
+          control_id: String(fd.get("control_id") || ""),
+          period_start: String(fd.get("period_start") || ""),
+          period_end: String(fd.get("period_end") || ""),
+          today: String(fd.get("today") || ""),
         },
       };
     }

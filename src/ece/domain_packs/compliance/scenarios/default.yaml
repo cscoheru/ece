@@ -1,0 +1,40 @@
+pack: compliance
+spec: evaluate_audit_question
+# cut-044 — 业务语言域标签 (与 procurement / knowledge 同构; 由 _discover_domains 读取)
+label: "企业合规审计"
+# cut-044 — 独立 source_system (与 spike:v0-technical-fixture / km:v0-knowledge-fixture 物理隔离)
+source_system: "comp:v0-compliance-fixture"
+# cut-044 — 默认根实体 (test 兜底; 真实路由走 route_root_via_params)
+default_root_source_id: "COMP-CTL-001"
+# cut-044 — 显式 opt-in: API 层检测到此 flag 时, 用 params[root_params_fields[0]]
+# 作为 root_source_id (而非 default_root_source_id). compliance 域的 root 实体由 params 决定.
+route_root_via_params: true
+# cut-044 — compliance 的 today 是 caller-supplied "审计期间" 边界基准, 不走 server anchor.
+# PRD §6 row 3 把 today 作为业务 input (审计期间), 与 KM (制度有效期基准) 语义不同.
+# 因此 requires_server_today_anchor 默认为 false (YAML 省略 = false).
+# cut-044 — `gap_list` 是合法业务结论 (双条件失败或单条件失败时),
+# 不要求 evidence row. generic loop 与 apply_context_update 按此 allowlist 放行 0 evidence.
+zero_evidence_decisions:
+  - gap_list
+root_entity:
+  type: control
+  id_field: source_id
+subject_entity_type: control
+rule_id: R-COMP-AUDIT
+# cut-044 — keep decision_key="review_status" to reuse S4 apply_context_update's
+# write-back path (which is currently locked to the four `review_*` JSONB keys).
+# The domain semantics (compliance sufficiency vs procurement review vs KM access)
+# live in `decision_value` and `reason`; the column name is the storage slot.
+decision_key: review_status
+# cut-044 — control 身份由 params 决定 (audit period 也是 caller-supplied).
+root_params_fields:
+  - control_id
+params_schema:
+  control_id: str
+  period_start: str
+  period_end: str
+  today: str
+# cut-044 — PRD §7 纪律 #2: 每个域必须有 denied users 演示. compliance 的 DENY 行由
+# seed_compliance_fixture 在 ACL 表里写入 (engine-level pre-rule check).
+denied_users:
+  - comp-eve

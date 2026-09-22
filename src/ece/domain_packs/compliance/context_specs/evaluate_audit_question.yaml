@@ -1,0 +1,38 @@
+# S3.1 — Context Specification for evaluate_audit_question (Compliance Pack)
+#
+# Per ARCHITECTURE §2.1 + PRD §40-41: each domain task declares its Required
+# Context as YAML; runtime loads → typed model; engine resolves.
+#
+# This spec drives the "审计问题 + 审计期间 → 证据是否充分?" intent (PRD §6 row 3):
+#   control → required_systems + evidence_packages (inlined in control.attrs)
+#   system → identity-only (no outbound relations)
+#
+# 与 procurement / knowledge 同构; 字段集精简到 compliance 必需.
+#
+# cut-044 design: evidence_packages are inlined into control.attrs.evidence_packages
+# (NOT a separate entity type). Spec only requires REQUIRES_SYSTEM because that
+# is the sole outbound relation from control (system identity lives in the
+# entities table, not as evidence source).
+
+spec: evaluate_audit_question
+version: 1
+root_entity: control
+
+requires:
+  user: true
+  entities:
+    - {type: system, via: "REQUIRES_SYSTEM", max_hops: 1}
+  relationships:
+    - REQUIRES_SYSTEM
+  documents: []
+  structured_data:
+    - audit_period_history
+
+temporal:
+  mode: current
+
+limits:
+  max_entities: 60
+  max_relationships: 100
+  max_chunks: 30
+  max_rows: 200

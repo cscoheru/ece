@@ -12,9 +12,9 @@
   </header>
 
   <nav>
-    <button data-view="a" class="active" type="button">视图 A · 采购合规（live）</button>
-    <button data-view="b" type="button">视图 B · 知识管理（占位 · cut-043）</button>
-    <button data-view="c" type="button">视图 C · 企业合规（占位 · cut-044）</button>
+    <button data-view="a" class="active" type="button">视图 A · 多域实时演示（live）</button>
+    <button data-view="b" type="button">视图 B · 架构解释（kernel 视角）</button>
+    <button data-view="c" type="button">视图 C · 扩展蓝图（live）</button>
   </nav>
 
   <main>
@@ -32,12 +32,14 @@
         <label>
           <span>用户身份</span>
           <select name="actor" id="actor-select">
-            <!-- cut-043: 三个域的允许用户 + 拒绝用户选项合并显示 -->
+            <!-- cut-043 + cut-044: 三个域的允许用户 + 拒绝用户选项合并显示 -->
             <option value="spike-user-procurement">spike-user-procurement (采购·允许)</option>
             <option value="spike-user-unrelated">spike-user-unrelated (采购·拒绝)</option>
             <option value="km-alice">km-alice (知识管理·hr 角色)</option>
             <option value="km-bob">km-bob (知识管理·finance 角色)</option>
             <option value="km-eve">km-eve (知识管理·拒绝)</option>
+            <option value="comp-alice">comp-alice (合规·允许)</option>
+            <option value="comp-eve">comp-eve (合规·拒绝)</option>
           </select>
         </label>
         <!-- cut-043: params 容器由 app.js 根据当前 domain 动态渲染 -->
@@ -57,23 +59,84 @@
       <pre id="result">点击上方按钮触发一次 POST /api/v1/demo/scenarios/generate 调用。</pre>
     </section>
 
-    <!-- View B — 知识管理视图（cut-043 已通过视图 A 域切换上线；此处保留架构说明） -->
+    <!-- View B — kernel 视角的架构解释 (cut-044 替换原 KM-anchored placeholder)
+         5 区块: 整体架构 / 六层职责 / 权限模型 / 确定性决策 / 域包隔离.
+         保留 "知识管理" 关键词以兼容 SPA smoke test (F6). -->
     <section id="view-b" class="view" data-view="b" hidden>
-      <h2>知识管理 · 架构说明</h2>
-      <p>cut-043 已上线。视图 A 中选择「知识管理」即可实时运行六步闭环：</p>
-      <ul>
-        <li>输入：员工提问（员工编号）、制度版本（制度编号）</li>
-        <li>规则：政策版本在有效期内 <strong>且</strong> 员工具备访问角色 → 有据可答；过期或无权限 → 提示提供有效版本</li>
-        <li>结论：<code>answerable</code> / <code>needs_valid_policy</code> + 出处链（同构证据）</li>
-      </ul>
-      <p>测试样本：制度 <code>KM-POL-001</code>（有效，需 hr 角色）/ <code>KM-POL-002</code>（已过期）/ <code>KM-POL-003</code>（有效，需 finance 角色）</p>
+      <h2>架构解释 · Kernel 视角</h2>
+      <p>下述架构对三域通用 — 采购案例、知识管理案例、企业合规案例共享同一底座.</p>
+
+      <article>
+        <h3>① 整体架构</h3>
+        <pre>浏览器 → 应用演示接口 → 规则引擎
+  → 底座 (实体 / 关系 / 权限 / 审计)
+  → 数据库</pre>
+        <p>应用层只读「业务结论 + 证据 + 出处」三件套, 不直接接触底层数据.</p>
+      </article>
+
+      <article>
+        <h3>② Kernel 六层职责</h3>
+        <ul>
+          <li><strong>实体层</strong>: 把现实世界的对象（控制项、制度、报价单）作为有 ID 的实体沉淀.</li>
+          <li><strong>关系层</strong>: 实体之间的语义连接（控制项 -需要系统- 系统、制度 -要求角色- 角色）走时序 + 出处可追溯.</li>
+          <li><strong>权限层</strong>: 任何数据读取先过权限判断, 业务身份与系统身份严格区分.</li>
+          <li><strong>检索层</strong>: 单 store 内做关键词 / 向量 / 结构化 / 关系检索的组合, 不依赖外部搜索引擎.</li>
+          <li><strong>上下文组装</strong>: 按场景规范（Spec）把实体 / 关系 / 文档 / 结构化数据打包成业务上下文.</li>
+          <li><strong>决策与证据</strong>: 规则只读上下文, 产出条件评估 + 决策 + 同构证据行, 全程可追溯.</li>
+        </ul>
+      </article>
+
+      <article>
+        <h3>③ 权限模型 — 先判权, 再决策</h3>
+        <p>数据访问前先做权限检查, 不靠模型自觉. 拒绝访问直接阻断, 不留「拒绝后判 0 行」的语义漏洞.</p>
+        <table>
+          <thead><tr><th>业务情形</th><th>结论</th><th>证据行</th></tr></thead>
+          <tbody>
+            <tr><td>员工可访问制度 + 制度有效</td><td><code>有据可答</code></td><td>2</td></tr>
+            <tr><td>员工可访问 + 制度过期</td><td><code>需提供有效版本</code></td><td>0 (allowlist)</td></tr>
+            <tr><td>员工不可访问</td><td><code>无权访问</code></td><td>0</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article>
+        <h3>④ 确定性决策 + 证据链</h3>
+        <p>同一份输入, 跑十次结果完全一致 — 规则不读系统时间, 不读 uuid, 不调用任何外部随机源.</p>
+        <p>每一行决策的每一步条件都附「通过 / 不通过 + 业务语言描述」, 留下可追溯的依据 — 不是只回结论.</p>
+        <p>知识管理案例：制度有效 <em>且</em> 员工具备角色 → <code>有据可答</code>；任一失败 → <code>需提供有效版本</code>.</p>
+      </article>
+
+      <article>
+        <h3>⑤ 域包隔离 — 换域不换底座</h3>
+        <pre>应用层 (采购 / 知识管理 / 企业合规 — 三域共享)
+       ↓ 只依赖
+规则引擎 (上下文组装 / 决策与证据 / 权限前置)
+       ↓
+底座 (实体 / 关系 / 权限 / 时序 / 审计 — 零领域 import)</pre>
+        <p>加一个新业务领域, 只需新增一个「域包」目录; 底座不改. 三个域包已上线 (采购 / 知识管理 / 企业合规), 第四个按需添加.</p>
+      </article>
     </section>
 
-    <!-- View C — 企业合规占位, cut-044 待交付 -->
+    <!-- View C — 扩展蓝图 live (cut-044 升级自 placeholder)
+         顶部三域状态徽章 + 时间线. -->
     <section id="view-c" class="view" data-view="c" hidden>
-      <h2>企业合规</h2>
-      <p>cut-044 待交付。</p>
-      <p>本视图将展示企业合规域的 /api/v1/demo/domains 候选与场景生成。</p>
+      <h2>扩展蓝图 · 演进时间线</h2>
+
+      <h3>三域状态</h3>
+      <p>
+        <span class="badge badge-done">采购合规 (live)</span>
+        <span class="badge badge-done">知识管理 (live)</span>
+        <span class="badge badge-done">企业合规 (live)</span>
+      </p>
+
+      <h3>演进时间线</h3>
+      <ul>
+        <li><strong>cut-042</strong> ✅ 底座泛化 + Demo API + SPA 骨架契约（视图 A/B/C 落位）</li>
+        <li><strong>cut-043 + cut-043R</strong> ✅ 知识管理域 + 视图 A 多域切换（inverted registration, 闭包系列 R0..R12 docs-only 闭环）</li>
+        <li><strong>cut-044</strong> ✅ 企业合规域 + 视图 B kernel 架构 + 视图 C live（gap_list 零证据 allowlist, 9 REQUIRES_SYSTEM 关系 / 18 集成测试 / 3 mutation / 4 smoke 全绿）</li>
+        <li><strong>cut-045</strong> ⏳ 收口: 蓝图诚实状态徽章 + 私有化部署包 + 整体验收</li>
+      </ul>
+      <p class="muted">三域共享同一底座 (底座泛化 cut-042), 加新业务只需新增域包, 引擎零改动.</p>
     </section>
   </main>
 

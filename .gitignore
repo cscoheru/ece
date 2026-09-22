@@ -16,3 +16,4 @@ data/*.db
 data/
 volumes/
 gstack/
+.gstack/
