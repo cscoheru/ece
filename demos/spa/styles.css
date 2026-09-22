@@ -283,6 +283,19 @@ footer code {
   border-color: #10b981;
 }
 
+/* cut-045 — View C 在途 / 规划中 徽章 (诚实状态: 不把规划写为已实现) */
+.badge-wip {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.badge-planned {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
 .param-hint {
   font-size: 0.8rem;
   color: #6b7280;

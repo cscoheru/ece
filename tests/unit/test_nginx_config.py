@@ -90,15 +90,37 @@ def test_nginx_security_headers(nginx_conf_text: str) -> None:
 
 
 def test_nginx_no_external_cdn(nginx_conf_text: str) -> None:
-    """No external CDN proxy_pass targets (directive §4.2.6)."""
-    # Negative binding: no proxy_pass to non-localhost upstream
+    """No external CDN proxy_pass targets (directive §4.2.6).
+
+    An `upstream` block reference (e.g. `proxy_pass http://ece_api_upstream;`)
+    is ALLOWED — only literal URLs to non-localhost hosts are blocked.
+    Distinguish by presence of `.` (FQDN) or `:port` (real URL).
+    """
     import re
 
-    matches = re.findall(r"proxy_pass\s+https?://([^/\s;]+)", nginx_conf_text)
-    for host in matches:
-        assert host in ("localhost", "127.0.0.1", "api", "127.0.0.1:8765"), (
+    matches = re.findall(
+        r"proxy_pass\s+https?://([a-zA-Z0-9_.-]+(?::\d+)?(?:/[^\s;]+)?)",
+        nginx_conf_text,
+    )
+    for host_port in matches:
+        # Strip port if present
+        host = host_port.split(":")[0]
+        # Strip path if present (e.g. "host/api/")
+        host = host.split("/")[0]
+        # Skip upstream-name references (no dot, no colon-port) — those are
+        # nginx upstream block names like `ece_api_upstream`.
+        if "." not in host and ":" not in host_port:
+            continue
+        # Allow loopback / localhost
+        assert host in ("localhost", "127.0.0.1"), (
             f"nginx proxy_pass targets external host {host!r} — "
-            f"no external CDN allowed (directive §4.2.6)"
+            f"no external CDN allowed (directive §4.2.6). Allowed: localhost, 127.0.0.1"
+        )
+    # Also assert no https:// proxy_pass to anything other than localhost
+    https_matches = re.findall(r"proxy_pass\s+https://([^/\s;]+)", nginx_conf_text)
+    for host in https_matches:
+        assert host in ("localhost", "127.0.0.1"), (
+            f"nginx proxy_pass https:// targets external host {host!r}"
         )
 
 

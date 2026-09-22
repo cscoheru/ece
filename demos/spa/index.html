@@ -8,7 +8,7 @@
 <body>
   <header>
     <h1>ECE Demo Platform</h1>
-    <p class="muted">V0 spike · 视图 A live · 视图 B / C 占位待 cut-043 / cut-044</p>
+    <p class="muted">多域实时演示 · 架构解释 · 蓝图收口 (cut-045)</p>
   </header>
 
   <nav>
@@ -18,7 +18,8 @@
   </nav>
 
   <main>
-    <!-- View A — 多域 live, 切域不改表单结构（cut-043 多域切换） -->
+    <!-- View A — 多域 live, 切域不改表单结构（cut-043 多域切换）
+         cut-045 业务语言化: 参数命名 / 选项文字全部业务化. -->
     <section id="view-a" class="view active" data-view="a">
       <h2>多域实时演示 — 应用层</h2>
       <form id="demo-form">
@@ -59,9 +60,9 @@
       <pre id="result">点击上方按钮触发一次 POST /api/v1/demo/scenarios/generate 调用。</pre>
     </section>
 
-    <!-- View B — kernel 视角的架构解释 (cut-044 替换原 KM-anchored placeholder)
+    <!-- View B — kernel 视角的架构解释 (cut-044 铺底, cut-045 收口)
          5 区块: 整体架构 / 六层职责 / 权限模型 / 确定性决策 / 域包隔离.
-         保留 "知识管理" 关键词以兼容 SPA smoke test (F6). -->
+         业务语言化: 不暴露 ctx./decision_id/SQL 等内部技术词. -->
     <section id="view-b" class="view" data-view="b" hidden>
       <h2>架构解释 · Kernel 视角</h2>
       <p>下述架构对三域通用 — 采购案例、知识管理案例、企业合规案例共享同一底座.</p>
@@ -117,26 +118,51 @@
       </article>
     </section>
 
-    <!-- View C — 扩展蓝图 live (cut-044 升级自 placeholder)
-         顶部三域状态徽章 + 时间线. -->
+    <!-- View C — 扩展蓝图 live (cut-045 收口)
+         顶部三域状态徽章 + 8 底座能力徽章 + 6 节点演进路线.
+         业务语言化: 不暴露技术术语 (ctx./decision_id/policy_id/evidence_id/SQL).
+         状态徽章必须诚实: 不把规划写为已实现. -->
     <section id="view-c" class="view" data-view="c" hidden>
-      <h2>扩展蓝图 · 演进时间线</h2>
+      <h2>扩展蓝图 · 演进路线与诚实状态</h2>
 
-      <h3>三域状态</h3>
+      <h3>三个 Domain Pack · 业务领域</h3>
       <p>
-        <span class="badge badge-done">采购合规 (live)</span>
-        <span class="badge badge-done">知识管理 (live)</span>
-        <span class="badge badge-done">企业合规 (live)</span>
+        <span class="badge badge-done">✅ 采购合规审查</span>
+        <span class="badge badge-done">✅ 知识管理</span>
+        <span class="badge badge-done">✅ 企业合规审计</span>
       </p>
 
-      <h3>演进时间线</h3>
+      <h3>底座能力 · 八项核心能力</h3>
+      <p>
+        <span class="badge badge-done">✅ 六步闭环</span>
+        <span class="badge badge-done">✅ Rule Registry</span>
+        <span class="badge badge-done">✅ Scenario Spec</span>
+        <span class="badge badge-done">✅ Evidence Trace</span>
+        <span class="badge badge-done">✅ Permission Before Intelligence</span>
+        <span class="badge badge-done">✅ Multi-domain Switching</span>
+        <span class="badge badge-wip">🔨 Same-origin Deployment</span>
+        <span class="badge badge-planned">⬜ Customer Private Deployment</span>
+      </p>
+
+      <h3>演进路线 · 六个里程碑</h3>
+      <ol>
+        <li><strong>单域验证</strong> ✅ — 采购单域闭环跑通, 410 集成测试 + 业务语言演示页</li>
+        <li><strong>多域底座</strong> ✅ — 底座泛化 (subject / rule / intent 不再硬编码), 通用上下文接口</li>
+        <li><strong>三域 demo</strong> ✅ — 采购 + 知识管理 + 企业合规三域共享同一底座</li>
+        <li><strong>自有服务器部署</strong> 🔨 — 自有演示服务器部署包 (API + 数据库 + 反代 + 运行手册) — 当前在途</li>
+        <li><strong>客户 POC</strong> ⬜ — 客户实际环境部署 + 真实数据接入, 需客户需求触发</li>
+        <li><strong>客户私有化部署</strong> ⬜ — 多租户 / 数据隔离 / 备份 SLA / K8s 等客户交付级能力, 远期事件</li>
+      </ol>
+
+      <h3>关键纪律</h3>
       <ul>
-        <li><strong>cut-042</strong> ✅ 底座泛化 + Demo API + SPA 骨架契约（视图 A/B/C 落位）</li>
-        <li><strong>cut-043 + cut-043R</strong> ✅ 知识管理域 + 视图 A 多域切换（inverted registration, 闭包系列 R0..R12 docs-only 闭环）</li>
-        <li><strong>cut-044</strong> ✅ 企业合规域 + 视图 B kernel 架构 + 视图 C live（gap_list 零证据 allowlist, 9 REQUIRES_SYSTEM 关系 / 18 集成测试 / 3 mutation / 4 smoke 全绿）</li>
-        <li><strong>cut-045</strong> ⏳ 收口: 蓝图诚实状态徽章 + 私有化部署包 + 整体验收</li>
+        <li><strong>Permission Before Intelligence</strong>: 权限检查发生在数据访问层, 不靠模型自觉.</li>
+        <li><strong>确定性决策</strong>: 同一份输入, 跑十次结果完全一致 — 不读系统时间, 不读 uuid, 不调用任何外部随机源.</li>
+        <li><strong>业务语言呈现</strong>: 蓝图页不暴露内部字段, 客户看到的是结论 + 凭证 + 出处.</li>
+        <li><strong>三域共享同一底座</strong>: 加新业务只需新增域包, 引擎零改动.</li>
       </ul>
-      <p class="muted">三域共享同一底座 (底座泛化 cut-042), 加新业务只需新增域包, 引擎零改动.</p>
+
+      <p class="muted">三域共享同一底座 (底座泛化 cut-042); 部署层为自有演示服务器, 不做客户私有化交付 (详见 <code>deploy/README.md</code>).</p>
     </section>
   </main>
 
