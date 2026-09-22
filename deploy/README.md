@@ -51,8 +51,11 @@ docker compose -f deploy/docker-compose.demo.yml --env-file deploy/.env up -d
 ```
 
 This brings up:
-- `api` service (the FastAPI app, port 8000 inside the docker network only)
-- `db` service (postgres:16-pgvector, port 5432 inside the docker network only)
+- `api` service — FastAPI app, **published on host loopback `127.0.0.1:8000`**
+  (NOT `0.0.0.0`; nginx proxies `/api/` and `/healthz` to it)
+- `db` service — `pgvector/pgvector:pg16`, port 5432 inside the docker
+  network only (no host port; R3-B2 fix: official pgvector image, no
+  manual tagging needed)
 
 Verify both services are healthy:
 
@@ -60,16 +63,23 @@ Verify both services are healthy:
 docker compose -f deploy/docker-compose.demo.yml ps
 ```
 
-Both should show `(healthy)`. If the API is unhealthy, check `docker logs ece-api-1`.
+Both should show `(healthy)`. If the API is unhealthy, check
+`docker compose -f deploy/docker-compose.demo.yml logs api`.
 
 ## 5. Run migrations + seed the three-domain fixtures
+
+The demo compose database is **only reachable from inside the api
+container** (no host port). Therefore alembic and seed scripts must run
+inside the api container. The reset script (`deploy/scripts/reset-demo-fixtures.sh`)
+handles this — see R3-B2 fix below.
 
 ```bash
 ./deploy/scripts/reset-demo-fixtures.sh
 ```
 
-This runs:
-1. `alembic upgrade head` — schema migration
+This runs (inside the api container):
+1. `alembic upgrade head` — schema migration (R3-B2: via `docker compose
+   run --rm api alembic upgrade head`, NOT host-installed alembic)
 2. `seed_v0_spike_fixture.py` — procurement fixtures
 3. `seed_knowledge_fixture.py` — knowledge-management fixtures
 4. `seed_compliance_fixture.py` — compliance fixtures
@@ -85,8 +95,11 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 The config listens on port 80 by default (with certbot-ready `/.well-known/acme-challenge/`).
-It serves `demos/spa/` as the SPA root and reverse-proxies `/api/` and `/healthz`
-to the `api` service on `127.0.0.1:8000`.
+It serves `/opt/ece/demos/spa/` as the SPA root (path matches the README
+clone target — R3-B1 fix) and reverse-proxies `/api/` and `/healthz` to
+the api service on `127.0.0.1:8000` (host loopback bind from compose —
+R3-B1 fix; replaces the previous topology where nginx targeted an
+unpublished docker port and produced 502).
 
 For HTTPS (recommended for demos):
 
@@ -149,14 +162,15 @@ docker compose -f deploy/docker-compose.demo.yml logs -f db
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `/api/v1/demo/domains` returns 502 | `api` service not running or unhealthy | `docker compose ps`; check `docker logs ece-api-1`; verify `DATABASE_URL` env var |
-| SPA shows raw JSON instead of HTML | nginx `root` wrong path | Confirm `/var/www/ece/demos/spa` exists (or symlink) — `index.html` must be readable |
+| `/api/v1/demo/domains` returns 502 | `api` service not running, or nginx proxying to an unpublished container port (R3-B1 lesson) | `docker compose ps`; check `docker compose logs api`; confirm `127.0.0.1:8000` is bound (`ss -tlnp \| grep :8000`); verify `DATABASE_URL` env var |
+| SPA shows raw JSON instead of HTML | nginx `root` wrong path (R3-B1 lesson: must match clone path `/opt/ece`) | Confirm `/opt/ece/demos/spa/index.html` exists and is readable by the nginx user; if cloning elsewhere, update `root` in `corln.rana.asia.conf` |
 | `403 Forbidden` on `/api/` | CORS / preflight — but same-origin so it shouldn't fire | Verify `Origin` header == `Host` in browser DevTools; check `$host` proxy_set_header |
 | `/healthz` returns 404 | nginx `/healthz` block missing | Confirm `location = /healthz { proxy_pass ... }` present; reload nginx |
 | certbot renew fails | Port 80 not reachable from internet during renewal | Verify inbound 80 is open; temporarily disable other 80 listeners |
 | Postgres "out of memory" | 4 GB RAM is the floor | Upgrade to 8 GB or lower `shared_buffers` in postgres.conf |
 | `ECE_SERVER_TODAY_ANCHOR` rejected (422) | Non-canonical YYYY-MM-DD (e.g. `20260922`) | Use exact `YYYY-MM-DD` form: `2026-09-22` |
 | Demo smoke reports `no_permission` for a "valid" user | Seed fixtures not loaded | Re-run `./deploy/scripts/reset-demo-fixtures.sh` |
+| `alembic upgrade head` not found on host | reset script used host-installed alembic (R3-B2 lesson) | Run reset script (it routes through `docker compose run --rm api`); do not invoke host alembic |
 
 ---
 

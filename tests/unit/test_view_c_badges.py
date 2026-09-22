@@ -141,6 +141,52 @@ def test_view_c_does_not_mark_customer_private_deployment_oh(html_text: str) -> 
 
 
 # ---------------------------------------------------------------------------
+# cut-045R1 R3-B4 — Same-origin Deployment (real) must NOT be marked ✅
+# ---------------------------------------------------------------------------
+
+
+def test_view_c_does_not_mark_same_origin_real_deployment_oh(html_text: str) -> None:
+    """Same-origin Deployment (real production deployment) must NOT be marked ✅.
+
+    cut-045R1 R3-B4 fix: the cut-045 report claimed Same-origin Deployment ✅
+    but only config-as-code (yaml + nginx conf) was shipped; the real production
+    deployment (corln.rana.asia) has not been verified end-to-end. View C must
+    distinguish:
+      - Same-origin Deployment (config-as-code) ✅ — code + nginx conf shipped
+      - Same-origin Deployment (real deployment) 🔨 — production deploy pending
+      - Customer Private Deployment ⬜ — future event
+
+    This test extracts the entire `<span>` tag containing "Same-origin
+    Deployment" and asserts the badge class is "badge-wip" (in-progress),
+    not "badge-done" (✅). The emoji marker inside the span confirms 🔨.
+    """
+    idx = html_text.find("Same-origin Deployment")
+    if idx == -1:
+        pytest.fail("Same-origin Deployment badge missing entirely")
+    # Find enclosing <span ...> ... </span> by searching backwards for the
+    # nearest `<span` and forwards for the nearest `</span>`.
+    span_open_idx = html_text.rfind("<span", 0, idx)
+    span_close_idx = html_text.find("</span>", idx)
+    if span_open_idx == -1 or span_close_idx == -1:
+        pytest.fail("Same-origin Deployment badge not wrapped in <span>")
+    span = html_text[span_open_idx:span_close_idx + len("</span>")]
+    # Span must NOT contain "✅" (no done marker)
+    assert "✅" not in span, (
+        f"View C marks Same-origin Deployment as ✅ (in span: {span!r}) — "
+        f"but real deployment to corln.rana.asia has not been verified "
+        f"end-to-end. Per cut-045R1 R3-B4: real deployment should be 🔨 "
+        f"(in-progress), config-as-code is ✅. Distinguishing the two "
+        f"prevents audit accidents."
+    )
+    # Span MUST contain "🔨" (in-progress marker)
+    assert "🔨" in span, (
+        f"View C must mark Same-origin Deployment (real) with 🔨 marker "
+        f"when the production deployment is not yet verified end-to-end. "
+        f"Span found: {span!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Evolution roadmap (演进路线) — directive §3.3
 # ---------------------------------------------------------------------------
 

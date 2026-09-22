@@ -26,7 +26,7 @@ tests/integration/test_v0_loop.py [31mF[0m[31m                               
 [1m[31mE   RuntimeError: loop did not close: re-read review_status='pending' != decision_value='review_required'[0m
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_v0_loop.py::[1mtest_re_read_asks_the_assembly_path_again[0m - RuntimeError: loop did not close: re-read review_status='pending' != decisi...
-[31m============================== [31m[1m1 failed[0m[31m in 0.80s[0m[31m ===============================[0m
+[31m============================== [31m[1m1 failed[0m[31m in 0.77s[0m[31m ===============================[0m
 
 ```
 
@@ -41,7 +41,7 @@ collected 1 item
 
 tests/integration/test_v0_loop.py [32m.[0m[32m                                      [100%][0m
 
-[32m============================== [32m[1m1 passed[0m[32m in 0.67s[0m[32m ===============================[0m
+[32m============================== [32m[1m1 passed[0m[32m in 0.62s[0m[32m ===============================[0m
 
 ```
 

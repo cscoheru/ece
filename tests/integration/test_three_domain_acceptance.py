@@ -63,12 +63,19 @@ def test_domains_endpoint_lists_all_three(client: TestClient) -> None:
 
 
 def test_procurement_valid_alice_200(client: TestClient) -> None:
-    """procurement + proc-alice (valid user) → 200 + auto_approved/review_required."""
+    """procurement + spike-user-procurement (valid seeded user) → 200 + auto_approved/review_required.
+
+    R3-B3 fix (Codex R1 HOLD): the previous version used `proc-alice`,
+    which is NOT a seeded actor in the procurement fixture. Per
+    `scripts/seed_v0_spike_fixture.py` + `scenarios/default.yaml`, the
+    actual valid procurement actor is `spike-user-procurement`
+    (dept=procurement, roles=[buyer]).
+    """
     out = _post_scenario(
         client,
         domain="procurement",
         params={"amount": 50000, "quote_count": 3},
-        user="proc-alice",
+        user="spike-user-procurement",
     )
     assert out["status"] == 200, out
     body = out["body"]

@@ -26,7 +26,7 @@ tests/integration/test_v0_loop.py [31mF[0m[31m                               
 [1m[31mE   RuntimeError: loop did not close: re-read review_status='pending' != decision_value='review_required'[0m
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_v0_loop.py::[1mtest_loop_result_carries_every_step_product[0m - RuntimeError: loop did not close: re-read review_status='pending' != decisi...
-[31m============================== [31m[1m1 failed[0m[31m in 0.66s[0m[31m ===============================[0m
+[31m============================== [31m[1m1 failed[0m[31m in 0.65s[0m[31m ===============================[0m
 
 ```
 
@@ -41,7 +41,7 @@ collected 1 item
 
 tests/integration/test_v0_loop.py [32m.[0m[32m                                      [100%][0m
 
-[32m============================== [32m[1m1 passed[0m[32m in 0.68s[0m[32m ===============================[0m
+[32m============================== [32m[1m1 passed[0m[32m in 0.61s[0m[32m ===============================[0m
 
 ```
 

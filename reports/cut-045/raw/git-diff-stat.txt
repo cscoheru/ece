@@ -1,15 +1,22 @@
- demos/spa/index.html                              |  60 ++-
- demos/spa/styles.css                              |  13 +
- deploy/.env.example                               |  33 ++
- deploy/README.md                                  | 164 ++++++++
- deploy/docker-compose.demo.yml                    |  77 ++++
- deploy/nginx/corln.rana.asia.conf                 | 106 ++++++
- deploy/scripts/reset-demo-fixtures.sh             |  51 +++
- scripts/cut_045_demo_deployment_smoke.py          | 438 ++++++++++++++++++++++
- tests/integration/test_demo_reset_script.py       |  94 +++++
- tests/integration/test_three_domain_acceptance.py | 257 +++++++++++++
- tests/unit/test_demo_smoke_script.py              | 175 +++++++++
- tests/unit/test_deployment_compose.py             | 168 +++++++++
- tests/unit/test_nginx_config.py                   | 132 +++++++
- tests/unit/test_view_c_badges.py                  | 222 +++++++++++
- 14 files changed, 1973 insertions(+), 17 deletions(-)
+ deploy/README.md                                   |  32 ++--
+ deploy/docker-compose.demo.yml                     |  57 +++++---
+ deploy/nginx/corln.rana.asia.conf                  |  17 ++-
+ deploy/scripts/reset-demo-fixtures.sh              |  79 +++++++---
+ .../M1_re_read_through_assembly_skipped.md         |   4 +-
+ .../M2_apply_context_update_skip_sql.md            |   4 +-
+ .../M3_permission_acl_check_bypassed.md            |   4 +-
+ ...ed_conditions_inject_nondeterministic_amount.md |   8 +-
+ .../M5_jwt_decode_skips_signature_verification.md  |   4 +-
+ .../M6_materialize_fn_disabled_in_loop.md          |   2 +-
+ .../mutation-evidence/M1_km_validity_invert.md     |   4 +-
+ .../mutation-evidence/M2_km_permission_invert.md   |   4 +-
+ .../mutation-evidence/M3_km_decision_and_to_or.md  |   4 +-
+ .../M1_comp_count_condition_invert.md              |   4 +-
+ .../M2_comp_coverage_issubset_to_isdisjoint.md     |   4 +-
+ .../M3_comp_decision_force_gap_list.md             |   4 +-
+ reports/cut-045-report.md                          | 162 +++++++++++++++------
+ reports/cut-045/raw/git-diff-stat.txt              |  15 --
+ scripts/cut_045_demo_deployment_smoke.py           |  21 ++-
+ tests/integration/test_three_domain_acceptance.py  |  11 +-
+ tests/unit/test_view_c_badges.py                   |  46 ++++++
+ 21 files changed, 345 insertions(+), 145 deletions(-)

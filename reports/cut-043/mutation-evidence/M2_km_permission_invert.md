@@ -33,7 +33,7 @@ tests/integration/test_knowledge_boundary.py [31mF[0m[31m                    
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_knowledge_boundary.py::[1mtest_knowledge_boundary_truth_table[validity_pass_perm_fail_needs_valid][0m - AssertionError: policy_id=KM-POL-003 user_id=km-alice: decision_value='answ...
-[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.53s[0m[31m =========================[0m
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.51s[0m[31m =========================[0m
 
 ```
 
@@ -54,7 +54,7 @@ tests/integration/test_knowledge_boundary.py [32m.[0m[33m                    
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.48s[0m[33m =========================[0m
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.45s[0m[33m =========================[0m
 
 ```
 

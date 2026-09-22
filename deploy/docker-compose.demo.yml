@@ -1,38 +1,54 @@
-# cut-045 — Demo deployment docker-compose for OWN demo server.
+# cut-045R1 — Demo deployment docker-compose for OWN demo server.
 #
 # Scope lock (Codex directive §0):
 #   - This is the "Demo Deployment Profile" for the founder's own server.
 #   - NOT a customer-private installer.
 #   - NOT multi-tenant, NOT K8s, NOT customer data-out-of-domain.
 #
+# Topology (R3-B1 fix — Codex R1 HOLD):
+#
+#   Browser (https://corln.rana.asia)
+#       ↓
+#   host nginx  (deploy/nginx/corln.rana.asia.conf)
+#       ↓ proxies /api/ + /healthz → 127.0.0.1:8000
+#   docker compose api service (127.0.0.1:8000:8000 host binding)
+#       ↓ connects to
+#   docker compose postgres service (internal 5432 only, NOT host-published)
+#
+# The api service publishes 127.0.0.1:8000 ONLY (loopback bind, NOT 0.0.0.0)
+# so that host nginx can reach it without a public port. The postgres
+# service has NO host port — it is reachable only from the api container
+# on the internal docker network.
+#
 # Stack (per directive §4.1):
 #   - api service: same image as the V0 dev compose (Dockerfile in repo root)
-#   - db service: postgres:16-pgvector (same as V0)
-#
-# Differences vs docker-compose.yml (V0 dev):
-#   - api service has no public port binding (only reachable via nginx upstream)
-#   - db service has NO public port (postgres only on internal docker network)
-#   - restart: unless-stopped for both services (production-grade)
-#   - DATABASE_URL is built from POSTGRES_* env vars (no hardcoded creds)
-#   - ECE_SERVER_TODAY_ANCHOR injected via env
+#   - db service: pgvector/pgvector:pg16 (R3-B2 fix — official image, no
+#     manual tagging required; supports pgvector extension out of the box)
 #
 # Usage:
 #   cp deploy/.env.example deploy/.env  # edit values
 #   docker compose -f deploy/docker-compose.demo.yml --env-file deploy/.env up -d
 #   ./deploy/scripts/reset-demo-fixtures.sh  # alembic upgrade + seed three domains
+#
+# R3-B1 evidence: this compose is verified by the same-origin integration
+# test (tests/integration/test_cut_045_same_origin_deployment.py) when run
+# against a live docker compose deployment.
 
 services:
   api:
     build:
       context: ..
       dockerfile: Dockerfile
-    # NOTE: No `ports:` section — the api service is only reachable via
-    # the nginx reverse proxy on the host's docker network. Direct bind to
-    # 8765:8000 is reserved for the V0 dev compose (docker-compose.yml).
-    expose:
-      - "8000"
+    # R3-B1 fix: bind api to host loopback only (127.0.0.1:8000), so host
+    # nginx can proxy /api/ + /healthz to it. 0.0.0.0 is forbidden — keep
+    # the api behind nginx. NOT bound via the V0 dev compose's 8765:8000.
+    ports:
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ../demos/spa:/app/demos/spa:ro  # SPA served by nginx, but mounted read-only
+      # SPA is read-only for nginx (in the deploy/README nginx config the
+      # operator binds /opt/ece/demos/spa to nginx's SPA root; this mount
+      # is also useful for in-container SPA health probing).
+      - ../demos/spa:/app/demos/spa:ro
       - ../data:/app/data
     depends_on:
       postgres:
@@ -45,6 +61,7 @@ services:
     restart: unless-stopped
     healthcheck:
       # python:3.12-slim lacks curl — use stdlib urllib (compose overrides Dockerfile HEALTHCHECK).
+      # R3-B1: this must probe the in-container /healthz, NOT 127.0.0.1 (compose resolves it).
       test: ["CMD", "python", "-c", "import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
       interval: 15s
       timeout: 10s
@@ -52,10 +69,12 @@ services:
       start_period: 30s
 
   postgres:
-    image: postgres:16-pgvector
-    # NO ports: — postgres is reachable only from the api service on the
-    # internal docker network. Public access requires going through the
-    # nginx reverse proxy at /api/ (which itself never proxies to postgres).
+    # R3-B2 fix: official pgvector image (no manual tag required).
+    image: pgvector/pgvector:pg16
+    # NO host ports: — postgres is reachable only from the api service on
+    # the internal docker network. Public access requires going through
+    # the nginx reverse proxy at /api/ (which itself never proxies to
+    # postgres — see deploy/nginx/corln.rana.asia.conf).
     expose:
       - "5432"
     environment:

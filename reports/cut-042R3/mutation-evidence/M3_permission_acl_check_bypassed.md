@@ -29,7 +29,7 @@ tests/integration/test_params_land_in_db.py::test_denied_user_does_not_write_to_
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_params_land_in_db.py::[1mtest_denied_user_does_not_write_to_db[0m - AssertionError: R2-F1: denied user must get no_permission; got 'auto_approved'
-[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.60s[0m[31m =========================[0m
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.57s[0m[31m =========================[0m
 
 ```
 
@@ -50,7 +50,7 @@ tests/integration/test_params_land_in_db.py::test_denied_user_does_not_write_to_
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.48s[0m[33m =========================[0m
+[33m========================= [32m1 passed[0m, [33m[1m1 warning[0m[33m in 0.45s[0m[33m =========================[0m
 
 ```
 

@@ -18,11 +18,11 @@ tests/integration/test_v0_specialized.py [31mF[0m[31m                        
     [0m[94massert[39;49;00m [96mlen[39;49;00m([96mset[39;49;00m(conditions_dump)) == [94m1[39;49;00m, ([90m[39;49;00m
 [1m[31mE   AssertionError: evaluated_conditions must be byte-equal across N=10 runs; got 10 distinct shape(s)[0m
 [1m[31mE   assert 10 == 1[0m
-[1m[31mE    +  where 10 = len({'[{"actual":1280012,"claim":"\\u91d1\\u989d 1,280,012 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...})[0m
-[1m[31mE    +    where {'[{"actual":1280012,"claim":"\\u91d1\\u989d 1,280,012 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...} = set(['[{"actual":1280810,"claim":"\\u91d1\\u989d 1,280,810 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...])[0m
+[1m[31mE    +  where 10 = len({'[{"actual":1280011,"claim":"\\u91d1\\u989d 1,280,011 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...})[0m
+[1m[31mE    +    where {'[{"actual":1280011,"claim":"\\u91d1\\u989d 1,280,011 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...} = set(['[{"actual":1280011,"claim":"\\u91d1\\u989d 1,280,011 \\u2265 1,000,000","expr":"amount >= 1000000","name":"amount_gt...ef7\\u5bb6\\u6570 1 < 3","expr":"quote_count < 3","name":"quote_count_lt_required","passed":true,"threshold":3}]', ...])[0m
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_v0_specialized.py::[1mtest_determinism_under_loop_runs_byte_equal_decision_and_conditions[0m - AssertionError: evaluated_conditions must be byte-equal across N=10 runs; g...
-[31m============================== [31m[1m1 failed[0m[31m in 0.93s[0m[31m ===============================[0m
+[31m============================== [31m[1m1 failed[0m[31m in 0.86s[0m[31m ===============================[0m
 
 ```
 
@@ -37,7 +37,7 @@ collected 1 item
 
 tests/integration/test_v0_specialized.py [32m.[0m[32m                               [100%][0m
 
-[32m============================== [32m[1m1 passed[0m[32m in 0.88s[0m[32m ===============================[0m
+[32m============================== [32m[1m1 passed[0m[32m in 0.83s[0m[32m ===============================[0m
 
 ```
 

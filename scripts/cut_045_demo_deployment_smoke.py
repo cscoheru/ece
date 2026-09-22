@@ -68,6 +68,13 @@ DEMO_BASE_URL = DEMO_BASE_URL.rstrip("/")
 # in tests/unit/test_demo_smoke_script.py catches it.
 ALLOWED_LOCAL_DEFAULT = "http://127.0.0.1:8080"
 
+PROCUREMENT_VALID_USER = "spike-user-procurement"  # spec.yaml: roles=[buyer]
+PROCUREMENT_DENIED_USER = "spike-user-unrelated"    # spec.yaml: DENIED
+KNOWLEDGE_VALID_USER = "km-alice"                   # KM seeded actor
+KNOWLEDGE_DENIED_USER = "km-eve"                    # spec.yaml: DENIED
+COMPLIANCE_VALID_USER = "comp-alice"                # seeded actor
+COMPLIANCE_DENIED_USER = "comp-eve"                 # spec.yaml: DENIED
+
 # Constants for the cut-045 acceptance DoD
 COMPLIANCE_TODAY = "2026-09-22"
 COMPLIANCE_VALID_PARAMS = {
@@ -178,7 +185,13 @@ def _check_2_domains_three() -> tuple[bool, str]:
 
 
 def _check_3_proc_alice_valid() -> tuple[bool, str]:
-    """proc-alice + valid params → 200 + auto_approved|review_required."""
+    """spike-user-procurement (spec allowed_users) → 200 + auto_approved|review_required.
+
+    R3-B3 fix (Codex R1 HOLD): the previous version used `proc-alice`,
+    which is NOT a seeded actor in the procurement fixture. The actual
+    valid procurement actor per `scripts/seed_v0_spike_fixture.py` +
+    `spec.yaml` is `spike-user-procurement` (roles=[buyer], dept=procurement).
+    """
     try:
         status, payload = _post_json(
             "/api/v1/demo/scenarios/generate",
@@ -187,7 +200,7 @@ def _check_3_proc_alice_valid() -> tuple[bool, str]:
                 "scenario": "default",
                 "params": {"amount": 50000, "quote_count": 3},
             },
-            headers={"X-User-Id": "proc-alice"},
+            headers={"X-User-Id": PROCUREMENT_VALID_USER},
         )
     except RuntimeError as exc:
         return False, f"transport: {exc}"
@@ -217,7 +230,7 @@ def _check_4_proc_denied_no_permission() -> tuple[bool, str]:
                 "scenario": "default",
                 "params": {"amount": 50000, "quote_count": 3},
             },
-            headers={"X-User-Id": "spike-user-unrelated"},
+            headers={"X-User-Id": PROCUREMENT_DENIED_USER},
         )
     except RuntimeError as exc:
         return False, f"transport: {exc}"
@@ -425,7 +438,7 @@ def _check_10_zero_cdn() -> tuple[bool, str]:
 _CHECKS: list[tuple[str, callable]] = [
     ("1. SPA index.html reachable from origin (proxy proof)", _check_1_spa_index_html),
     ("2. /api/v1/demo/domains lists procurement + knowledge + compliance", _check_2_domains_three),
-    ("3. procurement valid (proc-alice → auto_approved|review_required)", _check_3_proc_alice_valid),
+    ("3. procurement valid (spike-user-procurement → auto_approved|review_required)", _check_3_proc_alice_valid),
     ("4. procurement denied (spike-user-unrelated → no_permission)", _check_4_proc_denied_no_permission),
     ("5. knowledge valid (km-alice + KM-POL-001 → answerable)", _check_5_km_alice_answerable),
     ("6. knowledge denied (km-eve + KM-POL-001 → no_permission)", _check_6_km_eve_denied),

@@ -26,7 +26,7 @@ tests/integration/test_params_land_in_db.py::test_params_quote_count_lands_in_db
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 [36m[1m=========================== short test summary info ============================[0m
 [31mFAILED[0m tests/integration/test_params_land_in_db.py::[1mtest_params_quote_count_lands_in_db_after_loop[0m - AssertionError: R2-F2: DB SELECTS relation count must equal params.quote_co...
-[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.53s[0m[31m =========================[0m
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.49s[0m[31m =========================[0m
 
 ```
 
