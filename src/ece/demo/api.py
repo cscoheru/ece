@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import contextlib
 import importlib
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -306,6 +307,102 @@ def generate_scenario(
                     ),
                 )
         root_id_field_used = spec.root_params_fields[0]
+
+    # cut-043R R5-B1 — server-owned temporal anchor. Packs that declare
+    # `requires_server_today_anchor: true` MUST receive `today` from the server,
+    # not from `req.params.today`. The boundary:
+    #   1. refuses any client-supplied `today` (422 — the client has no authority
+    #      to rewrite the validity window)
+    #   2. injects `params["today"] = <server_anchor>` so the rule layer can
+    #      read it from `params` without code changes
+    # The server anchor is read from `ECE_SERVER_TODAY_ANCHOR` env var, with
+    # a fallback to today's date so dev / test environments work without
+    # explicit configuration.
+    #
+    # cut-043R3 R7-B2 — anchor must be a valid ISO date. Codex R7 reproduced
+    # that `ECE_SERVER_TODAY_ANCHOR=not-a-date` silently flowed through to the
+    # rule layer, returning 200 with reason text containing "今日 not-a-date".
+    # We now validate with `date.fromisoformat()` and 422 on failure so an
+    # ops misconfig fails fast at the API boundary, not inside the rule.
+    #
+    # cut-043R4 R8-B1 — `date.fromisoformat()` accepts ISO 8601 forms other
+    # than strict `YYYY-MM-DD`: e.g. `20260922` (basic format) and
+    # `2026-W38-2` (ISO week date). Both would pass the R7-B2 check, then
+    # silently enter business reason text as the operator-supplied raw
+    # string (which would NOT match the parsed date's `isoformat()`). Codex
+    # R8 reproduced this drift. The fix is a canonical round-trip check:
+    # the parsed date's `isoformat()` MUST equal the raw input. This
+    # rejects `20260922`, `2026-W38-2`, and any other non-`YYYY-MM-DD`
+    # ISO form while still accepting the canonical date format.
+    #
+    # cut-043R4 R8-B1 (UTC vs local) — fallback is `date.today()` which
+    # returns the **local** date, not UTC. The docstring previously said
+    # "today's UTC date (canonical)" — that was wrong. In a single-host
+    # demo server this is fine, but the comment now matches the actual
+    # behavior. The `requires_server_today_anchor` opt-in exists precisely
+    # so that production deployments set the env var explicitly and avoid
+    # this local-time ambiguity.
+    if spec.requires_server_today_anchor:
+        if "today" in req.params:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "today is server-owned for pack="
+                    f"{spec.pack!r} (requires_server_today_anchor=true); "
+                    "do not pass params.today — server will inject the anchor"
+                ),
+            )
+        from datetime import date
+        raw_anchor = os.environ.get("ECE_SERVER_TODAY_ANCHOR")
+        if raw_anchor is not None:
+            try:
+                parsed = date.fromisoformat(raw_anchor)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "ECE_SERVER_TODAY_ANCHOR must be a strict YYYY-MM-DD "
+                        f"date, got {raw_anchor!r}; fix the env var or unset "
+                        "it to fall back to today's local date"
+                    ),
+                ) from exc
+            # R8-B1: canonical round-trip — the parsed date's `isoformat()`
+            # MUST equal the raw input. This rejects ISO 8601 forms other
+            # than strict `YYYY-MM-DD` (e.g. `20260922` basic format or
+            # `2026-W38-2` week date) which `date.fromisoformat()` accepts
+            # but which would silently flow into business reason text as a
+            # different string than the parsed date represents.
+            if parsed.isoformat() != raw_anchor:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "ECE_SERVER_TODAY_ANCHOR must be a strict YYYY-MM-DD "
+                        f"date, got {raw_anchor!r} (parsed as {parsed.isoformat()!r}); "
+                        "non-canonical ISO 8601 forms (basic, week-date, ordinal) "
+                        "are not accepted to keep the value safe to embed in "
+                        "business reason text"
+                    ),
+                )
+            server_today = parsed.isoformat()
+        else:
+            server_today = date.today().isoformat()
+        req.params["today"] = server_today
+
+    # cut-043R R5-B4 — when route_root_via_params is true, the routing field
+    # is the SINGLE source of root identity. The legacy `root_source_id` /
+    # `pr_source_id` overrides MUST be rejected (they would silently route
+    # to a different entity, defeating the validation we just did).
+    if spec.route_root_via_params and (
+        "root_source_id" in req.params or "pr_source_id" in req.params
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"root_source_id / pr_source_id overrides are forbidden when "
+                f"route_root_via_params=true (pack={spec.pack!r}); the routing "
+                f"field {spec.root_params_fields[0]!r} is the single source of root identity"
+            ),
+        )
 
     root_source_id_from_params: str = ""
     if root_id_field_used:

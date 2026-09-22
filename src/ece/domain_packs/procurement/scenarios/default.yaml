@@ -20,6 +20,10 @@ root_params_fields:
 # relations materialization. quote_count rebuilds SELECTS relations to match.
 relations_fields:
   - quote_count
+# cut-043R R5-B2 — procurement 的 auto_approved 路径在双失败 (amount < threshold
+# AND quote_count >= REQUIRED) 时也会产生 0 evidence. 显式声明 allowlist.
+zero_evidence_decisions:
+  - auto_approved
 params_schema:
   amount: int
   quote_count: int

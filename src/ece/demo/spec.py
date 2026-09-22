@@ -69,6 +69,15 @@ class ScenarioSpec:
     # as the root entity identifier (rather than `default_root_source_id`). KM pack
     # sets this; procurement does not (its root is fixed as SPIKE-PR-001).
     route_root_via_params: bool = False
+    # cut-043R R5-B1 — server-owned temporal anchor. Packs that evaluate
+    # "validity window" against `today` MUST declare this and the API will
+    # inject the server anchor via params (never accept client-supplied `today`).
+    requires_server_today_anchor: bool = False
+    # cut-043R R5-B2 — explicit allowlist of decision_values that may have
+    # ZERO evidence rows. Loop & update refuse to write a `review_status`
+    # unless the value is on this list OR at least one evidence row exists.
+    # Procurement: ["auto_approved"]. Knowledge: ["needs_valid_policy"].
+    zero_evidence_decisions: tuple[str, ...] = ()
     # 既有
     params_schema: dict[str, Any] = field(default_factory=dict)
     denied_users: list[str] = field(default_factory=list)
@@ -156,6 +165,12 @@ def load_scenario_spec(pack: str, scenario: str) -> ScenarioSpec:
         relations_fields=tuple(raw.get("relations_fields") or ()),
         # cut-043 — explicit opt-in flag for params-driven root routing.
         route_root_via_params=bool(raw.get("route_root_via_params") or False),
+        # cut-043R R5-B1 — server-owned temporal anchor opt-in.
+        requires_server_today_anchor=bool(
+            raw.get("requires_server_today_anchor") or False
+        ),
+        # cut-043R R5-B2 — allowlist of decision_values that may have 0 evidence.
+        zero_evidence_decisions=tuple(raw.get("zero_evidence_decisions") or ()),
         # 既有
         params_schema=dict(raw.get("params_schema") or {}),
         denied_users=list(raw.get("denied_users") or []),

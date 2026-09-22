@@ -524,16 +524,24 @@ def _run_demo_loop_impl(
     evidence_ids = [r["evidence_id"] for r in rows]
 
     # cut-042R F4 — handle 0-evidence case for clean/auto_approved path.
+    # cut-043R R5-B2 — generalize: ANY decision_value on the pack's
+    # `zero_evidence_decisions` allowlist is permitted with no evidence rows.
+    # Procurement declares ["auto_approved"]; knowledge declares
+    # ["needs_valid_policy"] so a double-failure (validity AND permission both
+    # failed) does not 500.
     primary_evidence_id: str | None = evidence_ids[0] if evidence_ids else None
-    if primary_evidence_id is None and dec["decision_value"] != "auto_approved":
+    allowed_zero_evidence = set(scenario_spec.zero_evidence_decisions or ())
+    if primary_evidence_id is None and dec["decision_value"] not in allowed_zero_evidence:
         raise RuntimeError(
-            f"review_required decision has no evidence rows; "
+            f"decision {dec['decision_value']!r} has no evidence rows but is not in "
+            f"scenario_spec.zero_evidence_decisions={sorted(allowed_zero_evidence)}; "
             f"evidence_ids={evidence_ids}, conditions={conditions}"
         )
 
     # [6] apply_context_update + re-read through assembly path.
     apply_context_update(
         engine, root_source_id, source_system, dec, primary_evidence_id,
+        zero_evidence_decisions=scenario_spec.zero_evidence_decisions,
     )
     re_read_attrs = _re_read_through_assembly(
         engine, user_ref, display_id, root_type, scenario_spec.spec,

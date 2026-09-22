@@ -25,6 +25,11 @@ import sys
 
 from ece.db import get_engine
 from ece.seed import seed_demo_relationships
+# cut-043R R5-B3 — the inverted resolver requires the pack side-effect to fire
+# before any `ece.entities.pipeline.upsert_relationship` call. Importing the
+# procurement pack triggers `register_ontology_for_system('demo', ...)` and
+# `register_ontology_for_system('spike', ...)`.
+import ece.domain_packs.procurement  # noqa: F401
 
 
 def main() -> int:

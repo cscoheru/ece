@@ -47,16 +47,15 @@
     var paramsEl = document.getElementById("params-container");
     if (!paramsEl) return;
     if (domain === "knowledge") {
+      // cut-043R R5-B1/R5-B4: 员工身份来自上方"调用方"下拉 (X-User-Id).
+      // `today` 是服务器锚定的有效期基准, 严禁前端输入 (避免 2024-06-01
+      // 之类的回溯攻击绕过有效期). 规则层从 ctx.user 读 employee 身份,
+      // 不需要 employee_id 参数.
       paramsEl.innerHTML =
         '<label><span>制度编号</span>' +
         '<input name="policy_id" type="text" value="KM-POL-001" ' +
         'placeholder="如 KM-POL-001"></label>' +
-        '<label><span>员工编号</span>' +
-        '<input name="employee_id" type="text" value="km-alice" ' +
-        'placeholder="如 km-alice"></label>' +
-        '<label><span>参照日期（YYYY-MM-DD）</span>' +
-        '<input name="today" type="text" value="2026-09-22" ' +
-        'placeholder="默认 2026-09-22"></label>';
+        '<p class="param-hint">员工身份由上方「调用方」下拉指定, 参照日期由服务器锚定.</p>';
     } else {
       // procurement default (also fallback)
       paramsEl.innerHTML =
@@ -69,14 +68,13 @@
 
   function payloadForDomain(domain, fd) {
     if (domain === "knowledge") {
-      var today = String(fd.get("today") || "2026-09-22").trim();
+      // cut-043R R5-B1/R5-B4: 不再发送 employee_id / today.
+      // 员工身份 → X-User-Id header (F1); today → ECE_SERVER_TODAY_ANCHOR.
       return {
         domain: "knowledge",
         scenario: "default",
         params: {
           policy_id: String(fd.get("policy_id") || ""),
-          employee_id: String(fd.get("employee_id") || ""),
-          today: today,
         },
       };
     }

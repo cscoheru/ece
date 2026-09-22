@@ -25,6 +25,8 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity, upsert_relationship
+# cut-043R R5-B3 — inverted resolver requires the pack side-effect to fire.
+import ece.domain_packs.procurement  # noqa: F401
 
 # Roles to seed (extracted from demo person attributes + PRD §48)
 ROLES = ["procurement_manager", "finance_manager", "buyer"]

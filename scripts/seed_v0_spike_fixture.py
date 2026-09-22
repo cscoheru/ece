@@ -47,6 +47,10 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity, upsert_relationship
+# cut-043R R5-B3 — the inverted resolver requires the pack side-effect to fire
+# before any upsert_relationship call. Importing the procurement pack
+# triggers self-registration of the `spike` prefix.
+import ece.domain_packs.procurement  # noqa: F401
 
 SPIKE_SOURCE_SYSTEM = "spike:v0-technical-fixture"
 

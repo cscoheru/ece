@@ -50,6 +50,9 @@ def test_knowledge_post_route_uses_pack_specific_scenario_spec() -> None:
 
     This test does NOT assert the rule's behavior (covered by
     `test_knowledge_boundary.py`); it pins the routing contract.
+
+    cut-043R R5-B1/R5-B4 conformance: NO `today` (server-owned), NO
+    `employee_id` (caller identity is X-User-Id).
     """
     client = TestClient(app)
     resp = client.post(
@@ -60,8 +63,6 @@ def test_knowledge_post_route_uses_pack_specific_scenario_spec() -> None:
             "scenario": "default",
             "params": {
                 "policy_id": "KM-POL-001",
-                "employee_id": "km-alice",
-                "today": "2026-09-22",
             },
         },
     )

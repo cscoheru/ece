@@ -55,6 +55,12 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity, upsert_relationship
+# cut-043R R5-B3 — the inverted resolver requires the pack side-effect to fire
+# (otherwise `is_allowed_for_system` is fail-closed and rejects km:* relations).
+# Importing `ece.domain_packs.knowledge` triggers self-registration of the
+# `km` prefix in `ece.entities.ontology_resolver`. The seeder mirrors what the
+# API path does via `_discover_domains`.
+import ece.domain_packs.knowledge  # noqa: F401
 
 KM_SOURCE_SYSTEM = "km:v0-knowledge-fixture"
 

@@ -10,6 +10,15 @@ default_root_source_id: "KM-POL-001"
 # 作为 root_source_id (而非 default_root_source_id). KM 域的 root 实体由 params 决定,
 # procurement 域的 root 实体固定为 SPIKE-PR-001 — 两条不同路径.
 route_root_via_params: true
+# cut-043R R5-B1 — `today` 是制度有效期的裁定基准, 不能由请求方控制.
+# API 层检测到本 flag 时:
+#   1) 拒绝任何 req.params.today (422 — client 无 authority 改写有效期)
+#   2) 从 ECE_SERVER_TODAY_ANCHOR 或 fallback (date.today) 注入 today 到 params
+requires_server_today_anchor: true
+# cut-043R R5-B2 — `needs_valid_policy` 是合法业务结论 (双条件失败时),
+# 不要求 evidence row. generic loop 与 apply_context_update 按此 allowlist 放行 0 evidence.
+zero_evidence_decisions:
+  - needs_valid_policy
 root_entity:
   type: policy_document
   id_field: source_id
@@ -21,16 +30,12 @@ rule_id: R-KM-ACCESS
 # ("answerable" / "needs_valid_policy") and the `reason` string; the column name
 # is the storage slot, not the business concept.
 decision_key: review_status
-# cut-043 — params 字段会真实写回 root.attrs (DB 真实更新)
-# policy_id 是 PR 自身字段; employee_id 是 SELECTS 关系计数, 不写入 PR.attrs
+# cut-043R R5-B4 — KM 不再需要 employee_id 参数. 员工身份统一来自 X-User-Id
+# (assemble_context 已将 caller identity 含 roles 注入 ctx.user);规则层读 ctx.user,
+# 避免出现"看似可指定他人, 实际不生效"的误导性参数.
 root_params_fields:
   - policy_id
-# cut-043 — relations_fields 声明哪个 params 驱动 pack-owned relations materialization
-# (与 procurement 的 quote_count → SELECTS 同构: employee_id → HAS_ROLE relations)
-relations_fields:
-  - employee_id
 params_schema:
   policy_id: str
-  employee_id: str
 denied_users:
   - km-eve

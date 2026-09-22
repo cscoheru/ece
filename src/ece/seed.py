@@ -25,6 +25,11 @@ from sqlalchemy import text
 
 from ece.db import get_engine
 from ece.entities.pipeline import upsert_entity, upsert_relationship
+# cut-043R R5-B3 — the inverted resolver requires the pack side-effect to fire
+# before any `upsert_relationship` call. Importing the procurement pack here
+# triggers self-registration of the `demo`/`spike` prefixes (used by
+# seed_demo_relationships and seed_v0_spike_fixture).
+import ece.domain_packs.procurement  # noqa: F401
 
 # Map from gen_dataset top-level key -> entity_type (per PRD §27).
 # Some lists contain str (name only), others contain dict (id + fields).

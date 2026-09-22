@@ -6,14 +6,20 @@ Per ece/TASKS.md S1.2:
 
 导出 dict-like object, 无 YAML lib 依赖; 实际配置在 sibling ontology.py 导入时即注册.
 
-cut-043 — register this pack's ontology with `ece.entities.ontology_resolver`
-so that `km:*` source_systems are routed to the KM ontology (not procurement's).
-This satisfies 铁律 4 (no engine→pack import; the resolver is engine-side,
-and the pack's `__init__.py` is the registration site).
+cut-043R R5-B3 — INVERTED registration. Pack side imports the resolver and
+registers itself for the `km` source-system prefix. The resolver does NOT
+import this module (that would re-introduce the isolation violation).
 """
-# Side-effect: register this pack's ontology with the engine-side resolver.
-import ece.entities.ontology_resolver  # noqa: F401
+# Self-register with the engine-side resolver. This import direction is the
+# only one allowed: pack → resolver (engine). Never the reverse.
+from ece.entities.ontology_resolver import register_ontology_for_system
 
 from .ontology import allowed_relations, allowed_targets, is_allowed
+
+register_ontology_for_system(
+    "km",  # covers source_system="km:v0-knowledge-fixture"
+    is_allowed_fn=is_allowed,
+    allowed_targets_fn=allowed_targets,
+)
 
 __all__ = ["allowed_relations", "allowed_targets", "is_allowed"]

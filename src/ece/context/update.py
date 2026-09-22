@@ -50,6 +50,8 @@ def apply_context_update(
     source_system: str,
     decision: Mapping[str, Any],
     evidence_id: str | None,  # cut-042R F4: None allowed for auto_approved
+    *,
+    zero_evidence_decisions: tuple[str, ...] | None = None,  # cut-043R R5-B2
 ) -> None:
     """Write the four `review_*` keys onto the entity identified by `(source_id, source_system)`.
 
@@ -60,21 +62,32 @@ def apply_context_update(
     but `review_evidence_id` is NULL in that case. For `review_required` decisions
     we still require at least one Evidence row (the loop enforces this check).
 
+    cut-043R R5-B2 — generalize: zero-evidence decision_values must be passed
+    via `scenario_spec.zero_evidence_decisions` (already enforced by the loop
+    upstream); this layer mirrors the allowlist so a misbehaving caller cannot
+    write `review_evidence_id=NULL` for an unsupported value.
+
     Raises:
       * `ValueError` — no entity matches, or more than one matches (refuses to guess).
       * `ValueError` — `decision` is missing required keys.
-      * `ValueError` — `evidence_id` is empty AND decision is not auto_approved.
+      * `ValueError` — `evidence_id` is empty AND decision is not on the
+        `zero_evidence_decisions` allowlist.
       * `RuntimeError` — the UPDATE did not affect exactly one row.
     """
     decision_value = decision["decision_value"]
     decision_id = decision["decision_id"]
     if not decision_value or not decision_id:
         raise ValueError("decision['decision_value'] and decision['decision_id'] are required")
-    # cut-042R F4 — only review_required needs an evidence_id.
-    if not evidence_id and decision_value != "auto_approved":
+    # cut-043R R5-B2 — read allowlist from kwargs (caller passes spec.zero_evidence_decisions).
+    # Fallback to the historical hard-coded allowlist so legacy callers (V0 spike)
+    # keep working without modification.
+    allowed = set(zero_evidence_decisions or ("auto_approved",))
+    # cut-042R F4 — only decisions on the allowlist may have evidence_id=None.
+    if not evidence_id and decision_value not in allowed:
         raise ValueError(
-            "evidence_id is required for review_required decisions "
-            "(auto_approved may pass evidence_id=None)"
+            f"evidence_id is required for decision_value={decision_value!r}; "
+            f"only {sorted(allowed)} are allowed zero-evidence decisions "
+            f"(set scenario_spec.zero_evidence_decisions to extend)"
         )
 
     entity_id = _resolve_entity_id(engine, source_id, source_system)
