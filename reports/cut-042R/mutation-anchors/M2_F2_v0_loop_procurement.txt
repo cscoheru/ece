@@ -1,0 +1,20 @@
+    
+        这些字符串必须只能存在于 procurement pack (ece.domain_packs.procurement.*) 自己内部.
+        engine 的六步闭环应该 pack-agnostic.
+    
+        注释 / docstring 中的提及不算硬编码, 只有代码中的字符串常量才算.
+        """
+        literals = _code_string_literals("v0/loop.py")
+        leaked = [w for w in _FORBIDDEN_LITERALS if w in literals]
+>       assert not leaked, (
+            f"F2: ece.v0.loop still hardcodes procurement literals in code: {leaked}. "
+            f"Must move to procurement pack + read from ScenarioSpec.source_system. "
+            f"(Comments/docstrings are ignored — only code string constants count.)"
+        )
+E       AssertionError: F2: ece.v0.loop still hardcodes procurement literals in code: ['procurement']. Must move to procurement pack + read from ScenarioSpec.source_system. (Comments/docstrings are ignored — only code string constants count.)
+E       assert not ['procurement']
+
+tests/unit/test_no_procurement_literal_in_engine.py:104: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_no_procurement_literal_in_engine.py::test_v0_loop_module_has_no_procurement_literal
+============================== 1 failed in 0.35s ===============================

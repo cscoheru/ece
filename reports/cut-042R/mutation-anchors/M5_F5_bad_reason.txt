@@ -1,0 +1,25 @@
+            },[90m[39;49;00m
+            headers={[33m"[39;49;00m[33mX-User-Id[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mspike-user-unrelated[39;49;00m[33m"[39;49;00m},[90m[39;49;00m
+        )[90m[39;49;00m
+        [94massert[39;49;00m r.status_code == [94m200[39;49;00m, [33mf[39;49;00m[33m"[39;49;00m[33mF5 denied: must succeed; got [39;49;00m[33m{[39;49;00mr.status_code[33m}[39;49;00m[33m: [39;49;00m[33m{[39;49;00mr.text[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        body = r.json()[90m[39;49;00m
+        reason = body.get([33m"[39;49;00m[33mreason[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [90m# denied 路径 reason 不能是 "no permitted context" (loop 状态)[39;49;00m[90m[39;49;00m
+>       [94massert[39;49;00m [33m"[39;49;00m[33mno permitted[39;49;00m[33m"[39;49;00m [95mnot[39;49;00m [95min[39;49;00m reason.lower(), \
+            [33mf[39;49;00m[33m"[39;49;00m[33mF5: denied reason must be business language; got [39;49;00m[33m{[39;49;00mreason[33m!r}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[1m[31mE       AssertionError: F5: denied reason must be business language; got 'no permitted context'[0m
+[1m[31mE       assert 'no permitted' not in 'no permitted context'[0m
+[1m[31mE         [0m
+[1m[31mE         'no permitted' is contained here:[0m
+[1m[31mE           no permitted context[0m
+
+[1m[31mtests/integration/test_demo_api_contract.py[0m:291: AssertionError
+[33m=============================== warnings summary ===============================[0m
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/integration/test_demo_api_contract.py::[1mtest_top_level_reason_for_denied_user_is_business_language[0m - AssertionError: F5: denied reason must be business language; got 'no permit...
+[31m========================= [31m[1m1 failed[0m, [33m1 warning[0m[31m in 0.84s[0m[31m =========================[0m

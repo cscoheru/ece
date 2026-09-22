@@ -1,0 +1,25 @@
+                    "quote_count": 2,
+                },
+            },
+            headers={"X-User-Id": "spike-user-unrelated"},  # 真实身份: denied
+        )
+        assert r.status_code == 200, f"F1: must succeed with no_permission conclusion, got {r.status_code}: {r.text}"
+        body = r.json()
+>       assert body.get("conclusion") == "no_permission", \
+            f"F1: body.actor override must NOT bypass denied X-User-Id; got conclusion={body.get('conclusion')!r}"
+E       AssertionError: F1: body.actor override must NOT bypass denied X-User-Id; got conclusion='review_required'
+E       assert 'review_required' == 'no_permission'
+E         
+E         - no_permission
+E         + review_required
+
+tests/integration/test_demo_api_contract.py:219: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_demo_api_contract.py::test_denied_user_with_body_actor_override_returns_no_permission
+========================= 1 failed, 1 warning in 0.87s =========================

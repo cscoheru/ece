@@ -1,0 +1,25 @@
+        r = client.post(
+            "/api/v1/demo/scenarios/generate",
+            json={
+                "domain": "procurement",
+                "scenario": "default",
+                "params": {"amount": 500_000, "quote_count": 3},
+            },
+            headers={"X-User-Id": "spike-user-procurement"},
+        )
+>       assert r.status_code == 200, \
+            f"F4: clean path must NOT crash (IndexError); got {r.status_code}: {r.text}"
+E       AssertionError: F4: clean path must NOT crash (IndexError); got 422: {"error":"invalid_scenario_spec","detail":"MUTATION-ANCHOR-4 (F4): evidence_id required (F4 fix disabled)"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Content]>.status_code
+
+tests/integration/test_demo_api_contract.py:241: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_demo_api_contract.py::test_auto_approved_clean_path_returns_200_and_no_indexerror
+========================= 1 failed, 1 warning in 0.80s =========================

@@ -17,10 +17,39 @@ Hard contract enforced here (and asserted by `tests/integration/test_v0_loop.py`
     introduce a request abstraction or a runtime wrapper.
   - **Address by `source_id`.** We resolve the `display_id` for `assemble_context`
     via `(source_id, source_system)`; `display_id` itself is never hard-coded.
+
+cut-042R changes (Codex HOLD 2026-09-22, F2/F3/F4):
+  - The module-level `SPIKE_SOURCE_SYSTEM` constant and `pack="procurement"`
+    hardcode have been removed. The loop now reads source_system / pack from
+    `scenario_spec.source_system` / `scenario_spec.pack`, becoming pack-agnostic.
+  - Step [0] (cut-042R F3) wrote API params back to the root entity's attributes via
+    `_apply_params_to_root_attrs`. This was BEFORE permission check — a violation
+    of Permission Before Intelligence when the caller was denied.
+  - Step [5]/[6] guard against `evidence_ids[0]` IndexError when 0 rows exist.
+    `apply_context_update` accepts None for the auto_approved path (F4 fix
+    in `ece.context.update`).
+
+cut-042R2 changes (Codex 第二轮 HOLD 2026-09-22, R2-F1/R2-F2):
+  - **R2-F1 (CRITICAL) — Permission Before Materialization.** The loop is
+    reordered: step [1] is now the FIRST read-only `assemble_context`, BEFORE
+    any write. If `ctx.denied and root is None`, the function returns
+    immediately with ZERO writes — `_apply_params_to_root_attrs`, the
+    relations materializer, evidence persistence, and `apply_context_update`
+    are all skipped. The denied path's DB state is byte-equal to before the
+    request.
+  - **R2-F2 — Pack-owned deterministic materializer.** New step [3b] calls
+    `descriptor.materialize_fn(engine, root_source_id, effective_params)`
+    between step [3a] (params → root.attrs) and step [3c] (re-assemble
+    context). The procurement pack's materializer rebuilds SELECTS
+    relations so their count equals `params["quote_count"]`. The re-read
+    in step [3c] sees the materialized state, so the rule and evidence
+    computed downstream agree with the DB.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib
+import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -37,10 +66,6 @@ if TYPE_CHECKING:
 
 __all__ = ["DemoLoopResult", "V0LoopResult", "run_demo_loop", "run_v0_loop"]
 
-# Hard-coded for the V0 spike. The fixture's PR lives in this source_system; the loop
-# would need a different resolver to support other fixtures, which is post-V0 work.
-SPIKE_SOURCE_SYSTEM = "spike:v0-technical-fixture"
-
 # The four keys §8 writes back. Kept here so the re-read cross-check names them once.
 REVIEW_KEYS = (
     "review_status",
@@ -48,6 +73,10 @@ REVIEW_KEYS = (
     "review_evidence_id",
     "review_updated_at",
 )
+
+# cut-042R F2: removed SPIKE_SOURCE_SYSTEM module constant.
+# Source system now comes from scenario_spec.source_system (per-pack declaration
+# in ece/domain_packs/<pack>/scenarios/<scenario>.yaml).
 
 # cut-042: procurement-pack scenario spec, lazy-built at first call. Used by
 # the thin `run_v0_loop` wrapper to preserve the V0 spike behavior verbatim
@@ -57,19 +86,28 @@ _SPIKE_SPEC: ScenarioSpec | None = None
 
 
 def _get_spike_spec() -> ScenarioSpec:
-    from ece.demo.spec import ScenarioSpec
+    """Load the V0 spike's ScenarioSpec from its YAML declaration.
+
+    cut-042R F2: the V0 spike scenario is a procurement-pack artifact, but its
+    CONFIG lives in `ece.domain_packs.procurement.scenarios.default.yaml` —
+    NOT inline here. This function is a thin loader that keeps the V0 spike's
+    behavioral contract (run with the procurement-pack default scenario) while
+    ensuring v0/loop.py itself contains zero procurement business strings.
+
+    For F3 root_params_fields: the YAML's `root_params_fields` field declares
+    which request params should be written back to root.attrs. The V0 spike's
+    YAML specifies `amount` only (since `quote_count` lives on quote entities,
+    not on the PR root).
+
+    Lazy: deferred import to break the v0.loop ↔ demo.* circular dependency.
+    """
+    from ece.demo.spec import load_scenario_spec
+
     global _SPIKE_SPEC
     if _SPIKE_SPEC is None:
-        _SPIKE_SPEC = ScenarioSpec(
-            pack="procurement",
-            spec="evaluate_purchase_request",
-            root_entity={"type": "purchase_request", "id_field": "source_id"},
-            subject_entity_type="purchase_request",
-            rule_id="R-SPIKE-REVIEW",
-            decision_key="review_status",
-            params_schema={"amount": "int", "quote_count": "int"},
-            denied_users=["spike-user-unrelated", "demo-user-unrelated"],
-        )
+        # Single source of truth: the procurement pack's default.yaml. Any change
+        # to the V0 spike's scenario config happens there, not in this module.
+        _SPIKE_SPEC = load_scenario_spec("procurement", "default")
     return _SPIKE_SPEC
 
 
@@ -92,12 +130,10 @@ class V0LoopResult:
     pr_attrs_before: dict[str, Any] = field(default_factory=dict)
     quotes: list[dict[str, Any]] = field(default_factory=list)
     quote_refs: list[dict[str, str]] = field(default_factory=list)
-    # [3] RULE — cut-042: default is the procurement spike rule_id string.
-    # The class no longer carries the import; rule_id is sourced from the
-    # ScenarioSpec at run_demo_loop time. The string literal here preserves
-    # the V0 spike's V0LoopResult dataclass default for callers that still
-    # rely on it (regression tests).
-    rule_id: str = "R-SPIKE-REVIEW"
+    # [3] RULE — cut-042R F2: rule_id is sourced from ScenarioSpec at run time;
+    # the dataclass field has no procurement-specific default. The string "" is
+    # the safe-by-default value that the impl populates from scenario_spec.rule_id.
+    rule_id: str = ""
     conditions: list[dict[str, Any]] = field(default_factory=list)
     # [4] DECISION
     decision: dict[str, Any] | None = None
@@ -139,6 +175,7 @@ def _re_read_through_assembly(
     display_id: str,
     root_entity_type: str,
     intent_name: str,
+    pack: str,  # cut-042R F2: pack from scenario_spec, not hardcoded
 ) -> dict[str, Any]:
     """Step [6]'s re-read: ask the assembly path again.
 
@@ -149,7 +186,7 @@ def _re_read_through_assembly(
     """
     re_ctx = assemble_context(
         engine, user_ref, intent_name,
-        [{"type": root_entity_type, "id": display_id}], pack="procurement",
+        [{"type": root_entity_type, "id": display_id}], pack=pack,
     )
     re_pr = next((e for e in re_ctx.entities if e["type"] == root_entity_type), None)
     if re_pr is None:
@@ -188,10 +225,12 @@ def _assert_loop_closed(
             )
 
 
-def _resolve_display_id(engine: Engine, source_id: str) -> str:
+def _resolve_display_id(engine: Engine, source_id: str, source_system: str) -> str:
     """Resolve a fixture-level `source_id` to the entity's `display_id` for
     `assemble_context`. Refuses to guess if the lookup misses (defensive — the caller
     should have a clear error, not a silent retry).
+
+    cut-042R F2: `source_system` is a parameter, NOT a module constant.
     """
     with engine.connect() as conn:
         row = conn.execute(
@@ -199,11 +238,11 @@ def _resolve_display_id(engine: Engine, source_id: str) -> str:
                 "SELECT display_id FROM entities "
                 "WHERE source_id = :sid AND source_system = :sys"
             ),
-            {"sid": source_id, "sys": SPIKE_SOURCE_SYSTEM},
+            {"sid": source_id, "sys": source_system},
         ).first()
     if row is None:
         raise ValueError(
-            f"no PR with source_id={source_id!r} source_system={SPIKE_SOURCE_SYSTEM!r}"
+            f"no entity with source_id={source_id!r} source_system={source_system!r}"
         )
     return row[0]
 
@@ -245,12 +284,54 @@ def _read_pr_attrs(engine: Engine, display_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# cut-042R F3 — Step [0]: apply API params to root entity's attributes.
+# ---------------------------------------------------------------------------
+
+
+_APPLY_PARAMS_SQL = text("""
+    UPDATE entities
+    SET attributes = COALESCE(attributes, '{}'::jsonb) || CAST(:params AS jsonb)
+    WHERE source_id = :sid AND source_system = :sys
+""")
+
+
+def _apply_params_to_root_attrs(
+    engine: Engine,
+    source_id: str,
+    source_system: str,
+    params: dict[str, Any],
+    root_params_fields: tuple[str, ...],
+) -> None:
+    """cut-042R F3 — write API params back to the root entity's attributes.
+
+    Codex 实测 amount=1_500_000 后, DB.amount 仍是 1_280_000 (seed fixture 默认),
+    因为 effective_params 只进入 rule in-memory, 不写回 DB. 此函数把 params 真实
+    合并到 root.attrs (jsonb), 后续 assemble_context re-read 看到的就是真值.
+
+    仅写 `root_params_fields` 中声明的字段 (避免覆盖 review_status 等关键 attrs).
+    """
+    if not params or not root_params_fields:
+        return
+    safe: dict[str, Any] = {
+        k: v for k, v in params.items() if k in root_params_fields
+    }
+    if not safe:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            _APPLY_PARAMS_SQL,
+            {"params": json.dumps(safe), "sid": source_id, "sys": source_system},
+        )
+
+
+# ---------------------------------------------------------------------------
 # cut-042 — pack-driven six-step loop (`run_demo_loop`).
 #
 # This is the generic counterpart to `run_v0_loop`. It reads intent / rule /
-# subject_entity_type / decision_key from `scenario_spec` and resolves the rule
-# function via `ece.demo.registry.get_rule(...)`. No `ece.domain_packs` import
-# exists in the call graph from here on — the registry decouples engine from pack.
+# subject_entity_type / decision_key / source_system from `scenario_spec` and
+# resolves the rule function via `ece.demo.registry.get_rule(...)`. No
+# `ece.domain_packs` import exists in the call graph from here on — the
+# registry decouples engine from pack.
 #
 # `run_v0_loop` is now a thin wrapper that supplies the procurement spec; the
 # shared body lives in `_run_demo_loop_impl` so both entry points stay
@@ -322,6 +403,11 @@ def _run_demo_loop_impl(
 
     `_result_factory` picks the result dataclass so the V0 spike preserves its
     V0LoopResult shape (locked by tests) while the generic loop returns its own.
+
+    cut-042R F2/F3/F4: this body is now pack-agnostic:
+      - source_system, pack, default_root_source_id come from scenario_spec
+      - step [0] applies API params to root.attrs (F3)
+      - step [5]/[6] handle 0-evidence case for auto_approved (F4)
     """
     params = params or {}
     _ensure_pack_registered(scenario_spec.pack)  # idempotent; see below
@@ -330,24 +416,38 @@ def _run_demo_loop_impl(
     from ece.demo.registry import get_rule
     descriptor = get_rule(scenario_spec.rule_id)
 
-    display_id = _resolve_display_id(engine, root_source_id)
-    root_type = str(scenario_spec.root_entity["type"])
+    source_system = scenario_spec.source_system
+    if not source_system:
+        raise ValueError(
+            f"ScenarioSpec.source_system is required for pack={scenario_spec.pack!r} "
+            f"spec={scenario_spec.spec!r}; declare it in scenarios/{scenario_spec.spec}.yaml"
+        )
 
     # [1] assemble_context — pack-agnostic, intent + root_entity come from spec.
+    #     READ-ONLY: this step MUST NOT mutate any DB row. All writes happen
+    #     AFTER the permission check, on the allowed path only (R2-F1).
+    display_id = _resolve_display_id(engine, root_source_id, source_system)
+    root_type = str(scenario_spec.root_entity["type"])
     ctx = assemble_context(
         engine, user_ref, scenario_spec.spec,
         [{"type": root_type, "id": display_id}],
         pack=scenario_spec.pack,
     )
 
-    # [2] extract root + SELECTS quotes; denied → early return.
+    # [2] extract root + SELECTS quotes; denied → early return (ZERO WRITE).
     root = next((e for e in ctx.entities if e["type"] == root_type), None)
     quotes = [r for r in ctx.relationships if r["rel"] == "SELECTS"]
     counts = {"entities": len(ctx.entities), "relationships": len(ctx.relationships)}
 
     if ctx.denied and root is None:
+        # cut-042R2 R2-F1 — denied branch is ZERO-WRITE. No _apply_params_to_root_attrs,
+        # no materializer, no rule, no evidence, no apply_context_update. The only
+        # work is returning the result; the DB stays byte-equal to before the request.
         return _result_factory(
             package_id=ctx.package_id,
+            # cut-042R F5: business language via mapper, not here. The V0 spike
+            # returns its legacy `reason` for the 47 regression tests; the API
+            # mapper converts this to "调用者无权访问此场景" at the contract layer.
             reason="no permitted context",
             counts=counts,
             denied=ctx.denied,
@@ -373,11 +473,49 @@ def _run_demo_loop_impl(
     if "quote_count" not in effective_params:
         effective_params["quote_count"] = len(quotes)
 
-    # [3] [4] rule + decision — pure functions from registry.
+    # [3a] cut-042R F3 — write API params to root.attrs (allowed path only).
+    #     cut-042R2 R2-F1 — moved here from step [0] (was BEFORE permission check).
+    _apply_params_to_root_attrs(
+        engine, root_source_id, source_system,
+        effective_params, scenario_spec.root_params_fields,
+    )
+
+    # [3b] cut-042R2 R2-F2 — pack-owned deterministic relations materializer
+    #     (allowed path only). Rebuilds SELECTS relations count to match
+    #     params.relations_fields (e.g. quote_count). Called BEFORE re-assemble
+    #     so the rule sees the new state.
+    if descriptor.materialize_fn is not None and scenario_spec.relations_fields:
+        for _field in scenario_spec.relations_fields:
+            descriptor.materialize_fn(engine, root_source_id, effective_params)
+
+    # [3c] cut-042R2 R2-F1 — re-assemble context so the rule sees the
+    #     materialized values (post-3a/3b writes). Without this re-assemble,
+    #     the rule would compute against pre-materialize state, leaving
+    #     evidence observed_value out of sync with DB.
+    ctx = assemble_context(
+        engine, user_ref, scenario_spec.spec,
+        [{"type": root_type, "id": display_id}],
+        pack=scenario_spec.pack,
+    )
+    root = next((e for e in ctx.entities if e["type"] == root_type), None)
+    assert root is not None, "re-read lost root entity after materialize"
+    quotes = [r for r in ctx.relationships if r["rel"] == "SELECTS"]
+    counts = {"entities": len(ctx.entities), "relationships": len(ctx.relationships)}
+
+    # [3c-refresh] cut-042R3 R3-B1 — ALWAYS refresh effective_params from the
+    #     post-materialize re-read, regardless of whether the client provided
+    #     a value. The previous guard ("if not in params") caused inconsistency
+    #     when client passed quote_count=999 (materializer clamps to 3, DB has
+    #     3, but effective_params still had 999 → rule/evidence/reason drifted
+    #     from DB). Now re-read IS the source of truth for both amount and
+    #     quote_count.
+    effective_params["amount"] = root["attrs"].get("amount", 0)
+    effective_params["quote_count"] = len(quotes)
+
+    # [4] [5] rule + decision + evidence — pure functions from registry.
     conditions = descriptor.evaluate_fn(ctx, effective_params)
     dec = descriptor.build_decision_fn(conditions, ctx)
 
-    # [5] evidence — subject type from spec, NOT hardcoded.
     persist_evidence(
         engine, ctx, dec,
         subject_entity_type=scenario_spec.subject_entity_type,
@@ -385,17 +523,29 @@ def _run_demo_loop_impl(
     rows = get_evidence_for_decision(engine, dec["decision_id"])
     evidence_ids = [r["evidence_id"] for r in rows]
 
+    # cut-042R F4 — handle 0-evidence case for clean/auto_approved path.
+    primary_evidence_id: str | None = evidence_ids[0] if evidence_ids else None
+    if primary_evidence_id is None and dec["decision_value"] != "auto_approved":
+        raise RuntimeError(
+            f"review_required decision has no evidence rows; "
+            f"evidence_ids={evidence_ids}, conditions={conditions}"
+        )
+
     # [6] apply_context_update + re-read through assembly path.
     apply_context_update(
-        engine, root_source_id, SPIKE_SOURCE_SYSTEM, dec, evidence_ids[0],
+        engine, root_source_id, source_system, dec, primary_evidence_id,
     )
     re_read_attrs = _re_read_through_assembly(
         engine, user_ref, display_id, root_type, scenario_spec.spec,
+        scenario_spec.pack,
     )
     _assert_loop_closed(
         dec, re_read_attrs, engine, display_id, scenario_spec.decision_key,
     )
 
+    # cut-042R F5: V0 spike returns its legacy `reason="ok"` here for the 47
+    # regression tests; the API mapper converts this to the rule's business
+    # reason at the contract layer (`ece.demo.mapper.to_business`).
     return _result_factory(
         package_id=ctx.package_id,
         reason="ok",
@@ -419,20 +569,30 @@ def _run_demo_loop_impl(
 __all__ = ["DemoLoopResult", "V0LoopResult", "run_demo_loop", "run_v0_loop"]
 
 
-# cut-042: lazy pack registration. The procurement pack self-registers its
-# rule when its `agent.v0_rules` module is first imported (see `_register_for_demo`
-# at the bottom of that file). To avoid forcing every V0 spike test to import the
-# pack (which would re-couple engine and pack at module load time), we trigger
-# the import inside the loop on first call. This keeps the import graph:
+# cut-042: lazy pack registration. Packs self-register their rules when their
+# `scenarios` package is first imported (which transitively imports `agent.*`).
+# To avoid forcing every V0 spike test to import the pack at module load time
+# (which would re-couple engine and pack statically), we trigger the import
+# inside the loop on first call. This keeps the import graph:
 #   engine  →  registry  ←  pack (via runtime importlib)
 # and preserves `ece → ece.domain_packs` static-import contract for lint-imports.
 _REGISTERED_PACKS: set[str] = set()
 
 
 def _ensure_pack_registered(pack: str) -> None:
+    """cut-042R F2 — generic pack side-effect trigger (no pack-name hardcode).
+
+    Packs self-register via their `scenarios/__init__.py` (which imports the
+    pack's `agent.*` module that calls `_register_for_demo`). We import
+    `ece.domain_packs.<pack>.scenarios` here — generic across all packs.
+
+    Packs without a `scenarios` module (or with no registration side-effect)
+    are silently skipped. The pack name itself is treated as a safe identifier
+    by the caller (see `ece.demo.spec._SAFE_IDENTIFIER`); this function does
+    not re-validate.
+    """
     if pack in _REGISTERED_PACKS:
         return
-    # Procurement is the only pack at cut-042; subsequent cuts add `if pack == "knowledge": ...`.
-    if pack == "procurement":
-        importlib.import_module("ece.domain_packs.procurement.agent.v0_rules")
+    with contextlib.suppress(ModuleNotFoundError):
+        importlib.import_module(f"ece.domain_packs.{pack}.scenarios")
     _REGISTERED_PACKS.add(pack)

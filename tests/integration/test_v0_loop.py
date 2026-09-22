@@ -238,6 +238,15 @@ def test_re_read_asks_the_assembly_path_again(
     — returning `pr_attrs_before`, or reading the row directly — would call the
     assembly path once, and the assertion on the count fails even though the returned
     `review_status` might still happen to be right.
+
+    cut-042R2: the loop now calls `assemble_context` three times —
+      [1] initial read-only assemble (permission gate)
+      [3c] re-assemble after [3a]/[3b] (params + materializer) write back
+      [6] §9 re-read through the assembly path
+    For the V0 spike baseline (no params), materializer is a no-op, but the
+    framework still re-assembles so the rule sees the post-[3a] state.
+    The re-read in step [6] must be one of these — and must surface the
+    post-update `review_status`.
     """
     import ece.v0.loop as mod
 
@@ -252,8 +261,13 @@ def test_re_read_asks_the_assembly_path_again(
     result = run_v0_loop(ALLOWED_USER, PR_SOURCE_ID)
     evidence_cleanup.append(result.decision["decision_id"])
 
-    assert len(calls) == 2, f"expected step [1] plus the §9 re-read; got {calls}"
-    assert calls[0] == calls[1], "the re-read must ask the same question as step [1]"
+    assert len(calls) == 3, (
+        f"cut-042R2: expected step [1] + step [3c] (post-materialize re-assemble) "
+        f"+ the §9 re-read; got {calls}"
+    )
+    assert calls[0] == calls[1] == calls[2], (
+        "each assemble must ask the same question (same user/task/entities)"
+    )
     assert result.re_read_attrs["review_status"] == "review_required"
 
 

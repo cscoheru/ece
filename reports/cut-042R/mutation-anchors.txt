@@ -1,0 +1,40 @@
+# cut-042R — Mutation Anchors (5 bites verified)
+
+> **Generated**: 2026-09-22 (Claude Opus 5, cut-042R review evidence)
+> **Method**: Inject one targeted mutation into the GREEN code, run the
+> relevant cut-042R test, capture the failure output, then RESTORE the
+> GREEN code. The mutation output files in `reports/cut-042R/mutation-anchors/`
+> contain the raw pytest output for each anchor.
+>
+> **Ruling requirement**: "≥3 变异锚点 + 必含三类" (identity + generic hardcode
+> + side-effect-loss). cut-042R ships 5 anchors covering all three classes
+> plus the two F4/F5 bonus classes.
+
+## Summary table
+
+| # | Class | File | Mutation | Biting test | Verdict |
+|---|--------|------|----------|-------------|---------|
+| 1 | F1 (identity) | `src/ece/demo/api.py` | Reintroduce `body.actor` override in `_resolve_actor` | `test_denied_user_with_body_actor_override_returns_no_permission` | ✓ BITTEN — denied branch returned `review_required` instead of `no_permission` |
+| 2 | F2 (generic hardcode) | `src/ece/v0/loop.py` | Force `pack = "procurement"` inside `_re_read_through_assembly` | `test_v0_loop_module_has_no_procurement_literal` | ✓ BITTEN — AST-detected hardcode `procurement` outside the allowed V0 spike hook |
+| 3 | F3 (side-effect loss) | `src/ece/v0/loop.py` | Replace `_apply_params_to_root_attrs(...)` with `pass` (params never written to DB) | `test_params_amount_lands_in_root_attrs_after_loop` + `test_params_quote_count_lands_in_db_after_loop` + `test_no_params_leaves_db_amount_unchanged` | ✓ BITTEN — DB.amount stayed at the previous value (1.5M), new request (2.0M) never landed |
+| 4 | F4 (boundary) | `src/ece/context/update.py` | Reject `evidence_id=None` for ALL decisions (not only review_required) | `test_auto_approved_clean_path_returns_200_and_no_indexerror` | ✓ BITTEN — clean path returned 422 instead of 200, restoring the original IndexError class |
+| 5 | F5 (contract) | `src/ece/demo/mapper.py` | Pass `result.reason` (loop-state string) through to the contract layer | `test_top_level_reason_for_denied_user_is_business_language` | ✓ BITTEN — denied response carried `"no permitted context"` instead of `"调用者无权访问此场景"` |
+
+All 5 anchors were bitten. **Mutations reverted** — GREEN code is the
+checked-in state.
+
+## Raw evidence
+
+Per-anchor raw pytest output archived in:
+
+- `reports/cut-042R/mutation-anchors/M1_F1_actor_bypass.txt`
+- `reports/cut-042R/mutation-anchors/M2_F2_v0_loop_procurement.txt`
+- `reports/cut-042R/mutation-anchors/M3_F3_params_not_in_db.txt`
+- `reports/cut-042R/mutation-anchors/M4_F4_indexerror.txt`
+- `reports/cut-042R/mutation-anchors/M5_F5_bad_reason.txt`
+
+---
+
+**Author**: Claude (Opus 5)
+**Cycle**: cut-042R
+**Status**: 5/5 anchors verified · awaiting Codex review

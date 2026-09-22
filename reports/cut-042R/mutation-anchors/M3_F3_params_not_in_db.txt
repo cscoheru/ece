@@ -1,0 +1,25 @@
+                "params": {"amount": 2_000_000, "quote_count": 2, "root_source_id": "SPIKE-PR-001"},
+            },
+            headers={"X-User-Id": "spike-user-procurement"},
+        )
+        assert r.status_code == 200, r.text
+    
+        # 验证第一次写入生效
+        attrs = _read_root_attrs("SPIKE-PR-001", "spike:v0-technical-fixture")
+>       assert attrs.get("amount") == 2_000_000, f"F3 baseline: {attrs.get('amount')!r}"
+E       AssertionError: F3 baseline: 1500000
+E       assert 1500000 == 2000000
+E        +  where 1500000 = <built-in method get of dict object at 0x109e725c0>('amount')
+E        +    where <built-in method get of dict object at 0x109e725c0> = {'amount': 1500000, 'review_status': 'review_required', 'fixture_notice': 'TECHNICAL SPIKE FIXTURE — NOT CUSTOMER-VALIDATED — NOT PRODUCT REFERENCE WORKFLOW', 'review_updated_at': '2026-09-22T04:17:56.207832+00:00', ...}.get
+
+tests/integration/test_params_land_in_db.py:127: AssertionError
+=============================== warnings summary ===============================
+tests/integration/test_params_land_in_db.py::test_params_amount_lands_in_root_attrs_after_loop
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_params_land_in_db.py::test_params_quote_count_lands_in_db_after_loop
+FAILED tests/integration/test_params_land_in_db.py::test_no_params_leaves_db_amount_unchanged
+==================== 2 failed, 1 passed, 1 warning in 0.81s ====================

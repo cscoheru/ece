@@ -49,22 +49,33 @@ def apply_context_update(
     source_id: str,
     source_system: str,
     decision: Mapping[str, Any],
-    evidence_id: str,
+    evidence_id: str | None,  # cut-042R F4: None allowed for auto_approved
 ) -> None:
     """Write the four `review_*` keys onto the entity identified by `(source_id, source_system)`.
+
+    cut-042R F4: `evidence_id` may be None when `decision_value == "auto_approved"`.
+    S2 evidence persistence is locked to "only passed conditions produce rows";
+    when all conditions fail (e.g. amount < threshold AND quote_count >= REQUIRED),
+    evidence_ids is empty. We still need to write `review_status = auto_approved`,
+    but `review_evidence_id` is NULL in that case. For `review_required` decisions
+    we still require at least one Evidence row (the loop enforces this check).
 
     Raises:
       * `ValueError` — no entity matches, or more than one matches (refuses to guess).
       * `ValueError` — `decision` is missing required keys.
-      * `RuntimeError` — the UPDATE did not affect exactly one row (defensive: a
-        future schema change must not silently write zero rows).
+      * `ValueError` — `evidence_id` is empty AND decision is not auto_approved.
+      * `RuntimeError` — the UPDATE did not affect exactly one row.
     """
     decision_value = decision["decision_value"]
     decision_id = decision["decision_id"]
     if not decision_value or not decision_id:
         raise ValueError("decision['decision_value'] and decision['decision_id'] are required")
-    if not evidence_id:
-        raise ValueError("evidence_id is required")
+    # cut-042R F4 — only review_required needs an evidence_id.
+    if not evidence_id and decision_value != "auto_approved":
+        raise ValueError(
+            "evidence_id is required for review_required decisions "
+            "(auto_approved may pass evidence_id=None)"
+        )
 
     entity_id = _resolve_entity_id(engine, source_id, source_system)
     updated_at = datetime.now(UTC).isoformat()
@@ -75,6 +86,7 @@ def apply_context_update(
             {
                 "review_status": decision_value,
                 "review_decision_id": decision_id,
+                # cut-042R F4 — None → jsonb null in attributes
                 "review_evidence_id": evidence_id,
                 "review_updated_at": updated_at,
                 "entity_id": entity_id,

@@ -54,12 +54,17 @@ def to_business(
         conclusion_label = _CONCLUSION_LABELS["no_permission"]
         evidence_payload: list[dict[str, Any]] = []
         state_after = "pending"
+        # cut-042R F5: business-language denied reason (NOT loop state "no permitted context").
+        business_reason = "调用者无权访问此场景（Permission Engine 拒绝）"
     else:
         decision_value = str(decision.get("decision_value", ""))
         conclusion = decision_value
         conclusion_label = _CONCLUSION_LABELS.get(decision_value, decision_value)
         evidence_payload = [_evidence_row_business(r) for r in result.evidence]
         state_after = decision_value
+        # cut-042R F5: surface rule's business reason (NOT loop state "ok").
+        # The rule layer sets decision["reason"] = "金额 N ≥ M 且仅 X 家报价（需 N 家）→ 需人工复核"
+        business_reason = str(decision.get("reason") or "未提供业务原因")
 
     decision_key = spec.decision_key
     if denied_branch:
@@ -89,7 +94,8 @@ def to_business(
         "scenario": spec.spec,
         "conclusion": conclusion,
         "conclusion_label": conclusion_label,
-        "reason": result.reason,
+        # cut-042R F5: business reason, NOT loop state ("ok"/"no permitted context").
+        "reason": business_reason,
         "evidence": evidence_payload,
         "state_change": state_change,
         "actor": actor,

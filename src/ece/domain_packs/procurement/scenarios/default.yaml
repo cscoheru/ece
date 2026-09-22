@@ -1,24 +1,28 @@
-# cut-042 — Procurement "evaluate_purchase_request" scenario spec.
-#
-# This YAML is the **scenario-spec** counterpart to
-# `context_specs/evaluate_purchase_request.yaml` (which is the Context-Spec).
-# ScenarioSpec wires the six-step loop; ContextSpec wires the assembly path.
-# Both coexist deliberately — different scopes.
-#
-# Per cut-042 PRD §5 #1: subject_entity_type / rule_id / intent /
-# decision_key are read from this spec, never hardcoded in engine.
-
 pack: procurement
 spec: evaluate_purchase_request
+# cut-042R F2 — 业务语言域标签 (替代 ece/demo/api.py 硬编码 _DOMAIN_LABELS)
+label: "采购合规审查"
+# cut-042R F2 — 替代 v0/loop.py 模块常量 SPIKE_SOURCE_SYSTEM
+source_system: "spike:v0-technical-fixture"
+# cut-042R F2 — 替代 ece/demo/api.py 硬编码 "SPIKE-PR-001"
+default_root_source_id: "SPIKE-PR-001"
 root_entity:
   type: purchase_request
   id_field: source_id
 subject_entity_type: purchase_request
 rule_id: R-SPIKE-REVIEW
 decision_key: review_status
-denied_users:
-  - spike-user-unrelated
-  - demo-user-unrelated
+# cut-042R F3 — 这些 params 字段会真实写回 root.attrs (DB 真实更新)
+# 仅 amount 是 PR 自身的字段; quote_count 是 SELECTS 关系计数, 不写入 PR.attrs
+root_params_fields:
+  - amount
+# cut-042R2 R2-F2 — relations_fields declares which params drive pack-owned
+# relations materialization. quote_count rebuilds SELECTS relations to match.
+relations_fields:
+  - quote_count
 params_schema:
   amount: int
   quote_count: int
+denied_users:
+  - spike-user-unrelated
+  - demo-user-unrelated

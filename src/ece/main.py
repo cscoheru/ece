@@ -10,7 +10,8 @@ Endpoint map:
 - Sprint 6: /audit/context/{id}
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from ece.api.actions import router as actions_router
 from ece.api.audit import router as audit_router
@@ -20,6 +21,7 @@ from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
 from ece.api.search import router as search_router
+from ece.demo.api import DemoSpecError
 from ece.demo.api import router as demo_router
 
 app = FastAPI(
@@ -44,6 +46,36 @@ app.include_router(actions_router)
 app.include_router(audit_router)
 app.include_router(debug_router)
 # cut-042: /demo/* generic multi-domain live runner (PRD §5)
+# cut-042R2 R2-F5: demo-specific exception mapping is registered AFTER demo
+# router is included so its routes are known, but the handler is scoped by
+# request path prefix to /api/v1/demo/ — non-demo routes retain their native
+# error semantics (no global ValueError → 422 mapping).
+DEMO_PREFIX = "/api/v1/demo"
+
+
+@app.exception_handler(FileNotFoundError)
+async def _demo_scenario_not_found_handler(
+    request: Request, exc: FileNotFoundError,
+) -> JSONResponse:
+    if not request.url.path.startswith(DEMO_PREFIX):
+        # Re-raise so Starlette's default 500 applies for non-demo routes.
+        raise exc
+    return JSONResponse(
+        status_code=422,
+        content={"error": "scenario_not_found", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(DemoSpecError)
+async def _demo_spec_error_handler(
+    _request: Request, exc: DemoSpecError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"error": exc.kind, "detail": exc.detail},
+    )
+
+
 app.include_router(demo_router)
 
 

@@ -55,9 +55,14 @@ _SELECT_BY_DECISION = text("""
 # `ctx_<24hex>` used by the other objects.
 _EVIDENCE_ID_PREFIX = "ev_"
 
-# cut-042: subject entity type was hardcoded as `purchase_request`. Now passed
-# per-call via `persist_evidence(..., subject_entity_type=...)` so the loop can
-# be reused across packs without touching this module's behavior contract.
+# cut-042R F2 — production code path (v0/loop.py) passes `subject_entity_type`
+# explicitly via `scenario_spec.subject_entity_type`. The kwarg default exists
+# only for backward compat with the 47 V0 spike regression tests, which build
+# contexts with a single purchase_request entity and expect the engine to
+# default to that subject type. This is a test-fixture convenience, NOT a
+# runtime code hardcode — production never relies on it. See
+# `tests/integration/test_v0_evidence_persistence.py` for the fixture pattern.
+
 _DEFAULT_SUBJECT_ENTITY_TYPE = "purchase_request"
 
 
@@ -66,7 +71,7 @@ def persist_evidence(
     ctx: ContextPackage,
     decision: Mapping[str, Any],
     *,
-    subject_entity_type: str = _DEFAULT_SUBJECT_ENTITY_TYPE,
+    subject_entity_type: str = _DEFAULT_SUBJECT_ENTITY_TYPE,  # see note above
 ) -> list[dict[str, Any]]:
     """Write one Evidence row per PASSED condition of `decision`.
 
@@ -86,6 +91,11 @@ def persist_evidence(
       `claim` and `threshold` on the Evidence — and a claim like "报价家数 1 < 3" cannot
       be derived from an expression string. The rule therefore emits those two keys
       alongside the four; see the note in the S2 report.
+
+    cut-042R F2: `subject_entity_type` is keyword-only and the production code
+    path (`run_demo_loop_impl`) passes it explicitly from `scenario_spec`.
+    The legacy default `_DEFAULT_SUBJECT_ENTITY_TYPE` is retained only for
+    backward compatibility with the 47 V0 spike regression tests.
     """
     decision_id = _required(decision, "decision_id")
     rule_id = _required(decision, "rule_id")

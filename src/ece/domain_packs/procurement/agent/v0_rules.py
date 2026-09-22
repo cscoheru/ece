@@ -14,6 +14,15 @@ Hard contract enforced here (and asserted by `tests/unit/test_v0_rule_and_decisi
     `decision_id` itself. No new abstraction.
   - `reason` is a pure function of the conditions — byte-identical across calls and
     free of time-like substrings, so it cannot carry hidden non-determinism.
+  - **Module purity (S3 criterion 5):** this file MUST NOT import the
+    DB-driver ORM or hold a DB handle — the relations materializer lives
+    in `materializer.py`.
+
+cut-042R2 R2-F2 — relations materializer moved to `materializer.py` to preserve
+the rule module's purity contract (verified by
+`tests/unit/test_v0_rule_and_decision.py::test_module_purity_*`).
+The materializer is registered via the rule registry's `materialize_fn` kwarg
+in `_register_for_demo()`.
 """
 from __future__ import annotations
 
@@ -144,8 +153,13 @@ def _build_reason(
 # This import is a runtime side-effect, not a static top-of-file import — the
 # `from ece.demo.registry import register_rule` is delayed to module bottom so
 # pack modules don't form an import cycle with the engine.
+
+
 def _register_for_demo() -> None:
+    # cut-042R2 R2-F2 — materializer lives in its own module so v0_rules.py
+    # stays a pure function module (S3 criterion 5).
     from ece.demo.registry import register_rule
+    from ece.domain_packs.procurement.agent.materializer import materialize_quote_count
 
     def _evaluate_via_params(ctx: Any, params: dict[str, Any]) -> list[dict[str, Any]]:
         # params keys mirror the rule's original signature: amount, quote_count.
@@ -160,6 +174,7 @@ def _register_for_demo() -> None:
         decision_key=DECISION_KEY,
         evaluate_fn=_evaluate_via_params,
         build_decision_fn=build_decision,
+        materialize_fn=materialize_quote_count,  # cut-042R2 R2-F2
     )
 
 

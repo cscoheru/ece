@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>ECE Demo Platform — V0</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>ECE Demo Platform</h1>
+    <p class="muted">V0 spike · 视图 A live · 视图 B / C 占位待 cut-043 / cut-044</p>
+  </header>
+
+  <nav>
+    <button data-view="a" class="active" type="button">视图 A · 采购合规（live）</button>
+    <button data-view="b" type="button">视图 B · 知识管理（占位 · cut-043）</button>
+    <button data-view="c" type="button">视图 C · 企业合规（占位 · cut-044）</button>
+  </nav>
+
+  <main>
+    <!-- View A — 采购合规 live, 真实调 /api/v1/demo/* -->
+    <section id="view-a" class="view active" data-view="a">
+      <h2>采购合规审查 — Live Demo</h2>
+      <form id="demo-form">
+        <label>
+          <span>用户身份</span>
+          <select name="actor" id="actor-select">
+            <option value="spike-user-procurement">spike-user-procurement (allowed)</option>
+            <option value="spike-user-unrelated">spike-user-unrelated (denied)</option>
+          </select>
+        </label>
+        <label>
+          <span>金额（元）</span>
+          <input name="amount" type="number" value="1500000" min="0" step="1000">
+        </label>
+        <label>
+          <span>报价家数</span>
+          <input name="quote_count" type="number" value="2" min="0" step="1">
+        </label>
+        <button type="submit">运行六步闭环</button>
+      </form>
+      <h3>响应</h3>
+      <pre id="result">点击上方按钮触发一次 POST /api/v1/demo/scenarios/generate 调用。</pre>
+    </section>
+
+    <!-- View B — 知识管理占位, cut-043 待交付 -->
+    <section id="view-b" class="view" data-view="b" hidden>
+      <h2>知识管理</h2>
+      <p>cut-043 待交付（cut-042R 复审通过后启动）。</p>
+      <p>本视图将展示知识管理域的 /api/v1/demo/domains 候选与场景生成。</p>
+    </section>
+
+    <!-- View C — 企业合规占位, cut-044 待交付 -->
+    <section id="view-c" class="view" data-view="c" hidden>
+      <h2>企业合规</h2>
+      <p>cut-044 待交付。</p>
+      <p>本视图将展示企业合规域的 /api/v1/demo/domains 候选与场景生成。</p>
+    </section>
+  </main>
+
+  <footer>
+    <p class="muted">API base：<code>/api/v1</code> · 视图 A 调用 <code>GET /api/v1/demo/domains</code> 与 <code>POST /api/v1/demo/scenarios/generate</code></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
