@@ -1,0 +1,28 @@
+Phase I — Real URL same-origin smoke (2026-09-23, server corln.rana.asia)
+
+DEMO_BASE_URL=https://corln.rana.asia
+via docker exec -T api python scripts/cut_045_demo_deployment_smoke.py
+
+Initial attempt: FAIL — CF Browser Integrity Check (1010) blocking Python-urllib UA
+Fix: User disabled Browser Integrity Check in CF dashboard (zone-level setting)
+
+Second attempt: FAIL — CF Web Analytics beacon script injected into HTML
+Fix: User disabled Browser Insights (zone-level setting) → beacon removed
+
+Third attempt: ALL PASS ✓
+
+  PASS 1.  SPA index.html reachable (bytes=9507)
+  PASS 2.  /api/v1/demo/domains → [compliance, knowledge, procurement]
+  PASS 3.  procurement (spike-user-procurement + valid params) → auto_approved
+  PASS 4.  procurement (spike-user-unrelated) → no_permission
+  PASS 5.  knowledge (km-alice + KM-POL-001) → answerable, evidence=2
+  PASS 6.  knowledge (km-eve) → no_permission
+  PASS 7.  compliance (comp-alice + COMP-CTL-001) → evidence_package_sufficient
+  PASS 8.  compliance (comp-eve) → no_permission
+  PASS 9.  422 strict date (today='not-a-date' → 422, R2-B2)
+  PASS 10. zero external CDN (script/link)
+
+PASS=10 SKIP=0 FAIL=0 ✓ exit=0
+
+This result also satisfies Phase J three-domain validation requirements
+(cases 3-8 cover procurement + knowledge + compliance × valid/denied).

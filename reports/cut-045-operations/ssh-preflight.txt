@@ -1,0 +1,92 @@
+Warning: Permanently added '207.57.125.162' (ED25519) to the list of known hosts.
+=== uname ===
+Linux 56uzru917yy9sd5 5.15.0-191-generic #201-Ubuntu SMP Fri Aug 7 18:39:04 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+=== os-release ===
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="22.04"
+VERSION="22.04.5 LTS (Jammy Jellyfish)"
+VERSION_CODENAME=jammy
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=jammy
+=== df ===
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           794M  3.3M  791M   1% /run
+/dev/sda1        88G   59G   29G  68% /
+tmpfs           3.9G     0  3.9G   0% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+/dev/sda15      105M  6.1M   99M   6% /boot/efi
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/f1925807ed77d8dd3d744fdf558f4999cd47aacaed76190ca1b0fd6566440907
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/8dabb9350ec62d363b948368105cc8a849f76d9fc00a177c2a8bb35d52e0a691
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/c0836ce03bb95a6b3276b9eb49dcaa5db2775f4c1bdaebf15c40892561ba2237
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/f092fe92599a8f6bbade635407497a54dba034dd45e4bbad9ebe69eccd6da6e7
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/d2142cd43a6e1820e8eb0eb242dd9aeb73f08a0a6051fedb5943323fc1058f2e
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/c608a71f8762d0bcb8aff91aeaf9b0a929fc4a005ca102bb111f7f6281b935e1
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/cebcc0cd4742ac0fb9b37a428a4c1e0f6205e1168d4981d787750a6e372abbf4
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/2aeca24242f66915ae9c41131fc470d3999301d7f83a019e03d0318d24441ec9
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/3ec47687cd520d3766880ff7e606615b61482163fc7327009adcdad0a82a3aed
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/e42fd4d9fc4d3d98ecf54c65d7d9cf22277db846c48e49894135fd4146a5e47e
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/5ab39ce24662376949cddc19157037e265501187e448441fb4e196821cd12589
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/faca72b29e3e855bffba92e34219ae902b5185bd136ebad9f86b966600c291f4
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/ca4a540e5b656d08178035a33df5c5e96be449b73d91822fa6e4a607cac7cd46
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/b47429ab913ea0e3828348bef10754b78668646e6296382a392d5f1823c1504f
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/dfe84c4e7dac6f344d260824410538a5e8c758d15dd40cd91d2258eeb0ea916d
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/3f85e6a776706457161faf6ee97f192e753e4001ceefd21ada2121f27e73098c
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/0214c8cb1f32e56a38744c8ea5f8ba248b5a136f880e56eecd910383c04095d9
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/06c61debf688f7d714a41c15b35881c7bd07e0d15be3262d8ba91238b4554e26
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/e5d929973a445e9131bcb22dc21cc138dbd61bb9aa1bca7bb11e6f56bfafd5c7
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/3629d64739868569a29dd412882cbb5e7905f6de6c95ef9e4b04a50865b888d1
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/a96a491fd0294e40bc2d2b2d753aa77bf273b893a967a9787f759a9f4d13336f
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/3bc92a8643cbff584569c8a2222c11d178567ea30d8af87dd370df65d0229605
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/fec00e2ffe9bfdec6610367dfdcd84f154d401968201006a7d5ecf217e32b0ea
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/b2566783cf705cf5f8c9dabde4ab5e066038ff9b49a5cf5ed73660e64ad7d070
+overlay          88G   59G   29G  68% /var/lib/docker/rootfs/overlayfs/ddecc388cf2c9fe9d3114576510ce061faff997112156fe15c51facc6e0fa1ec
+tmpfs           794M  4.0K  794M   1% /run/user/0
+=== free ===
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       3.9Gi       592Mi        34Mi       3.2Gi       3.5Gi
+Swap:          4.0Gi          0B       4.0Gi
+=== docker ===
+Docker version 29.8.0, build 88096ef
+Docker Compose version v5.5.1
+=== nginx ===
+nginx version: nginx/1.18.0 (Ubuntu)
+=== ports ===
+LISTEN 0      511          0.0.0.0:443        0.0.0.0:*    users:(("nginx",pid=753,fd=6),("nginx",pid=752,fd=6),("nginx",pid=751,fd=6),("nginx",pid=750,fd=6),("nginx",pid=748,fd=6))
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=753,fd=7),("nginx",pid=752,fd=7),("nginx",pid=751,fd=7),("nginx",pid=750,fd=7),("nginx",pid=748,fd=7))
+LISTEN 0      511             [::]:80            [::]:*    users:(("nginx",pid=753,fd=8),("nginx",pid=752,fd=8),("nginx",pid=751,fd=8),("nginx",pid=750,fd=8),("nginx",pid=748,fd=8))
+=== outbound ip ===
+207.57.125.162
+=== outbound github ===
+github_status=200
+=== outbound dockerhub ===
+curl: (22) The requested URL returned error: 401
+dockerhub_status=401
+=== existing containers ===
+CONTAINER ID   IMAGE                                                   COMMAND                   CREATED      STATUS                   PORTS                                                                                         NAMES
+f092fe92599a   pentagi:intel                                           "/opt/pentagi/bin/en…"    5 days ago   Up 2 minutes             127.0.0.1:8443->8443/tcp                                                                      pentagi
+ddecc388cf2c   langfuse/langfuse:3                                     "dumb-init -- ./web/…"    5 days ago   Up 2 minutes             127.0.0.1:4000->3000/tcp                                                                      langfuse-web
+2aeca24242f6   langfuse/langfuse-worker:3                              "dumb-init -- ./work…"    5 days ago   Up 2 minutes             3030/tcp                                                                                      langfuse-worker
+3ec47687cd52   postgres:16                                             "docker-entrypoint.s…"    5 days ago   Up 2 minutes (healthy)   5432/tcp                                                                                      langfuse-postgres
+5ab39ce24662   redis:7                                                 "docker-entrypoint.s…"    5 days ago   Up 2 minutes (healthy)   6379/tcp                                                                                      langfuse-redis
+3f85e6a77670   clickhouse/clickhouse-server:24                         "/entrypoint.sh"          5 days ago   Up 2 minutes (healthy)   8123/tcp, 9000/tcp, 9009/tcp                                                                  langfuse-clickhouse
+c0836ce03bb9   quay.io/minio/minio:latest                              "/bin/sh -c '\n  isAl…"   5 days ago   Up 2 minutes (healthy)   9000/tcp                                                                                      langfuse-minio
+b2566783cf70   jaegertracing/all-in-one:1.56.0                         "/bin/sh -c ' if [ \"…"   5 days ago   Up 2 minutes             4317-4318/tcp, 5775/udp, 5778/tcp, 9411/tcp, 14250/tcp, 14268/tcp, 16686/tcp, 6831-6832/udp   jaeger
+faca72b29e3e   gcr.io/cadvisor/cadvisor:v0.51.0                        "/usr/bin/cadvisor -…"    5 days ago   Up 2 minutes (healthy)   8080/tcp                                                                                      cadvisor
+b47429ab913e   prom/node-exporter:v1.8.2                               "/bin/node_exporter …"    5 days ago   Up 2 minutes             9100/tcp                                                                                      node_exporter
+c608a71f8762   clickhouse/clickhouse-server:24                         "/entrypoint.sh"          5 days ago   Up 2 minutes (healthy)   8123/tcp, 9000/tcp, 9009/tcp                                                                  clickstore
+3bc92a8643cb   grafana/loki:3.3.2                                      "/usr/bin/loki -conf…"    5 days ago   Up 2 minutes             3100/tcp                                                                                      loki
+0214c8cb1f32   grafana/grafana:11.4.0                                  "/run.sh"                 5 days ago   Up 2 minutes             127.0.0.1:3000->3000/tcp                                                                      grafana
+cebcc0cd4742   otel/opentelemetry-collector-contrib:0.116.1            "/otelcol-contrib --…"    5 days ago   Up 2 minutes             127.0.0.1:4318->4318/tcp, 4317/tcp, 55678-55679/tcp, 127.0.0.1:8148->8148/tcp                 otel
+d2142cd43a6e   victoriametrics/victoria-metrics:v1.108.1               "/victoria-metrics-p…"    5 days ago   Up 2 minutes             8428/tcp                                                                                      victoriametrics
+3629d6473986   quay.io/prometheuscommunity/postgres-exporter:v0.16.0   "/bin/postgres_expor…"    7 days ago   Up 2 minutes             127.0.0.1:9187->9187/tcp                                                                      pgexporter
+8dabb9350ec6   vxcontrol/scraper:latest                                "sh -c '/usr/local/b…"    7 days ago   Up 2 minutes             3000/tcp, 127.0.0.1:9443->443/tcp                                                             scraper
+a96a491fd029   vxcontrol/pgvector:latest                               "docker-entrypoint.s…"    7 days ago   Up 2 minutes (healthy)   127.0.0.1:5432->5432/tcp                                                                      pgvector
+dfe84c4e7dac   ghcr.io/flaresolverr/flaresolverr:latest                "/usr/bin/dumb-init …"    7 days ago   Up 2 minutes             127.0.0.1:8191->8191/tcp, 8192/tcp                                                            flaresolverr
+=== existing /opt/ece ===
+ls: cannot access '/opt/ece': No such file or directory

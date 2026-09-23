@@ -1,0 +1,43 @@
+Phase K — Demo reset + final real-URL smoke (2026-09-23, server corln.rana.asia)
+
+=== reset-demo-fixtures.sh output (excerpt) ===
+[reset] R3-B2: all migrations and seeds run INSIDE the api container
+[reset] Running alembic upgrade head ...
+[reset] Seeding procurement fixture ...
+  entities created: 7
+  relationships created: 1
+  PR display_id: SPIKE-PR-001
+  SELF-CHECK PASSED ✓
+[reset] Seeding knowledge fixture ...
+  removed (prior rows): {entities:8, relationships:4, acl_entries:1}
+  entities created: 8
+  relationships created: 4
+  policy display_id: KM-POL-001
+  SELF-CHECK PASSED ✓
+[reset] Seeding compliance fixture ...
+  removed (prior rows): {entities:6, relationships:9, acl_entries:1}
+  entities created: 6
+  relationships created: 9
+  CTL-001 display_id: COMP-CTL-001
+  audit period: 2026-07-01 .. 2026-09-30
+  SELF-CHECK PASSED ✓
+[reset] All three fixtures reseeded. Demo ready.
+
+=== final smoke (DEMO_BASE_URL=https://corln.rana.asia) ===
+  PASS 1.  SPA index.html reachable (bytes=9507)
+  PASS 2.  /api/v1/demo/domains → [compliance, knowledge, procurement]
+  PASS 3.  procurement (spike-user-procurement) → auto_approved
+  PASS 4.  procurement (spike-user-unrelated) → no_permission
+  PASS 5.  knowledge (km-alice + KM-POL-001) → answerable, evidence=2
+  PASS 6.  knowledge (km-eve) → no_permission
+  PASS 7.  compliance (comp-alice + COMP-CTL-001) → evidence_package_sufficient
+  PASS 8.  compliance (comp-eve) → no_permission
+  PASS 9.  422 strict date (today='not-a-date' → 422, R2-B2)
+  PASS 10. zero external CDN (script/link)
+
+PASS=10 SKIP=0 FAIL=0  exit=0
+
+=== status ===
+This satisfies cut-045's terminal gate. The deployment is operational.
+
+Awaits Codex operational review per Codex §7 STOP gate.

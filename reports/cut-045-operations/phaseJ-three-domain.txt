@@ -1,0 +1,56 @@
+Phase J — Three-domain operational validation (2026-09-23)
+
+Phase I smoke checks 3-8 already covered the 6 cases. This file supplements
+with deeper inspection: business-language presence in customer-facing text.
+
+=== procurement valid ===
+domain=procurement  user=spike-user-procurement
+conclusion=auto_approved
+conclusion_label=自动通过
+reason=金额 50,000 < 1,000,000 → 免比价
+evidence=[]  (empty — correct, auto-approved doesn't need evidence)
+state_change={before:auto_approved, after:auto_approved, key:review_status}
+denied_for=[spike-user-unrelated, demo-user-unrelated]
+✓ business language complete, no internal field leak
+
+=== knowledge valid ===
+domain=knowledge  user=km-alice
+conclusion=answerable
+evidence=2  (policies valid for km-alice role)
+✓ business language complete
+
+=== knowledge denied ===
+domain=knowledge  user=km-eve
+conclusion=no_permission
+✓ business language complete
+
+=== compliance valid ===
+domain=compliance  user=comp-alice  params={control_id:COMP-CTL-001, period_start:2026-07-01, period_end:2026-09-30, today:2026-09-22}
+conclusion=evidence_package_sufficient
+conclusion_label=evidence_package_sufficient
+reason=控制项 COMP-CTL-001 审计期间内证据 3 条, 已达阈值 ≥ 3 条；已覆盖系统 ['erp-system', 'finance-system', 'hr-system'], 满足 ['erp-system', 'finance-system', 'hr-system'] 的覆盖要求 → 无缺口, 审计证据包充分
+evidence count=2
+✓ business language: "控制项 / 审计期间 / 证据 / 系统 / 覆盖 / 缺口 / 审计证据包充分"
+✓ no internal ctx/decision_id/policy_id leak
+
+=== compliance denied ===
+domain=compliance  user=comp-eve
+conclusion=no_permission
+conclusion_label=无权查看
+reason=调用者无权访问此场景（Permission Engine 拒绝）
+✓ business language: "无权查看 / 调用者无权 / Permission Engine"
+  (Note: "Permission Engine" is engine internal name surfaced to user — this is a
+  minor wart; user-facing explanation could be softer. Per cut-045 scope lock NOT
+  a cut-045R4 issue, but worth noting for future customer-facing UX work.)
+
+=== SPA text inspection (internal field leak scan) ===
+forbidden: ctx\.|decision_id|evidence_id|entity_id|acl_id|context_request|SQL
+- index.html: matches are INSIDE comments documenting the prohibition itself ("业务语言化: 不暴露 ctx./decision_id/SQL 等内部技术词")
+- index.html: no live UI leak
+- app.js: 1 code comment references ctx.user (internal to JS engine), 2 references policy_id (KM domain business parameter name)
+- net: no customer-visible internal field leak ✓
+
+=== all 6 cases pass ===
+- procurement valid + denied ✓
+- knowledge valid + denied ✓
+- compliance valid + denied ✓

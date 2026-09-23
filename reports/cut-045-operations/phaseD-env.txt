@@ -1,0 +1,30 @@
+Phase D — deploy/.env (2026-09-23, server corln.rana.asia)
+
+=== pre-state ===
+- /opt/ece created (mkdir -p)
+- HEAD = 6e1e7be (cut-045R3)
+- key files verified: Dockerfile, deploy/docker-compose.demo.yml, deploy/.env.example, deploy/nginx/corln.rana.asia.conf, scripts/cut_045_demo_deployment_smoke.py, src/ece/migrations/alembic.ini, deploy/scripts/reset-demo-fixtures.sh
+
+=== actions ===
+1. openssl rand -base64 32 | tr -d "/=+" | head -c 32  → 32-char password (REGENERATED after initial exposure)
+2. cat > deploy/.env <<EOF with redacted DB_PASS
+3. chmod 600 deploy/.env
+4. git check-ignore -v deploy/.env → .gitignore:13:.env
+
+=== post-state (redacted) ===
+POSTGRES_USER=ece
+POSTGRES_PASSWORD=<REDACTED-32chars>
+POSTGRES_DB=ece
+DATABASE_URL=postgresql+psycopg://ece:<REDACTED>@postgres:5432/ece
+ECE_SERVER_TODAY_ANCHOR=2026-09-23
+API_PORT=8000
+DEMO_DOMAIN=corln.rana.asia
+ECE_LOG_LEVEL=INFO
+
+file mode: 600 (root:root)
+git check-ignore: deploy/.env confirmed (not committable)
+
+=== safety notes ===
+- Password regenerated after first attempt leaked via sed regex flaw (no @ after second postgres: → regex didn't match DATABASE_URL).
+- Final password NEVER printed to logs or evidence.
+- /opt/ece/deploy/.env is the only place this password exists.

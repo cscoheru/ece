@@ -1,0 +1,37 @@
+Phase F — migration + seed (2026-09-23, server corln.rana.asia)
+
+=== alembic upgrade head ===
+INFO Running upgrade -> 0001_initial (S0.5 initial)
+INFO Running upgrade 0001 -> 0002_relationship_unique (R3)
+INFO Running upgrade 0002 -> 0003_ontology_rejections (S2.4)
+INFO Running upgrade 0003 -> 0004_resolution_pending (S2.3 R4)
+INFO Running upgrade 0004 -> 0005_context_audit (S3.3)
+INFO Running upgrade 0005 -> 0006_pg_trgm (S4.4)
+INFO Running upgrade 0006 -> 0007_user_orgs (cut-019)
+INFO Running upgrade 0007 -> 0008_evidence_records (S2 V0 spike)
+Total: 8 migrations applied, head reached.
+
+=== seed_v0_spike_fixture.py ===
+source_system: spike:v0-technical-fixture
+entities created: 7
+relationships created: 1
+PR display_id: SPIKE-PR-001
+SELF-CHECK PASSED ✓
+
+=== seed_knowledge_fixture.py ===
+source_system: km:v0-knowledge-fixture
+entities created: 8
+relationships created: 4
+policy display_id: KM-POL-001
+SELF-CHECK PASSED ✓
+(fixture today anchor: 2026-09-22 — internal fixture validity, NOT live server anchor)
+
+=== seed_compliance_fixture.py ===
+source_system: comp:v0-compliance-fixture
+entities created: 6
+relationships created: 9
+CTL-001 display_id: COMP-CTL-001
+audit period: 2026-07-01 .. 2026-09-30
+SELF-CHECK PASSED ✓
+
+All 4 in-container commands passed. Phase F complete.
