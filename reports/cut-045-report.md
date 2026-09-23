@@ -308,8 +308,14 @@ PASS=10 SKIP=0 FAIL=0
 
 ## 8. 已知边界
 
-| 边界 | 真实保证层 | 现状 |
-|------|-----------|------|
+> 本节遵循 R12 (诚实标注) 衍生铁律: 显式区分**当时 (cut-045 engineering cycle 2026-09-22)** 的已知边界与**当前 (cut-045 ops 2026-09-23)** 的状态. 不让读者把 cut-045 当时的 ⚠️ 当作当前事实.
+
+### 8.1 cut-045 engineering cycle 当时的已知边界 (2026-09-22 快照)
+
+> 此表是 `6e1e7be` / `06c1708` commit 时点的真实状态. 当时 real deployment 尚未执行, 部署链路是 config-as-code + yaml-as-code 验证, 并非 running server. R3-B4 修复后 View C `Same-origin Deployment` 被标 🔨, 与本表一致.
+
+| 边界 | 真实保证层 | 当时现状 (2026-09-22) |
+|------|-----------|---------|
 | `auto_approved` / `review_required` 等业务结论 | `src/ece/v0/loop.py` (R1-B2 lesson: "Pass at API boundary") | ✅ API boundary 真实保证 |
 | `no_permission` | `src/ece/permissions/` (Permission Engine) | ✅ 引擎核强制 |
 | `answerable` / `needs_valid_policy` | `src/ece/domain_packs/knowledge/agent/v0_rules.py` (rule) | ✅ rule-driven |
@@ -322,6 +328,21 @@ PASS=10 SKIP=0 FAIL=0
 | Healthcheck `/healthz` via urllib | `deploy/docker-compose.demo.yml` | ⚠️ 同上 |
 | Domain 切换 `app.js` 不串 | `demos/spa/app.js` view switcher | ✅ 已 R3 验收 |
 | `proc-eve` vs `spike-user-unrelated` | `src/ece/domain_packs/procurement/spec.yaml` 的 `denied_users` | ✅ spec-driven binding 测试已识别 |
+
+### 8.2 当前状态 (cut-045 ops 之后, 2026-09-23)
+
+> §8.1 的 3 行 ⚠️ 在 cut-045 operational deployment (`3c4c3cb`) 后已被覆盖. View C `Same-origin Deployment` 翻转 🔨 → ✅ (R4-B1 binding test 同步翻转). 详见 `reports/cut-045-operations-report.md` 与 closure-archive R4-B1.
+
+| 边界 | 当前状态 (2026-09-23) | 证据 |
+|------|---------------------|------|
+| nginx SPA 反代 | ✅ 已部署 https://corln.rana.asia, /healthz + /api/v1/demo/domains 验证通过 | ops report §6 / phaseG-nginx.txt |
+| docker compose `restart: unless-stopped` | ✅ running (api + postgres healthy), Phase I/K smoke 10/10 PASS | ops report §4 / phaseE-compose.txt / phaseI-smoke.txt |
+| Healthcheck `/healthz` via urllib | ✅ 200 OK via urllib over HTTPS (Phase I 第 1 项 + Phase K final) | ops report §7 / phaseI-smoke.txt |
+| Cert renewal (LE YR2, Sep 23 → Dec 22) | ✅ `sudo certbot renew --dry-run` PASS, EXIT 0, all simulated renewals succeeded | ops report §15 / certbot-renew-dryrun.txt |
+| Certbot systemd timer | ✅ active, auto-renews before 2026-11-22 (cert 30-day-window trigger) | ops report §15 |
+| CF token rotation risk (IPv6 漂移) | ⚠️ 已知风险: 服务器 IPv6 可能漂移, 续期将 9109 失败; 缓解方案已记录 | ops report §13 item 2 |
+
+**Customer Private Deployment ⬜**: 仍未部署 (R11 铁律保持诚实徽章). cut-045 closure-archive 不开 customer-private 路径.
 
 ---
 

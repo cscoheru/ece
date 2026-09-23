@@ -1,4 +1,4 @@
-Warning: Permanently added '207.57.125.162' (ED25519) to the list of known hosts.
+Warning: Permanently added '<REDACTED_ORIGIN_IPV4>' (ED25519) to the list of known hosts.
 === uname ===
 Linux 56uzru917yy9sd5 5.15.0-191-generic #201-Ubuntu SMP Fri Aug 7 18:39:04 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
 === os-release ===
@@ -61,7 +61,7 @@ LISTEN 0      511          0.0.0.0:443        0.0.0.0:*    users:(("nginx",pid=7
 LISTEN 0      511          0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=753,fd=7),("nginx",pid=752,fd=7),("nginx",pid=751,fd=7),("nginx",pid=750,fd=7),("nginx",pid=748,fd=7))
 LISTEN 0      511             [::]:80            [::]:*    users:(("nginx",pid=753,fd=8),("nginx",pid=752,fd=8),("nginx",pid=751,fd=8),("nginx",pid=750,fd=8),("nginx",pid=748,fd=8))
 === outbound ip ===
-207.57.125.162
+<REDACTED_ORIGIN_IPV4>
 === outbound github ===
 github_status=200
 === outbound dockerhub ===

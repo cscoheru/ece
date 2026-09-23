@@ -10,9 +10,9 @@
 
 | Item | Value |
 |---|---|
-| Server IP | 207.57.125.162 |
+| Server IP | <REDACTED_ORIGIN_IPV4> |
 | SSH port | 22 |
-| SSH user | root |
+| SSH user | <REDACTED_SSH_USER> |
 | SSH key | `~/.ssh/id_ed25519_pentagi` (existing pentagi-vps key) |
 | Alias | `ssh pentagi-vps` (via `~/.ssh/config`) |
 | Sudo mode | passwordless |
@@ -47,7 +47,7 @@ Compose     : v5.5.1
 nginx       : 1.18.0 (existing, replaced)
 RAM         : 7.8 GiB
 Disk        : 88 GB / 68% used / 29 GB free
-IP          : 207.57.125.162 (matches user-provided)
+IP          : <REDACTED_ORIGIN_IPV4> (matches user-provided, redacted from committed evidence)
 GitHub      : reachable
 DockerHub   : reachable
 ```
@@ -125,7 +125,7 @@ server {
 
 **Operational adjustments required during HTTPS setup**:
 
-1. CF API token had IP restriction; added server's IPv6 `2001:df1:7880:6::3bd/128` to whitelist → 9109 resolved
+1. CF API token had IP restriction; added server's IPv6 `<REDACTED_ORIGIN_IPV6>/128` to whitelist → 9109 resolved
 2. Ubuntu 22.04 `ca-certificates` missing ISRG Root YR symlink (LE 2024 root migration); `update-ca-certificates` rebuilt symlinks → curl HTTPS verify OK
 
 Saved: `phaseH-https.txt`
@@ -207,7 +207,7 @@ All defects found were **operational / configuration issues**, NOT code defects.
 
 | # | Defect | Location | Fix | cut-045R4? |
 |---|---|---|---|---|
-| 1 | CF API token IP-restricted (didn't include server IPv6) | Cloudflare dashboard | Added `2001:df1:7880:6::3bd/128` to token's Client IP whitelist | No (CF operational) |
+| 1 | CF API token IP-restricted (didn't include server IPv6) | Cloudflare dashboard | Added `<REDACTED_ORIGIN_IPV6>/128` to token's Client IP whitelist | No (CF operational) |
 | 2 | `/user/tokens/verify` 401 with account-scoped token | n/a (informational) | n/a — both cfat_ and cfut_ tokens validated via alternative endpoints | No |
 | 3 | CF Browser Integrity Check blocking Python-urllib UA (1010) | CF zone Security settings | Disabled Browser Integrity Check | No (CF operational) |
 | 4 | CF Browser Insights injecting beacon script | CF zone Speed settings | Disabled Browser Insights | No (CF operational) |
@@ -274,5 +274,47 @@ reports/cut-045-operations-report.md (this file)
 - **Date**: 2026-09-23
 - **Codex R3 Engineering PASS reference**: `6e1e7be` (ece) + `06c1708` (parent PRD)
 - **Codex operational deployment directive**: `/Users/kjonekong/Documents/Obsidian Vault/blueprintECE/0923/codex要求cc完成服务器部署-而非让用户执行命令.md`
-- **Server**: 207.57.125.162 (shared with former PentAGI stack, now ECE-dedicated)
+- **Server**: <REDACTED_ORIGIN_IPV4> (shared with former PentAGI stack, now ECE-dedicated)
 - **Domain**: corln.rana.asia (Cloudflare DNS, proxy ON, Browser Integrity + Browser Insights OFF)
+
+---
+
+## 15. Cert renewal resilience (R4-B3)
+
+`sudo certbot renew --dry-run` executed on server <REDACTED_ORIGIN_IPV4>, 2026-09-23:
+
+```
+$ sudo certbot renew --dry-run --no-random-sleep-on-renew
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Processing /etc/letsencrypt/renewal/corln.rana.asia.conf
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Simulating renewal of an existing certificate for corln.rana.asia
+Waiting 30 seconds for DNS changes to propagate
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Congratulations, all simulated renewals succeeded:
+  /etc/letsencrypt/live/corln.rana.asia/fullchain.pem (success)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+EXIT 0
+```
+
+**Resilience assessment**:
+
+| Check | Result |
+|---|---|
+| DNS-01 challenge via Cloudflare plugin | PASS (30s propagation, no error) |
+| ACME staging server reachability | PASS (`acme-staging-v02.api.letsencrypt.org` responded) |
+| `/etc/letsencrypt/live/corln.rana.asia/fullchain.pem` renewal path | PASS (success) |
+| Cloudflare API token validity | PASS (scope `Zone:DNS:Edit` on rana.asia zone, IP whitelist includes server IPv6 `<REDACTED_ORIGIN_IPV6>/128`) |
+| Certbot systemd timer | ACTIVE (`certbot.timer` running; auto-renews every 60 days, first run before 2026-11-22) |
+
+**Operational notes**:
+
+1. **First attempt infrastructure**: First run (2026-09-23 03:00) **succeeded server-side** (certbot reached `_renew_describe_results` with successes=1, failures=0) but SSH connection dropped before certbot's stdout notify banner finished — Python `BrokenPipeError` on `display.util.notify` was logged as a misleading "Failed to renew" line. The actual renewal succeeded. **Lessons**: never trust certbot exit code alone when running through SSH; check the letsencrypt.log renewal block, not just exit code.
+2. **Second run** (after `--no-random-sleep-on-renew` + SSH `ServerAliveInterval=30`): clean EXIT 0, banner printed, evidence archived.
+3. **Renewal window**: current cert valid Sep 23 → Dec 22, 2026. Auto-renew cron (certbot.timer) fires every 12h, attempts renewal when cert is <30 days from expiry (i.e., after Nov 22). Expected first automatic renewal: ~Nov 22.
+4. **IPv6 drift risk**: server's outbound IPv6 (CMCC) may rotate; renewal will fail with 9109 if CF token's Client IP whitelist no longer matches. Mitigation documented in §13.
+
+Full evidence: `reports/cut-045-operations/certbot-renew-dryrun.txt`.

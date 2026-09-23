@@ -141,24 +141,34 @@ def test_view_c_does_not_mark_customer_private_deployment_oh(html_text: str) -> 
 
 
 # ---------------------------------------------------------------------------
-# cut-045R1 R3-B4 — Same-origin Deployment (real) must NOT be marked ✅
+# cut-045 ops R4-B1 — Same-origin Deployment (real) MUST be marked ✅
 # ---------------------------------------------------------------------------
+#
+# History:
+#   cut-045R1 R3-B4 (2026-09-23): introduced this binding to enforce 🔨
+#       (real deployment pending). Test name suffix `_oh` was a typo
+#       placeholder.
+#   cut-045 ops R4-B1 (2026-09-23): operational deployment PASS at
+#       https://corln.rana.asia (PASS=10 SKIP=0 FAIL=0). Real deployment
+#       is now verified end-to-end. Binding FLIPPED: ✅ required, 🔨
+#       forbidden. Renamed to reflect current reality.
 
 
-def test_view_c_does_not_mark_same_origin_real_deployment_oh(html_text: str) -> None:
-    """Same-origin Deployment (real production deployment) must NOT be marked ✅.
+def test_view_c_marks_same_origin_deployment_done_when_operational(
+    html_text: str,
+) -> None:
+    """Same-origin Deployment (real production deployment) MUST be marked ✅.
 
-    cut-045R1 R3-B4 fix: the cut-045 report claimed Same-origin Deployment ✅
-    but only config-as-code (yaml + nginx conf) was shipped; the real production
-    deployment (corln.rana.asia) has not been verified end-to-end. View C must
-    distinguish:
-      - Same-origin Deployment (config-as-code) ✅ — code + nginx conf shipped
-      - Same-origin Deployment (real deployment) 🔨 — production deploy pending
-      - Customer Private Deployment ⬜ — future event
+    cut-045 ops R4-B1 (2026-09-23): operational deployment PASSED at
+    https://corln.rana.asia (PASS=10 SKIP=0 FAIL=0, see
+    ece/reports/cut-045-operations-report.md). The previous
+    config-as-code-only 🔨 state (cut-045R1 R3-B4) has been superseded.
 
-    This test extracts the entire `<span>` tag containing "Same-origin
-    Deployment" and asserts the badge class is "badge-wip" (in-progress),
-    not "badge-done" (✅). The emoji marker inside the span confirms 🔨.
+    View C must now mark Same-origin Deployment as ✅ (badge-done), and
+    MUST NOT mark it as 🔨 (badge-wip / in-progress).
+
+    Pre-flight check: Customer Private Deployment remains ⬜ (out of
+    cut-045 scope; verified by `test_view_c_does_not_mark_customer_private_as_done`).
     """
     idx = html_text.find("Same-origin Deployment")
     if idx == -1:
@@ -170,19 +180,23 @@ def test_view_c_does_not_mark_same_origin_real_deployment_oh(html_text: str) -> 
     if span_open_idx == -1 or span_close_idx == -1:
         pytest.fail("Same-origin Deployment badge not wrapped in <span>")
     span = html_text[span_open_idx:span_close_idx + len("</span>")]
-    # Span must NOT contain "✅" (no done marker)
-    assert "✅" not in span, (
-        f"View C marks Same-origin Deployment as ✅ (in span: {span!r}) — "
-        f"but real deployment to corln.rana.asia has not been verified "
-        f"end-to-end. Per cut-045R1 R3-B4: real deployment should be 🔨 "
-        f"(in-progress), config-as-code is ✅. Distinguishing the two "
-        f"prevents audit accidents."
+    # Span MUST contain "✅" (done marker) — R4-B1 ops PASS
+    assert "✅" in span, (
+        f"View C does NOT mark Same-origin Deployment as ✅ — "
+        f"but operational deployment PASSED at https://corln.rana.asia "
+        f"(PASS=10 SKIP=0 FAIL=0, 2026-09-23, see "
+        f"ece/reports/cut-045-operations-report.md). "
+        f"Per cut-045 ops R4-B1: real deployment is now verified "
+        f"end-to-end, so View C must show ✅ (badge-done), not 🔨 "
+        f"(badge-wip). Span found: {span!r}"
     )
-    # Span MUST contain "🔨" (in-progress marker)
-    assert "🔨" in span, (
-        f"View C must mark Same-origin Deployment (real) with 🔨 marker "
-        f"when the production deployment is not yet verified end-to-end. "
-        f"Span found: {span!r}"
+    # Span MUST NOT contain "🔨" (in-progress marker) — superseded by R4-B1
+    assert "🔨" not in span, (
+        f"View C still marks Same-origin Deployment as 🔨 (in span: "
+        f"{span!r}) — but operational deployment PASSED on 2026-09-23. "
+        f"Per cut-045 ops R4-B1: this is a historical pre-deployment "
+        f"marker; current reality is ✅. Removing 🔨 here prevents "
+        f"reader confusion and audit accidents."
     )
 
 

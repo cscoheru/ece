@@ -1,9 +1,9 @@
 Phase H — HTTPS cert + nginx HTTPS server block (2026-09-23, server corln.rana.asia)
 
 === certbot DNS-01 challenge (Cloudflare plugin) ===
-- Initial attempt: 9109 IP restriction (token's Client IP whitelist didn't include server's IPv6 2001:df1:7880:6::3bd)
+- Initial attempt: 9109 IP restriction (token's Client IP whitelist didn't include server's IPv6 <REDACTED_ORIGIN_IPV6>)
 - User added IPv6 /128 to whitelist → success
-- /zones GET returns rana.asia zone (zone_id=1cdc67f91178b99d6ecec78401b432ba)
+- /zones GET returns rana.asia zone (zone_id=<REDACTED_ZONE_ID>)
 - certbot certonly --dns-cloudflare -d corln.rana.asia → SUCCESS
 - Cert saved: /etc/letsencrypt/live/corln.rana.asia/{fullchain.pem, privkey.pem, cert.pem, chain.pem}
 - Subject: CN = corln.rana.asia
