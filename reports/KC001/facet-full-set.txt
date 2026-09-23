@@ -1,0 +1,8 @@
+--- facets invariance test ---
+full facets types: ['case', 'deliverable_template', 'industry_note', 'methodology', 'proposal_play', 'risk_check']
+full facets source_origins: ['founder_case', 'licensed_public', 'methodology_note', 'synthetic_variant']
+
+filtered facets types: ['case', 'deliverable_template', 'industry_note', 'methodology', 'proposal_play', 'risk_check']
+filtered facets source_origins: ['founder_case', 'licensed_public', 'methodology_note', 'synthetic_variant']
+
+INVARIANT HOLDS: True

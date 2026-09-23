@@ -1,0 +1,26 @@
+--- q=采购 ---
+status: 200 total: 3
+
+--- type=case ---
+status: 200 total: 10
+
+--- source_origin=methodology_note ---
+status: 200 total: 22
+
+--- multi practice ---
+status: 200 total: 3
+
+--- combined filters ---
+status: 200 total: 8
+
+--- sort=title ---
+status: 200
+first 5 ids: ['case-bank-retail-channel-002', 'case-consumer-goods-channel-006', 'case-energy-procurement-009', 'case-healthcare-service-blueprint-010', 'case-insurance-claim-flow-008'] ascending: True
+
+--- limit=3 offset=0 then offset=3 ---
+page 1: ['case-bank-retail-channel-002', 'case-consumer-goods-channel-006', 'case-energy-procurement-009']
+page 2: ['case-healthcare-service-blueprint-010', 'case-insurance-claim-flow-008', 'case-logistics-network-007']
+disjoint: True
+
+--- empty keyword ---
+status: 200 total: 0

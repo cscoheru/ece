@@ -1,0 +1,12 @@
+--- GET /api/v1/consulting/facets ---
+status: 200
+body keys: ['facets', 'total']
+
+--- GET /api/v1/consulting/library?type=case ---
+status: 200
+total: 10 items returned: 10
+sample item id: case-bank-retail-channel-002
+
+--- GET /api/v1/consulting/objects/case-retail-procurement-diagnosis-001 ---
+status: 200
+body id: case-retail-procurement-diagnosis-001 title: 区域零售集团采购成本诊断

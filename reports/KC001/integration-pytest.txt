@@ -1,0 +1,13 @@
+[1m============================= test session starts ==============================[0m
+collected 15 items
+
+tests/integration/test_consulting_api_contract.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33m               [ 53%][0m
+tests/integration/test_consulting_filters_search.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33m              [100%][0m
+
+[33m=============================== warnings summary ===============================[0m
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+[33m======================== [32m15 passed[0m, [33m[1m1 warning[0m[33m in 0.65s[0m[33m =========================[0m

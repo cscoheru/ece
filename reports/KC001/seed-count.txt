@@ -1,0 +1,5 @@
+total: 36
+type distribution: {'case': 10, 'methodology': 10, 'proposal_play': 6, 'deliverable_template': 4, 'risk_check': 4, 'industry_note': 2}
+source_origin distribution: {'synthetic_variant': 9, 'founder_case': 2, 'methodology_note': 22, 'licensed_public': 3}
+confidence distribution: {'synthetic': 9, 'medium': 5, 'high': 22}
+review_state distribution: {'approved': 36}

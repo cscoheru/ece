@@ -15,6 +15,8 @@
     <button data-view="a" class="active" type="button">视图 A · 多域实时演示（live）</button>
     <button data-view="b" type="button">视图 B · 架构解释（kernel 视角）</button>
     <button data-view="c" type="button">视图 C · 扩展蓝图（live）</button>
+    <!-- KC-001: Consulting Knowledge Library (file-backed seed, no DB / no LLM) -->
+    <button data-view="d" type="button">视图 D · 咨询知识库</button>
   </nav>
 
   <main>
@@ -164,10 +166,65 @@
 
       <p class="muted">三域共享同一底座 (底座泛化 cut-042); 部署层为自有演示服务器, 不做客户私有化交付 (详见 <code>deploy/README.md</code>).</p>
     </section>
+
+    <!-- View D — Consulting Knowledge Library (KC-001)
+         业务文案: 面向顾问 / 销售 / 合伙人, 不暴露内部技术词 (PRD §9).
+         数据源: file-backed seed catalog (36+ objects). 不引入 DB / LLM / embedding. -->
+    <section id="view-d" class="view" data-view="d" hidden>
+      <h2>咨询知识库</h2>
+      <p class="muted">找相关案例、方法论、提案素材和交付模板. 数据来源已标注, 客户名脱敏.</p>
+
+      <label>
+        <span>关键词搜索</span>
+        <input id="consulting-search" type="search" placeholder="例如: 采购诊断 / KPI / 风险披露">
+      </label>
+
+      <div id="consulting-filters">
+        <label>
+          <span>类型</span>
+          <select id="filter-type"><option value="">全部</option></select>
+        </label>
+        <label>
+          <span>实践</span>
+          <select id="filter-practice"><option value="">全部</option></select>
+        </label>
+        <label>
+          <span>阶段</span>
+          <select id="filter-phase"><option value="">全部</option></select>
+        </label>
+        <label>
+          <span>行业</span>
+          <select id="filter-industry"><option value="">全部</option></select>
+        </label>
+        <label>
+          <span>问题类型</span>
+          <select id="filter-problem"><option value="">全部</option></select>
+        </label>
+        <label>
+          <span>来源</span>
+          <select id="filter-source"><option value="">全部</option></select>
+        </label>
+        <button id="consulting-reset" type="button">重置筛选</button>
+      </div>
+
+      <div id="consulting-total">载入中…</div>
+      <div id="consulting-cards"></div>
+      <div id="consulting-empty">没有匹配的条目, 试试调整关键词或筛选条件.</div>
+
+      <!-- Detail drawer (KC-001 view-d detail panel) -->
+      <aside id="consulting-detail" aria-hidden="true">
+        <header class="detail-header">
+          <h2 id="consulting-detail-title">详情</h2>
+          <button class="close-btn" id="consulting-detail-close" type="button">关闭</button>
+        </header>
+        <p id="consulting-detail-summary"></p>
+        <dl id="consulting-detail-fields"></dl>
+      </aside>
+    </section>
   </main>
 
   <footer>
-    <p class="muted">API base：<code>/api/v1</code> · 视图 A 调用 <code>GET /api/v1/demo/domains</code> 与 <code>POST /api/v1/demo/scenarios/generate</code></p>
+    <p class="muted">API base: <code>/api/v1</code> · 视图 A 调用 <code>GET /api/v1/demo/domains</code> 与 <code>POST /api/v1/demo/scenarios/generate</code> · 视图 D 调用 <code>GET /api/v1/consulting/library</code> · <code>GET /api/v1/consulting/facets</code> · <code>GET /api/v1/consulting/objects/{id}</code></p>
   </footer>
 
   <script src="app.js"></script>

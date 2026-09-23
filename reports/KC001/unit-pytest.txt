@@ -1,0 +1,10 @@
+[1m============================= test session starts ==============================[0m
+collected 33 items
+
+tests/unit/test_consulting_seed_schema.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                         [ 18%][0m
+tests/unit/test_consulting_seed_count.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                            [ 30%][0m
+tests/unit/test_consulting_seed_discipline.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                      [ 45%][0m
+tests/unit/test_consulting_service.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                          [ 72%][0m
+tests/unit/test_consulting_spa_view.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                         [100%][0m
+
+[32m============================== [32m[1m33 passed[0m[32m in 0.27s[0m[32m ==============================[0m

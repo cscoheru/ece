@@ -1,0 +1,28 @@
+=== full verification summary ===
+Date: 2026-09-23T05:47:26Z
+
+--- 1. Unit tests (5 files, 33 tests) ---
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                        [100%][0m
+
+--- 2. Integration tests (2 files, 15 tests) ---
+
+--- 3. ruff ---
+[1;32mAll checks passed![0m
+
+--- 4. mypy ---
+[1m[32mSuccess: no issues found in 4 source files(B[m
+
+--- 5. FastAPI TestClient live ---
+/facets: 200
+/library: 200
+/library?type=case: 200
+/objects/case-retail-procurement-diagnosis-001: 200
+/objects/__bad__: 404
+
+--- 6. SPA HTML anchor count ---
+view-d anchors in index.html: 9
+
+--- 7. Baseline regression (test_relations_materializer pre-existing failures, unrelated) ---
+[31mFAILED[0m tests/unit/test_relations_materializer.py::[1mtest_materializer_clamps_to_fixture_supplier_pool[0m - KeyError: "rule_id='R-SPIKE-REVIEW' not registered; available=[]"
+[31mFAILED[0m tests/unit/test_relations_materializer.py::[1mtest_materializer_is_pack_owned_not_loop_hardcoded[0m - KeyError: "rule_id='R-SPIKE-REVIEW' not registered; available=[]"
+[31mFAILED[0m tests/unit/test_relations_materializer.py::[1mtest_materializer_does_not_touch_non_selects_relations[0m - sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection fail...

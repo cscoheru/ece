@@ -1,0 +1,7 @@
+--- 404 on unknown object_id ---
+status: 404
+body: {'detail': "object_id='__definitely_not_a_real_id__' not found in consulting catalog"}
+
+--- 404 on partially-resembling-id ---
+status: 404
+body: {'detail': "object_id='case-bogus-999' not found in consulting catalog"}

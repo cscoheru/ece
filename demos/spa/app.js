@@ -40,6 +40,10 @@
     navButtons[k].addEventListener("click", function (e) {
       var target = e.currentTarget.getAttribute("data-view");
       switchView(target);
+      // KC-001: lazily load consulting library on first view-d entry
+      if (target === "d") {
+        loadConsultingLibrary();
+      }
     });
   }
 
@@ -211,4 +215,262 @@
 
   // Initial probe so the SPA exercises the API on first paint.
   loadDomains();
+
+  // -----------------------------------------------------------------------
+  // KC-001 — Consulting Knowledge Library (view-d) client.
+  // Vanilla JS, zero CDN, zero build. All copy is business-facing (no
+  // internal field names leak — guarded by test_consulting_spa_view).
+  // -----------------------------------------------------------------------
+
+  var CONSULTING_TYPE_LABEL = {
+    "case": "案例",
+    "methodology": "方法论",
+    "proposal_play": "提案打法",
+    "deliverable_template": "交付模板",
+    "risk_check": "风险检查",
+    "industry_note": "行业观察"
+  };
+
+  var CONSULTING_SOURCE_LABEL = {
+    "founder_case": "真实案例 (脱敏)",
+    "methodology_note": "方法论整理",
+    "synthetic_variant": "合成示例",
+    "licensed_public": "公开资料"
+  };
+
+  var consultingFacetsLoaded = false;
+
+  function populateConsultingSelect(selectEl, values, allLabel) {
+    while (selectEl.options.length > 1) {
+      selectEl.remove(1);
+    }
+    if (!values || values.length === 0) return;
+    for (var i = 0; i < values.length; i++) {
+      var opt = document.createElement("option");
+      opt.value = values[i];
+      opt.textContent = values[i];
+      selectEl.appendChild(opt);
+    }
+    if (allLabel) {
+      selectEl.options[0].textContent = allLabel;
+    }
+  }
+
+  function loadConsultingFacets() {
+    if (consultingFacetsLoaded) return Promise.resolve();
+    return fetch("/api/v1/consulting/facets", { headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        var f = (body && body.facets) ? body.facets : {};
+        populateConsultingSelect(document.getElementById("filter-type"), f.types || [], "全部类型");
+        populateConsultingSelect(document.getElementById("filter-practice"), f.practices || [], "全部实践");
+        populateConsultingSelect(document.getElementById("filter-phase"), f.engagement_phases || [], "全部阶段");
+        populateConsultingSelect(document.getElementById("filter-industry"), f.client_industries || [], "全部行业");
+        populateConsultingSelect(document.getElementById("filter-problem"), f.problem_types || [], "全部问题");
+        populateConsultingSelect(document.getElementById("filter-source"), f.source_origins || [], "全部来源");
+        consultingFacetsLoaded = true;
+      });
+  }
+
+  function readConsultingFilters() {
+    function v(id) {
+      var el = document.getElementById(id);
+      return el && el.value ? el.value : "";
+    }
+    var q = document.getElementById("consulting-search").value.trim();
+    var params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (v("filter-type")) params.set("type", v("filter-type"));
+    if (v("filter-practice")) params.append("practice", v("filter-practice"));
+    if (v("filter-phase")) params.append("engagement_phase", v("filter-phase"));
+    if (v("filter-industry")) params.append("client_industry", v("filter-industry"));
+    if (v("filter-problem")) params.append("problem_type", v("filter-problem"));
+    if (v("filter-source")) params.set("source_origin", v("filter-source"));
+    return params;
+  }
+
+  function renderConsultingCards(items) {
+    var cardsEl = document.getElementById("consulting-cards");
+    var emptyEl = document.getElementById("consulting-empty");
+    cardsEl.innerHTML = "";
+    if (!items || items.length === 0) {
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+    for (var i = 0; i < items.length; i++) {
+      (function (o) {
+        var card = document.createElement("div");
+        card.className = "consulting-card";
+        card.setAttribute("data-object-id", o.id);
+        var typeLabel = CONSULTING_TYPE_LABEL[o.type] || o.type;
+        var sourceLabel = CONSULTING_SOURCE_LABEL[o.source_origin] || o.source_origin;
+        var title = document.createElement("h3");
+        title.textContent = o.title;
+        var summary = document.createElement("p");
+        summary.textContent = o.summary;
+        var meta = document.createElement("div");
+        meta.className = "consulting-meta";
+        var b1 = document.createElement("span");
+        b1.className = "badge badge-done";
+        b1.textContent = typeLabel;
+        var b2 = document.createElement("span");
+        b2.className = "badge badge-wip";
+        b2.textContent = sourceLabel;
+        meta.appendChild(b1);
+        meta.appendChild(b2);
+        card.appendChild(title);
+        card.appendChild(summary);
+        card.appendChild(meta);
+        card.addEventListener("click", function () { openConsultingDetail(o.id); });
+        cardsEl.appendChild(card);
+      })(items[i]);
+    }
+  }
+
+  function runConsultingSearch() {
+    var params = readConsultingFilters();
+    var totalEl = document.getElementById("consulting-total");
+    totalEl.textContent = "载入中…";
+    fetch("/api/v1/consulting/library?" + params.toString(), {
+      headers: { "Accept": "application/json" }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        var total = body && typeof body.total === "number" ? body.total : 0;
+        totalEl.textContent = "共 " + total + " 条结果";
+        renderConsultingCards(body && body.items ? body.items : []);
+      })
+      .catch(function (err) {
+        totalEl.textContent = "[GET /api/v1/consulting/library 失败] " +
+          (err && err.message ? err.message : err);
+      });
+  }
+
+  function loadConsultingLibrary() {
+    var p = loadConsultingFacets();
+    if (p && typeof p.then === "function") {
+      p.then(runConsultingSearch);
+    } else {
+      runConsultingSearch();
+    }
+  }
+
+  function renderTagList(values) {
+    var ul = document.createElement("ul");
+    ul.className = "tag-list";
+    if (!values || values.length === 0) {
+      var li = document.createElement("li");
+      li.textContent = "—";
+      ul.appendChild(li);
+      return ul;
+    }
+    for (var i = 0; i < values.length; i++) {
+      var li2 = document.createElement("li");
+      li2.textContent = values[i];
+      ul.appendChild(li2);
+    }
+    return ul;
+  }
+
+  function openConsultingDetail(objectId) {
+    var drawer = document.getElementById("consulting-detail");
+    var titleEl = document.getElementById("consulting-detail-title");
+    var summaryEl = document.getElementById("consulting-detail-summary");
+    var fieldsEl = document.getElementById("consulting-detail-fields");
+    titleEl.textContent = "载入中…";
+    summaryEl.textContent = "";
+    fieldsEl.innerHTML = "";
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+
+    fetch("/api/v1/consulting/objects/" + encodeURIComponent(objectId), {
+      headers: { "Accept": "application/json" }
+    })
+      .then(function (r) {
+        if (r.status === 404) {
+          titleEl.textContent = "未找到";
+          summaryEl.textContent = "未在咨询知识库中找到此条目 (id=" + objectId + ")";
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (o) {
+        if (!o) return;
+        titleEl.textContent = o.title;
+        summaryEl.textContent = o.summary;
+        fieldsEl.innerHTML = "";
+        var rows = [
+          ["类型", document.createTextNode(CONSULTING_TYPE_LABEL[o.type] || o.type)],
+          ["来源", document.createTextNode(CONSULTING_SOURCE_LABEL[o.source_origin] || o.source_origin)],
+          ["置信度", document.createTextNode(o.confidence)],
+          ["状态", document.createTextNode(o.review_state)],
+          ["实践", renderTagList(o.practice || [])],
+          ["阶段", renderTagList(o.engagement_phase || [])],
+          ["行业", renderTagList(o.client_industry || [])],
+          ["问题类型", renderTagList(o.problem_types || [])],
+          ["方法", renderTagList(o.methods || [])],
+          ["交付物", renderTagList(o.deliverables || [])],
+          ["产出", renderTagList(o.outcomes || [])]
+        ];
+        for (var i = 0; i < rows.length; i++) {
+          var dt = document.createElement("dt");
+          dt.textContent = rows[i][0];
+          var dd = document.createElement("dd");
+          if (rows[i][1] instanceof Node) {
+            dd.appendChild(rows[i][1]);
+          } else {
+            dd.textContent = String(rows[i][1] || "—");
+          }
+          fieldsEl.appendChild(dt);
+          fieldsEl.appendChild(dd);
+        }
+      })
+      .catch(function (err) {
+        titleEl.textContent = "载入失败";
+        summaryEl.textContent = (err && err.message ? err.message : err);
+      });
+  }
+
+  function closeConsultingDetail() {
+    var drawer = document.getElementById("consulting-detail");
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+  }
+
+  // ----- Consulting filter / search event wiring -----
+  var searchInput = document.getElementById("consulting-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", function () {
+      // Debounce-free immediate search; SPA is in-memory small dataset.
+      runConsultingSearch();
+    });
+  }
+
+  var filterIds = [
+    "filter-type", "filter-practice", "filter-phase",
+    "filter-industry", "filter-problem", "filter-source"
+  ];
+  for (var fi = 0; fi < filterIds.length; fi++) {
+    (function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener("change", runConsultingSearch);
+    })(filterIds[fi]);
+  }
+
+  var resetBtn = document.getElementById("consulting-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", function () {
+      document.getElementById("consulting-search").value = "";
+      for (var ri = 0; ri < filterIds.length; ri++) {
+        document.getElementById(filterIds[ri]).value = "";
+      }
+      runConsultingSearch();
+    });
+  }
+
+  var closeBtn = document.getElementById("consulting-detail-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeConsultingDetail);
+  }
 })();

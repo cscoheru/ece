@@ -302,3 +302,192 @@ footer code {
   margin: 0.25rem 0 0 0;
   font-style: italic;
 }
+
+/* KC-001 — Consulting Library (view-d) styles.
+   Vanilla CSS, zero external imports, zero CDN. */
+#consulting-search {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  margin-bottom: 1rem;
+}
+
+#consulting-search:focus {
+  outline: none;
+  border-color: #1f2937;
+  box-shadow: 0 0 0 2px rgba(31, 41, 55, 0.1);
+}
+
+#consulting-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+#consulting-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+#consulting-filters select,
+#consulting-filters button {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+}
+
+#consulting-filters button {
+  cursor: pointer;
+  background: #f3f4f6;
+  align-self: end;
+}
+
+#consulting-filters button:hover {
+  background: #e5e7eb;
+}
+
+#consulting-total {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0.5rem 0;
+}
+
+#consulting-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.consulting-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.consulting-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.consulting-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.consulting-card p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.consulting-card .consulting-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+#consulting-empty {
+  display: none;
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+#consulting-detail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(560px, 100vw);
+  height: 100vh;
+  background: #fff;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+}
+
+#consulting-detail.open {
+  display: block;
+}
+
+#consulting-detail header.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  background: transparent;
+  color: #111827;
+  padding: 0;
+}
+
+#consulting-detail h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+#consulting-detail .close-btn {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+#consulting-detail .close-btn:hover {
+  background: #f3f4f6;
+}
+
+#consulting-detail dl {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+#consulting-detail dt {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#consulting-detail dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+#consulting-detail ul.tag-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+#consulting-detail ul.tag-list li {
+  font-size: 0.8rem;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  color: #374151;
+}

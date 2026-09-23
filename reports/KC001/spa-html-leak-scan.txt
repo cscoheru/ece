@@ -1,0 +1,15 @@
+--- consulting region of index.html forbidden word scan ---
+total characters in view-d section: 1744
+forbidden word hits: []
+HTML view-d-section: PASS
+
+--- app.js consulting region forbidden word scan ---
+total characters in consulting JS region: 9626
+forbidden word hits: []
+JS consulting region: PASS
+
+--- index.html CDN scan ---
+<script src=https://>: 0 hits
+<link rel=stylesheet href=https://>: 0 hits
+<img src=https://>: 0 hits
+Zero-CDN: PASS

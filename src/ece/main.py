@@ -21,6 +21,7 @@ from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
 from ece.api.search import router as search_router
+from ece.consulting.router import router as consulting_router
 from ece.demo.api import DemoSpecError
 from ece.demo.api import router as demo_router
 
@@ -77,6 +78,10 @@ async def _demo_spec_error_handler(
 
 
 app.include_router(demo_router)
+
+# KC-001: /api/v1/consulting/* read-only consulting knowledge catalog
+# (file-backed seed, no DB, no LLM, no embedding — Task §3 Out-of-scope).
+app.include_router(consulting_router)
 
 
 @app.get("/healthz")

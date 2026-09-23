@@ -1,0 +1,1120 @@
+[
+  {
+    "id": "case-retail-procurement-diagnosis-001",
+    "type": "case",
+    "title": "区域零售集团采购成本诊断",
+    "summary": "为某区域零售集团诊断采购成本结构, 识别若干供应商整合空间与采购审批断点. 客户名脱敏, 数字仅作示意.",
+    "practice": [
+      "procurement",
+      "supply_chain"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "implementation"
+    ],
+    "client_industry": [
+      "retail"
+    ],
+    "problem_types": [
+      "cost_reduction",
+      "supplier_consolidation",
+      "process_breakdown"
+    ],
+    "methods": [
+      "spend_analysis",
+      "benchmarking",
+      "process_mapping"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "savings_roadmap",
+      "sop"
+    ],
+    "outcomes": [
+      "addressable_spend_visible",
+      "process_breakdowns_identified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-bank-retail-channel-002",
+    "type": "case",
+    "title": "某城商行零售渠道效率改进",
+    "summary": "帮助某城商行梳理零售渠道运营流程, 聚焦开户与产品销售之间的协同断点. 项目以访谈 + 数据抽样结合展开.",
+    "practice": [
+      "operations",
+      "sales_effectiveness"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [
+      "banking"
+    ],
+    "problem_types": [
+      "process_breakdown",
+      "channel_efficiency"
+    ],
+    "methods": [
+      "process_mapping",
+      "interview_synthesis",
+      "data_sampling"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "process_redesign_proposal"
+    ],
+    "outcomes": [
+      "channel_hand_off_visible"
+    ],
+    "source_origin": "founder_case",
+    "confidence": "medium",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-manufacturing-supply-resilience-003",
+    "type": "case",
+    "title": "某制造业客户供应链韧性评估",
+    "summary": "对某制造业客户的供应商集中度与关键物料替代性进行评估, 输出韧性改进路线. 客户名脱敏, 数据为示意.",
+    "practice": [
+      "supply_chain",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [
+      "manufacturing"
+    ],
+    "problem_types": [
+      "supply_resilience",
+      "supplier_consolidation"
+    ],
+    "methods": [
+      "spend_analysis",
+      "risk_scoring",
+      "scenario_planning"
+    ],
+    "deliverables": [
+      "resilience_assessment",
+      "roadmap"
+    ],
+    "outcomes": [
+      "critical_suppliers_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-saas-pricing-restructure-004",
+    "type": "case",
+    "title": "某 SaaS 公司定价模型重构",
+    "summary": "为某中型 SaaS 公司梳理现有定价层级与续约流失关联, 给出三档定价建议与上线节奏.",
+    "practice": [
+      "pricing",
+      "growth"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "implementation"
+    ],
+    "client_industry": [
+      "technology"
+    ],
+    "problem_types": [
+      "pricing_optimization",
+      "retention"
+    ],
+    "methods": [
+      "cohort_analysis",
+      "pricing_benchmark",
+      "customer_interview"
+    ],
+    "deliverables": [
+      "pricing_design",
+      "rollout_plan"
+    ],
+    "outcomes": [
+      "pricing_tiers_defined"
+    ],
+    "source_origin": "founder_case",
+    "confidence": "medium",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-public-sector-org-redesign-005",
+    "type": "case",
+    "title": "某公共部门组织架构梳理",
+    "summary": "协助某公共部门完成科室职责梳理与决策权限分层, 输出 RACI 矩阵与短期过渡方案.",
+    "practice": [
+      "organization_design",
+      "governance"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [
+      "public_sector"
+    ],
+    "problem_types": [
+      "role_clarity",
+      "decision_latency"
+    ],
+    "methods": [
+      "raci_matrix",
+      "stakeholder_interview"
+    ],
+    "deliverables": [
+      "raci_matrix",
+      "transition_plan"
+    ],
+    "outcomes": [
+      "decision_rights_clarified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-consumer-goods-channel-006",
+    "type": "case",
+    "title": "某快消品企业渠道库存优化",
+    "summary": "梳理经销商库存周转节奏, 识别若干断货与压货并存现象, 给出补货规则与渠道分级建议.",
+    "practice": [
+      "supply_chain",
+      "sales_effectiveness"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "implementation"
+    ],
+    "client_industry": [
+      "consumer_goods"
+    ],
+    "problem_types": [
+      "inventory_imbalance",
+      "channel_efficiency"
+    ],
+    "methods": [
+      "inventory_analysis",
+      "channel_tiering"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "replenishment_rules"
+    ],
+    "outcomes": [
+      "replenishment_rules_drafted"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-logistics-network-007",
+    "type": "case",
+    "title": "某物流企业网络节点评估",
+    "summary": "对某区域物流企业的转运节点覆盖度与时效结构进行梳理, 给出网络分层与扩容优先级.",
+    "practice": [
+      "supply_chain",
+      "operations"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [
+      "logistics"
+    ],
+    "problem_types": [
+      "network_efficiency",
+      "capacity_planning"
+    ],
+    "methods": [
+      "network_modeling",
+      "service_level_analysis"
+    ],
+    "deliverables": [
+      "network_assessment",
+      "expansion_priorities"
+    ],
+    "outcomes": [
+      "tier_structure_defined"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-insurance-claim-flow-008",
+    "type": "case",
+    "title": "某保险公司理赔流程梳理",
+    "summary": "梳理某保险公司车险理赔流程, 聚焦小额案件的处理时延与人工复核集中度, 输出 SOP 改进建议.",
+    "practice": [
+      "operations",
+      "process_redesign"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [
+      "insurance"
+    ],
+    "problem_types": [
+      "process_breakdown",
+      "turnaround_time"
+    ],
+    "methods": [
+      "process_mapping",
+      "queue_analysis"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "sop"
+    ],
+    "outcomes": [
+      "bottleneck_identified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-energy-procurement-009",
+    "type": "case",
+    "title": "某能源企业采购合规审视",
+    "summary": "对某能源企业下属事业部的采购授权与审批节点进行合规审视, 给出三层风险分级与短期整改路径.",
+    "practice": [
+      "procurement",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [
+      "energy"
+    ],
+    "problem_types": [
+      "compliance_gap",
+      "approval_breakdown"
+    ],
+    "methods": [
+      "policy_review",
+      "stakeholder_interview"
+    ],
+    "deliverables": [
+      "compliance_review",
+      "remediation_plan"
+    ],
+    "outcomes": [
+      "approval_layers_clarified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-healthcare-service-blueprint-010",
+    "type": "case",
+    "title": "某连锁医疗机构服务蓝图",
+    "summary": "为某连锁医疗机构梳理患者就诊全旅程, 输出服务蓝图与一线员工话术参考.",
+    "practice": [
+      "service_design",
+      "operations"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [
+      "healthcare"
+    ],
+    "problem_types": [
+      "service_consistency",
+      "patient_journey"
+    ],
+    "methods": [
+      "service_blueprint",
+      "frontline_interview"
+    ],
+    "deliverables": [
+      "service_blueprint",
+      "script_guidelines"
+    ],
+    "outcomes": [
+      "service_stages_clarified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-swot-quick-001",
+    "type": "methodology",
+    "title": "SWOT 快速诊断框架",
+    "summary": "经典 SWOT 框架的快速落地变体, 用于项目启动会与高层访谈. 输出四象限与可执行行动项.",
+    "practice": [
+      "strategy",
+      "organization_design"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "situation_overview"
+    ],
+    "methods": [
+      "swot"
+    ],
+    "deliverables": [
+      "diagnostic_report"
+    ],
+    "outcomes": [
+      "situation_summary_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-porter-five-forces-002",
+    "type": "methodology",
+    "title": "Porter 五力分析简化版",
+    "summary": "基于公开 Porter 五力模型整理的简化分析表, 适用于客户行业判断与竞争格局梳理.",
+    "practice": [
+      "strategy",
+      "growth"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "competitive_landscape"
+    ],
+    "methods": [
+      "porter_five_forces"
+    ],
+    "deliverables": [
+      "competitive_landscape_note"
+    ],
+    "outcomes": [
+      "five_forces_summary"
+    ],
+    "source_origin": "licensed_public",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-value-chain-003",
+    "type": "methodology",
+    "title": "价值链拆解方法",
+    "summary": "公开价值链模型在咨询场景中的落地步骤, 包含主活动 + 支持活动拆解与改进机会识别.",
+    "practice": [
+      "operations",
+      "supply_chain"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "value_chain_breakdown"
+    ],
+    "methods": [
+      "value_chain"
+    ],
+    "deliverables": [
+      "value_chain_map",
+      "improvement_opportunities"
+    ],
+    "outcomes": [
+      "value_chain_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-mckinsey-7s-004",
+    "type": "methodology",
+    "title": "组织 7S 诊断框架",
+    "summary": "基于公开组织 7S 模型整理的诊断问卷与可视化模板, 适用于组织架构与文化一致性诊断.",
+    "practice": [
+      "organization_design"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "organization_alignment"
+    ],
+    "methods": [
+      "seven_s"
+    ],
+    "deliverables": [
+      "organization_alignment_map"
+    ],
+    "outcomes": [
+      "seven_s_summary"
+    ],
+    "source_origin": "licensed_public",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-lean-waste-walk-005",
+    "type": "methodology",
+    "title": "Lean 八大浪费现场走访",
+    "summary": "基于公开 Lean 八大浪费分类的现场走访模板, 用于制造业与服务运营场景.",
+    "practice": [
+      "operations",
+      "process_redesign"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "waste_identification"
+    ],
+    "methods": [
+      "gemba_walk"
+    ],
+    "deliverables": [
+      "waste_register"
+    ],
+    "outcomes": [
+      "waste_categories_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-raci-matrix-006",
+    "type": "methodology",
+    "title": "RACI 职责分配矩阵",
+    "summary": "公开 RACI 模型的实施步骤与边界判定规则, 用于多部门协作场景的职责澄清.",
+    "practice": [
+      "organization_design",
+      "governance"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "implementation"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "role_clarity"
+    ],
+    "methods": [
+      "raci_matrix"
+    ],
+    "deliverables": [
+      "raci_matrix"
+    ],
+    "outcomes": [
+      "decision_rights_clarified"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-kpi-tree-007",
+    "type": "methodology",
+    "title": "KPI 拆解树",
+    "summary": "公司级 KPI 拆解到部门 / 团队 / 个人的层级结构方法, 用于目标管理与绩效对齐.",
+    "practice": [
+      "performance_management",
+      "strategy"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "kpi_alignment"
+    ],
+    "methods": [
+      "kpi_tree"
+    ],
+    "deliverables": [
+      "kpi_tree"
+    ],
+    "outcomes": [
+      "kpi_cascade_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-journey-map-008",
+    "type": "methodology",
+    "title": "客户旅程地图",
+    "summary": "公开客户旅程地图方法, 用于 B2C 与 B2B 场景下客户全流程触点梳理.",
+    "practice": [
+      "service_design",
+      "growth"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "customer_experience"
+    ],
+    "methods": [
+      "journey_map"
+    ],
+    "deliverables": [
+      "journey_map"
+    ],
+    "outcomes": [
+      "touchpoints_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-spend-analysis-009",
+    "type": "methodology",
+    "title": "采购支出分析框架",
+    "summary": "将间接采购支出按品类 / 供应商 / 部门进行切片的标准化方法, 用于发现整合空间.",
+    "practice": [
+      "procurement"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "cost_reduction",
+      "supplier_consolidation"
+    ],
+    "methods": [
+      "spend_analysis"
+    ],
+    "deliverables": [
+      "spend_cube",
+      "savings_hypothesis"
+    ],
+    "outcomes": [
+      "addressable_spend_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "methodology-benchmarking-public-010",
+    "type": "methodology",
+    "title": "公开基准对照",
+    "summary": "使用公开行业基准 (协会报告 / 上市公司披露) 进行客户指标对照的方法, 不依赖私有数据库.",
+    "practice": [
+      "strategy",
+      "operations"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "performance_gap"
+    ],
+    "methods": [
+      "public_benchmark"
+    ],
+    "deliverables": [
+      "benchmark_table"
+    ],
+    "outcomes": [
+      "performance_gap_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "medium",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-discovery-questions-001",
+    "type": "proposal_play",
+    "title": "诊断阶段 Discovery 问题清单",
+    "summary": "诊断阶段项目启动前一周用于客户高层与一线业务访谈的问题模板, 包含 5 大类 30+ 问.",
+    "practice": [
+      "sales",
+      "consulting_delivery"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "engagement_setup"
+    ],
+    "methods": [
+      "interview_design"
+    ],
+    "deliverables": [
+      "interview_protocol"
+    ],
+    "outcomes": [
+      "context_captured"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-qualification-checklist-002",
+    "type": "proposal_play",
+    "title": "线索资格检查清单",
+    "summary": "BD 阶段判断线索是否值得投入提案资源的标准清单, 含 5 个核心问 + 红线条件.",
+    "practice": [
+      "sales"
+    ],
+    "engagement_phase": [
+      "qualification"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "lead_qualification"
+    ],
+    "methods": [
+      "qualification_checklist"
+    ],
+    "deliverables": [
+      "qualification_note"
+    ],
+    "outcomes": [
+      "go_no_go_decision_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-proposal-outline-003",
+    "type": "proposal_play",
+    "title": "标准提案大纲模板",
+    "summary": "覆盖问题陈述 / 方法 / 团队 / 报价 / 时间表的标准提案大纲, 适用于中型咨询项目.",
+    "practice": [
+      "sales"
+    ],
+    "engagement_phase": [
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "proposal_setup"
+    ],
+    "methods": [
+      "proposal_outline"
+    ],
+    "deliverables": [
+      "proposal_outline"
+    ],
+    "outcomes": [
+      "proposal_structure_ready"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-pricing-narrative-004",
+    "type": "proposal_play",
+    "title": "报价叙事情节",
+    "summary": "在提案中解释报价合理性 + 价值叙事的标准段落结构, 包含三个常见客户反问预案.",
+    "practice": [
+      "sales"
+    ],
+    "engagement_phase": [
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "pricing_conversation"
+    ],
+    "methods": [
+      "narrative_design"
+    ],
+    "deliverables": [
+      "pricing_section"
+    ],
+    "outcomes": [
+      "pricing_justified"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "medium",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-staffing-mix-005",
+    "type": "proposal_play",
+    "title": "项目组人员组合",
+    "summary": "中型咨询项目的合伙人 / 经理 / 顾问 / 分析师标准人员组合与角色定位说明.",
+    "practice": [
+      "sales",
+      "consulting_delivery"
+    ],
+    "engagement_phase": [
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "team_setup"
+    ],
+    "methods": [
+      "staffing_plan"
+    ],
+    "deliverables": [
+      "staffing_plan"
+    ],
+    "outcomes": [
+      "team_composition_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "proposal-play-risk-disclosure-006",
+    "type": "proposal_play",
+    "title": "项目风险披露段落",
+    "summary": "提案末尾风险披露段落的标准模板, 覆盖范围 / 数据 / 变更 / 合规四类常见风险.",
+    "practice": [
+      "sales",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "proposal"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "risk_disclosure"
+    ],
+    "methods": [
+      "risk_register"
+    ],
+    "deliverables": [
+      "risk_disclosure_section"
+    ],
+    "outcomes": [
+      "risks_documented"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "deliverable-template-diagnostic-report-001",
+    "type": "deliverable_template",
+    "title": "诊断报告骨架",
+    "summary": "标准咨询诊断报告的章节骨架: 执行摘要 / 现状 / 诊断结论 / 改进方向 / 实施路径.",
+    "practice": [
+      "consulting_delivery"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "deliverable_structure"
+    ],
+    "methods": [
+      "report_skeleton"
+    ],
+    "deliverables": [
+      "diagnostic_report"
+    ],
+    "outcomes": [
+      "report_structure_ready"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "deliverable-template-roadmap-deck-002",
+    "type": "deliverable_template",
+    "title": "改进路线图演示骨架",
+    "summary": "改进路线图对外汇报用的 10 页标准演示骨架, 适合董事会与高层评审.",
+    "practice": [
+      "consulting_delivery",
+      "strategy"
+    ],
+    "engagement_phase": [
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "deliverable_structure"
+    ],
+    "methods": [
+      "deck_skeleton"
+    ],
+    "deliverables": [
+      "roadmap_deck"
+    ],
+    "outcomes": [
+      "roadmap_communicated"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "deliverable-template-sop-003",
+    "type": "deliverable_template",
+    "title": "SOP 文档骨架",
+    "summary": "标准作业流程文档的章节骨架: 适用范围 / 角色 / 步骤 / 输入输出 / 例外处理.",
+    "practice": [
+      "operations",
+      "process_redesign"
+    ],
+    "engagement_phase": [
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "deliverable_structure"
+    ],
+    "methods": [
+      "sop_skeleton"
+    ],
+    "deliverables": [
+      "sop"
+    ],
+    "outcomes": [
+      "sop_documented"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "deliverable-template-exec-summary-004",
+    "type": "deliverable_template",
+    "title": "执行摘要骨架",
+    "summary": "咨询交付物首页执行摘要的 1 页模板, 适合诊断与路线图两类交付物首页使用.",
+    "practice": [
+      "consulting_delivery"
+    ],
+    "engagement_phase": [
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "deliverable_structure"
+    ],
+    "methods": [
+      "summary_skeleton"
+    ],
+    "deliverables": [
+      "executive_summary"
+    ],
+    "outcomes": [
+      "summary_communicated"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-data-availability-001",
+    "type": "risk_check",
+    "title": "数据可得性风险",
+    "summary": "诊断阶段数据可得性评估清单: 数据源 / 数据时间窗 / 数据口径 / 数据访问权限四类检查.",
+    "practice": [
+      "consulting_delivery",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "data_availability"
+    ],
+    "methods": [
+      "risk_register"
+    ],
+    "deliverables": [
+      "risk_register"
+    ],
+    "outcomes": [
+      "data_risks_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-stakeholder-alignment-002",
+    "type": "risk_check",
+    "title": "关键 stakeholder 对齐风险",
+    "summary": "项目启动时识别关键 stakeholder 与其立场差异, 防止项目推进中出现反复.",
+    "practice": [
+      "consulting_delivery",
+      "change_management"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "diagnosis"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "stakeholder_alignment"
+    ],
+    "methods": [
+      "stakeholder_map"
+    ],
+    "deliverables": [
+      "stakeholder_map"
+    ],
+    "outcomes": [
+      "stakeholders_visible"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-scope-creep-003",
+    "type": "risk_check",
+    "title": "范围蔓延风险",
+    "summary": "项目执行过程中范围蔓延的早期信号 + 三道防线 (变更控制 / 例外记录 / 客户确认).",
+    "practice": [
+      "consulting_delivery",
+      "governance"
+    ],
+    "engagement_phase": [
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "scope_creep"
+    ],
+    "methods": [
+      "change_control"
+    ],
+    "deliverables": [
+      "change_log"
+    ],
+    "outcomes": [
+      "scope_protected"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-data-confidentiality-004",
+    "type": "risk_check",
+    "title": "客户数据保密风险",
+    "summary": "客户敏感数据接触范围 + 数据脱敏 + 离场处置三步检查, 适用于所有诊断项目.",
+    "practice": [
+      "consulting_delivery",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [],
+    "problem_types": [
+      "data_confidentiality"
+    ],
+    "methods": [
+      "confidentiality_checklist"
+    ],
+    "deliverables": [
+      "confidentiality_register"
+    ],
+    "outcomes": [
+      "data_handling_safe"
+    ],
+    "source_origin": "methodology_note",
+    "confidence": "high",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-banking-2026-001",
+    "type": "industry_note",
+    "title": "中国银行业 2026 业务关注点",
+    "summary": "公开行业观察整理: 城商行 / 股份行的零售业务关注点, 不涉及具体公司数据, 仅作行业语境.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "banking"
+    ],
+    "problem_types": [
+      "industry_context"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-consumer-2026-002",
+    "type": "industry_note",
+    "title": "中国消费品行业渠道变化观察",
+    "summary": "公开行业观察整理: 线下零售 / 即时零售 / 内容电商渠道格局变化, 仅作行业语境, 不含具体品牌数据.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "consumer_goods",
+      "retail"
+    ],
+    "problem_types": [
+      "industry_context"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "licensed_public",
+    "confidence": "medium",
+    "review_state": "approved"
+  }
+]
