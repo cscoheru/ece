@@ -1,0 +1,33 @@
+=== Phase 6 in-container command verification (cut-045R3 R13-B1) ===
+Date: 2026-09-23
+Method: static parse + alembic config load (no docker in cc env)
+
+=== 1. Seed scripts AST parse ===
+scripts/seed_v0_spike_fixture.py: OK
+scripts/seed_knowledge_fixture.py: OK
+scripts/seed_compliance_fixture.py: OK
+
+=== 2. Alembic config structural validity ===
+Command: alembic --config src/ece/migrations/alembic.ini check
+Traceback (most recent call last):
+  File "/Users/kjonekong/projects/domainAgentECE/ece/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+
+Note: alembic exits with DB connection error (expected — no DB on cc host).
+Config IS structurally loaded (script_location resolved, env.py executed).
+
+=== 3. Dockerfile COPY coverage (post-fix) ===
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY src/ece/migrations/alembic.ini ./alembic.ini
+
+=== 4. docker-compose.demo.yml volume mounts ===
+    volumes:
+      # SPA is read-only for nginx (in the deploy/README nginx config the
+--
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+--
+volumes:
+  postgres_data:

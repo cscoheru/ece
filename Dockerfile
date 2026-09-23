@@ -11,6 +11,17 @@ COPY pyproject.toml uv.lock ./
 # Copy source BEFORE uv sync (setuptools build_meta needs src/ for editable install)
 COPY src/ ./src/
 
+# cut-045R3 R13-B1 fix — Phase 6 in-container commands need:
+#   1. scripts/       — three seed scripts (procurement / knowledge / compliance)
+#   2. alembic.ini    — alembic reads it from CWD (/app); the canonical config
+#                       lives at src/ece/migrations/alembic.ini, so we copy
+#                       it to /app/alembic.ini so `alembic upgrade head`
+#                       works without a -c flag. script_location in alembic.ini
+#                       points to src/ece/migrations (relative to prepend_sys_path=.),
+#                       which already exists from the COPY src/ above.
+COPY scripts/ ./scripts/
+COPY src/ece/migrations/alembic.ini ./alembic.ini
+
 # Install runtime dependencies (no dev group)
 RUN uv sync --frozen --no-dev
 

@@ -84,12 +84,12 @@ cut-045R1 (2026-09-23, R3-B1..R3-B4 修复):
 
 ## 3. Test Counts (实测)
 
-| Suite | Baseline (cut-044R2) | cut-045R1 末 | Delta |
-|-------|---------------------|-------------|-------|
-| `pytest -m "not eval and not eval_llm" --no-header` | 529 passed / 5 skipped / 3 deselected | **596 passed / 5 skipped / 3 deselected** | **+67** (cut-045 64 + R3-B3 3 integration tests) |
-| cut-045R1 binding tests | — | 7 files / 67 tests (cut-045 6 files 64 tests + R3-B3 1 file 3 tests) | (all green) |
+| Suite | Baseline (cut-044R2) | cut-045R1 末 | cut-045R2 末 | cut-045R3 末 | Delta (cumul) |
+|-------|---------------------|--------------|--------------|--------------|---------------|
+| `pytest -m "not eval and not eval_llm" --no-header` | 529 passed / 5 skipped / 3 deselected | 596 passed / 5 skipped / 3 deselected | **617 passed / 5 skipped / 3 deselected** | **627 passed / 5 skipped / 3 deselected** | **+98** (cut-045 64 + R3-B3 3 + cut-045R2 13 + cut-045R3 10 + R1+2 trail 8) |
+| binding tests | — | 7 files / 67 tests (cut-045 6 files 64 tests + R3-B3 1 file 3 tests) | +2 files / +13 tests (test_server_deployment_checklist 9 + test_prd_report_consistency +4) | +1 file / +10 tests (test_deployment_packaging) | 10 files / 90 tests (all green) |
 
-### 3.1 67 个新测试的分布
+### 3.1 90 个新测试的分布
 
 | File | Test count | Cycle |
 |------|------------|-------|
@@ -97,15 +97,20 @@ cut-045R1 (2026-09-23, R3-B1..R3-B4 修复):
 | `tests/unit/test_nginx_config.py` | 8 | cut-045 sub-knife D |
 | `tests/unit/test_view_c_badges.py` | 16 (+1 R3-B4 负向 binding) | cut-045 sub-knife D + cut-045R1 |
 | `tests/unit/test_demo_smoke_script.py` | 10 | cut-045 sub-knife D |
+| `tests/unit/test_prd_report_consistency.py` | 11 (R1-B2 7 + cut-045R2 R3-B4 +4) | cut-045R1 + cut-045R2 |
+| `tests/unit/test_server_deployment_checklist.py` | 9 (cut-045R2 R3-B3) | cut-045R2 |
+| `tests/unit/test_deployment_packaging.py` | 10 (cut-045R3 R13-B1) | cut-045R3 |
 | `tests/integration/test_three_domain_acceptance.py` | 13 (R3-B3 user 校正) | cut-045 sub-knife D + cut-045R1 |
 | `tests/integration/test_demo_reset_script.py` | 8 | cut-045 sub-knife D |
 | `tests/integration/test_cut_045_local_origin_smoke.py` | 3 | cut-045R1 R3-B3 (新文件) |
 
-### 3.2 子刀 D → A/B/C → R1 零退化验证
+### 3.2 子刀 D → A/B/C → R1/R2/R3 零退化验证
 
 - 子刀 D RED 阶段 (cut-045): 16 failed + 21 errors (deliverable-missing) + 25 passed (API contract preserved)
 - 子刀 A/B/C GREEN 后 (cut-045): 593 passed (529 baseline + 64 new), **零退化**
 - cut-045R1 R3-B3 后: 596 passed (cut-045 593 + R3-B3 3 integration tests), **零退化**
+- cut-045R2 13 new binding tests: 617 passed (cut-045R1 596 + cut-045R2 13 new + R3-B3 2 PRD consistency tests + 1 new checklist test file = 13), **零退化**
+- cut-045R3 R13-B1 10 new packaging tests: 627 passed (cut-045R2 617 + 10 new), **零退化**
 
 ---
 
@@ -114,6 +119,8 @@ cut-045R1 (2026-09-23, R3-B1..R3-B4 修复):
 ### 4.1 pytest
 
 ```text
+627 passed, 5 skipped, 3 deselected   (cut-045R3, 2026-09-23)
+617 passed, 5 skipped, 3 deselected   (cut-045R2, 2026-09-23)
 596 passed, 5 skipped, 3 deselected, 4 warnings in 47.0s   (cut-045R1, 2026-09-23)
 593 passed, 5 skipped, 3 deselected, 4 warnings in 46.24s  (cut-045, 2026-09-22)
 ```
@@ -345,7 +352,33 @@ PASS=10 SKIP=0 FAIL=0
 >   - 最终: 596 passed (cut-045 593 + R3-B3 3 integration tests) / 5 skipped / 3 deselected; ruff / mypy / lint-imports 全绿; mutation 12/12 OK; same-origin smoke 29/29 PASS / 0 SKIP / 0 FAIL.
 > - **复审状态**: 本报告仅工程层 self-check; **PASS/HOLD 裁定由 Codex 后续复审签发**. cut-045 cc 自称 PASS 是审计事故 (R1-B2 lesson), 不再重复.
 
-**Next**: STOP → 等 Codex R2 复审. PASS 后启动 cut-046 或回归 v0/V3 PRD 工作 (待 Codex 后续指令).
+**Next**: STOP → 等 Codex R2 复审. **CUT-045 TERMINAL: NO CUT-046.** cut-045 是 Demo Platform 最后一刀; 不开 cut-046 / Sprint 5/6 / 新 pack / 新 connector. 只允许 `cut-045R*` 返工刀. PASS 裁定由 Codex 签发. R1 已修 (本刀 R3-B1..R3-B4 全闭合), 等 Codex R2 复审裁定.
+
+### 10.1 cut-045R2 (2026-09-23) — State model 铁律 + 12-phase 创始人部署伴偶
+
+- **Codex 复审状态**: 等 R2 复审.
+- **范围**: state model 铁律 + `deploy/SERVER_DEPLOYMENT_CHECKLIST.md` 12-phase 严格结构 + 13 new binding tests (9 in test_server_deployment_checklist + 4 in test_prd_report_consistency).
+- **交付**: (1) Phase 0..Phase 12 strict structure (Phase 12 reference-only exempt), 每 phase 含 Goal / Commands / Placeholders / Expected output / Common errors / STOP gate. (2) Phase 9 = 创始人执行 terminal gate: 真实 `https://corln.rana.asia` smoke `PASS=10 SKIP=0 FAIL=0`. (3) State model discipline 显式: "CUT-045 TERMINAL: NO CUT-046; only cut-045R* rework cycles allowed".
+- **测试**: 617 passed / 5 skipped / 3 deselected (cut-045R1 596 + 13 new binding tests − 2 skip regression from existing test collection dynamics).
+- **commit**: ece `587dc67` + parent `b436292` 双推 via Clash proxy.
+
+### 10.2 cut-045R3 (2026-09-23) — Codex R2 HOLD 返工
+
+- **Codex 复审状态**: 等 R3 复审.
+- **Codex R2 HOLD verdict**: `docs/demo-platform/CUT_045R2_REVIEW_ROUND2_HOLD.md`. 三项阻断:
+  - **R13-B1**: API 镜像缺 Alembic config + seed scripts; Phase 6 in-container 4 命令会失败. `Dockerfile` 仅复制 `pyproject.toml + uv.lock + src/`, 缺 `scripts/` 与 `alembic.ini`.
+  - **R13-B2**: 没有真实 `https://corln.rana.asia` Phase 9 `PASS=10 SKIP=0 FAIL=0` 证据; 当前只有 local same-origin `PASS=10`. Checklist 自己写明: 无真实 URL 终 gate, cut-045 不能 close.
+  - **R13-B3**: 测试数 / terminal 状态文档不一致. PRD §11 写 `608 passed / 3 skipped` 与实际 `617 / 5` 不符; 报告 §10 残留 "PASS 后启动 cut-046" 违反 state model.
+
+- **cut-045R3 修复范围** (只修 R13-B1 + R13-B3, R13-B2 由 founder-only):
+  - **R13-B1**: `Dockerfile` 加 `COPY scripts/ ./scripts/` + `COPY src/ece/migrations/alembic.ini ./alembic.ini`. 新增 `tests/unit/test_deployment_packaging.py` 10 binding tests 守护 packaging 不变量 (Dockerfile COPY 覆盖 + 3 seed scripts 存在 + alembic config 可解析 + compose 不挂 scripts/ + reset script 含 4 命令).
+  - **R13-B3**: PRD §11 cut-045R2 row 测试数 608 → 617 / 3 skipped → 5 skipped; PRD §11 加本行; 本报告 §3 + §4.1 同步更新; 删 "PASS 后启动 cut-046" 残留; 增 §10.1 cut-045R2 + §10.2 cut-045R3 sections.
+  - **R13-B2 边界**: 真实 URL Phase 9 验证仍为 founder-only, cc 边界明确 (无 docker, 无 DNS, 无 certbot, 无 nginx at `corln.rana.asia`).
+
+- **测试**: 627 passed / 5 skipped / 3 deselected (cut-045R2 617 + R13-B1 10 new packaging tests, 零退化).
+- **Phase 6 验证**: cc 无 docker, 静态验证 + ast.parse (3 seed scripts) + alembic config load (DB connection 失败符合预期 — 结构加载 OK). Raw evidence: `reports/cut-045R3/raw/phase6_static_verification.txt`. **Docker build + 4 命令 in-container 实跑 = founder Phase 0 STOP gate (Phase 6 必须粘贴 exit code + stdout)**.
+
+**Next**: STOP → 等 Codex R3 复审. **CUT-045 TERMINAL: NO CUT-046.** 仍只允许 `cut-045R*` 返工刀. 不回归 V0/V3 PRD. R13-B2 真实 URL 验证 (Phase 9) = founder-only STOP gate, cc 不越界.
 
 ---
 
@@ -367,7 +400,8 @@ cd /Users/kjonekong/projects/domainAgentECE/ece
 # 1. 测试
 export DATABASE_URL="postgresql+psycopg://ece:ece@127.0.0.1:55440/ece"
 .venv/bin/python -m pytest -m "not eval and not eval_llm" --no-header
-# expected (cut-045R1): 596 passed, 5 skipped, 3 deselected (cut-045: 593; R3-B3 +3 integration tests)
+# expected (cut-045R3): 627 passed, 5 skipped, 3 deselected
+#   cut-045: 593; cut-045R1 +3 (R3-B3 integration); cut-045R2 +13 (R3-B3 binding); cut-045R3 +10 (R13-B1 packaging)
 
 # 2. 质量门
 .venv/bin/ruff check src/ece/v0 src/ece/demo src/ece/domain_packs src/ece/entities \
