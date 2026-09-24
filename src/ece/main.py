@@ -17,6 +17,7 @@ from ece.api.actions import router as actions_router
 from ece.api.audit import router as audit_router
 from ece.api.context import router as context_router
 from ece.api.debug import router as debug_router
+from ece.api.engine_status import router as engine_status_router
 from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
@@ -82,6 +83,9 @@ app.include_router(demo_router)
 # KC-001: /api/v1/consulting/* read-only consulting knowledge catalog
 # (file-backed seed, no DB, no LLM, no embedding — Task §3 Out-of-scope).
 app.include_router(consulting_router)
+
+# OEI-003: /engine/status visible deliverable — engine snapshot + ECE-rendered citations
+app.include_router(engine_status_router)
 
 
 @app.get("/healthz")
