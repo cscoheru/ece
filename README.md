@@ -56,6 +56,44 @@ make gen-eval-datasets  # E1-E6 评测数据集（依赖 display_id，必须在 
 uv run python scripts/ingest_demo_docs.py
 ```
 
+## 集成测试完整前置链（OEI-005，2026-09-24）
+
+> 本段是 **OEI-005 修复的回归**:此前集成测试（`tests/integration/test_compliance_boundary.py`、`test_knowledge_boundary.py`、`test_three_domain_acceptance.py`、`test_s4_5_temporal.py` 等）默认 `make test` 不会自动跑 fixture seeder，导致 **27 个红灯**（baseline 实际为 **48 failed**，因 `make seed` 也会缓解一部分 entity/relationship 集成）。本次把 3 个 fixture seeder 串成一个 Makefile 目标 + 文档段，让前置链**可发现**。
+
+**完整本地集成测试链**（同一 PG、同一环境、单变量累加）：
+
+```bash
+# 1. 镜像准备（如本机未拉过 pgvector）
+make pull-db
+
+# 2. PG + 迁移
+docker run -d --name ece-pg-tmp -e POSTGRES_USER=ece -e POSTGRES_PASSWORD=ece -e POSTGRES_DB=ece -p 55432:5432 postgres:16-pgvector
+export DATABASE_URL='postgresql+psycopg://ece:ece@127.0.0.1:55432/ece'
+make db-upgrade
+
+# 3. demo dataset + seed（canonical chain）
+make gen-dataset
+make seed
+
+# 4. 集成测试 fixture seeder（OEI-005 新增）
+make seed-fixtures   # = seed_temporal_roles + seed_knowledge_fixture + seed_compliance_fixture
+
+# 5. 跑测试
+make test
+```
+
+**或一行**（适用于 CI）：
+
+```bash
+make test-integration
+```
+
+跑完后**期望**:`passed ≈ 680`、`failed = 1`、`errors = 0`——唯一 failed 是 `test_cut_045_local_origin_smoke.py::test_deployment_smoke_passes_against_local_origin`，属**部署 smoke**（依赖 nginx + 静态 SPA + upstream uvicorn），非产品代码缺陷；详见 `onyx-lab/OEI-005/evidence/09-triage-table.md`。
+
+如果 `make test` 跑出**额外** failed/error，是真正的回归信号，按 OEI-005 §1.2 的三类根因分类排查。
+
+
+
 空库上 `make seed` 的产出：
 
 | 对象 | 期望 |

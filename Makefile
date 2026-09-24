@@ -1,4 +1,4 @@
-.PHONY: setup up test eval demo rev help check-api-docs db-upgrade schema-check gen-dataset pull-db
+.PHONY: setup up test eval demo rev help check-api-docs db-upgrade schema-check gen-dataset pull-db seed-fixtures test-integration
 
 help:
 	@echo "ECE v0 Makefile"
@@ -13,6 +13,9 @@ help:
 	@echo "  make gen-dataset      - 生成 PRD §27 合成数据 (S0.6)"
 	@echo "  make pull-db          - pgvector 镜像 pull+tag（绕 daocloud 403）"
 	@echo "  make rev              - alembic downgrade by 1"
+	@echo "  ----- OEI-005 (2026-09-24): 完整本地集成测试前置链 -----"
+	@echo "  make seed-fixtures    - 跑 3 个集成 fixture seeder(temporal/knowledge/compliance)"
+	@echo "  make test-integration - 完整集成测试前置(make pull-db + make db-upgrade + make gen-dataset + make seed + make seed-fixtures + pytest)。详见 ece/README.md 测试段。"
 
 setup:
 	uv sync --all-groups
@@ -86,3 +89,33 @@ pull-db:
 	docker pull pgvector/pgvector:pg16
 	docker tag pgvector/pgvector:pg16 postgres:16-pgvector
 	@echo "Tagged pgvector/pgvector:pg16 → postgres:16-pgvector (compose can now find it locally)"
+
+# OEI-005 (2026-09-24): 集成测试 fixture seeder 集合
+# 这三个 seeder 之前只在 deploy/README.md:84-85 与 deploy/SERVER_DEPLOYMENT_CHECKLIST.md 提到,
+# 仓里集成测试默认跑 `make test` 不会自动跑 → 27 个测试因缺 fixture 失败.
+# 用法(在已 `make db-upgrade` + `make seed` 之后):
+#   make seed-fixtures
+# 等价于:
+#   uv run python scripts/seed_temporal_roles.py
+#   uv run python scripts/seed_knowledge_fixture.py
+#   uv run python scripts/seed_compliance_fixture.py
+# 幂等:再跑一次会删除并重建 fixture 行(seed_*.py 内置 self-check + removed prior rows)。
+seed-fixtures:
+	@echo "Seeding integration test fixtures (temporal / knowledge / compliance)..."
+	uv run python scripts/seed_temporal_roles.py
+	uv run python scripts/seed_knowledge_fixture.py
+	uv run python scripts/seed_compliance_fixture.py
+	@echo "All fixtures seeded. Now `make test` should reach baseline (≤1 known cut_045 deployment-smoke failure)."
+
+# OEI-005 (2026-09-24): 集成测试完整前置链(供 CI / 新开发者用)
+# 等价于:
+#   make pull-db && make db-upgrade && make gen-dataset && make seed && make seed-fixtures && make test
+# DATABASE_URL 须指向可达的 PG(本地 compose 或远程)。在 WSL 上若 bind-mount 因 uid 999
+# 失败,临时 PG 跑法见 deploy/README.md 与本仓 OEI-005 evidence/。
+test-integration:
+	make pull-db
+	make db-upgrade
+	make gen-dataset
+	make seed
+	make seed-fixtures
+	make test
