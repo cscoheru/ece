@@ -17,3 +17,6 @@ data/
 volumes/
 gstack/
 .gstack/
+
+# macOS AppleDouble metadata (deleted 684 in OEI-004 step 2; pattern prevents re-introduction)
+._*

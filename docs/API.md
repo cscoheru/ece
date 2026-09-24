@@ -427,3 +427,62 @@ N=5 byte-equal 确定性 + denied 零副作用 + 真实运行 `elapsed_ms > 0`�
 - 破坏性变更升 `/api/v2`，v0 期间允许非破坏性字段新增。
 - OpenAPI 由 FastAPI 自动生成（`/openapi.json`），CI 校验与 `API.md` 的端点清单一致（脚本 `scripts/check_api_docs.py`，Sprint 0 建立）。
 
+
+## 6. Engine Status（OEI-003，Engine Core 内部状态页）
+
+> ⚠️ 本端点**不在 `/api/v1/` 前缀下**——它是 Engine Core 内部状态页，由 `ContentEnginePort` 抽象支撑，**不**走 JWT / 权限层。用于演示与排障，**不进**外部 v1 契约。
+
+### GET /engine/status
+
+返回 Engine 状态快照 + 可选检索引用（HTML 页面，浏览器直接打开）。
+
+**查询参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `q` | string | 否 | 若提供，触发一次 `ContentEnginePort.search(q)` 并把召回文档渲染为引用卡片（`source_type` / `engine_doc_id` / snippet） |
+
+**HTML 内容**（无 `q`）：
+
+- 引擎名 + 版本
+- tier / GPU 开关
+- LLM provider + default model
+- 项目数 + 文件数
+- 最近一次检索耗时（秒；首次为 None）
+
+**HTML 内容**（带 `q`）：
+
+- 在上述快照之上加 `<h2>Citations for query: {q}</h2>` 段
+- 每条召回文档渲染为：`<div class="doc">` 块，含 `<h3>{title}</h3>` + `<div class="meta">`（source_type / engine_doc_id / updated_at）+ `<pre>`（snippet，截断 800 字符）
+
+**降级行为**：当 `ECE_ONYX_BASE` 不可达或 cookie 失效时：
+
+- HTTP 仍为 **200**（不返回 500）
+- 页面顶部显示 `Engine degraded: <reason>` 黄色横幅
+- 快照字段区显示空集；citations 段显示 "Recall failed (see degraded banner above)"
+
+**选择器**（`ECE_CONTENT_ENGINE`）：
+
+- `mock`（默认）— 离线固定数据，演示/CI 用
+- `onyx` — 真实 Onyx 引擎，需配 `ECE_ONYX_BASE` + `ECE_ONYX_COOKIE_FILE`
+
+**示例**：
+
+```bash
+# 默认 mock 模式
+curl -s 'http://127.0.0.1:8000/engine/status' | less
+
+# 真实 Onyx 模式
+ECE_CONTENT_ENGINE=onyx \
+ECE_ONYX_BASE=http://127.0.0.1:8080 \
+ECE_ONYX_COOKIE_FILE=/home/fisher/.onyx-lab/.secrets/admin-cookies.txt \
+uv run uvicorn ece.main:app --port 8000
+
+# 含检索
+curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
+```
+
+**安全注意**：
+
+- cookie **不**进 ECE 仓；运行时通过 `ECE_ONYX_COOKIE_FILE` 环境变量读取
+- 该端点**不**走权限 / 审计层——只用于内部演示，**不应**对外暴露
