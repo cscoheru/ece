@@ -407,6 +407,55 @@ footer code {
   font-size: 0.95rem;
 }
 
+/* OEI-006 — engine-recalled group: second source on view-d. Visually distinct
+   from the static catalogue cards (dashed border + accent stripe) so a reader
+   can always tell "from the catalogue" from "from your indexed documents". */
+#consulting-engine {
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #e5e7eb;
+}
+
+#consulting-engine h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+#consulting-engine-status {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+#consulting-engine-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.consulting-card-engine {
+  border-style: dashed;
+  border-left: 3px solid #2563eb;
+}
+
+.consulting-card-engine .consulting-snippet {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#consulting-engine-empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+
 #consulting-detail {
   position: fixed;
   top: 0;

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from ece.consulting.engine_merge import merge_engine
 from ece.consulting.models import FacetsResponse, KnowledgeObject, LibraryResponse
 from ece.consulting.service import default_catalog
 
@@ -26,7 +27,7 @@ router = APIRouter(
 
 
 @router.get("/library", response_model=LibraryResponse)
-def get_library(
+async def get_library(
     q: str | None = Query(default=None, description="Keyword search over title/summary/methods/problem_types/deliverables."),  # noqa: B008
     type: str | None = Query(default=None, description="Exact type filter."),  # noqa: B008
     practice: list[str] = Query(default_factory=list, description="Any-match practice filter."),  # noqa: B008
@@ -39,7 +40,7 @@ def get_library(
     limit: int = Query(default=24, ge=1, le=100),  # noqa: B008
     offset: int = Query(default=0, ge=0),  # noqa: B008
 ) -> LibraryResponse:
-    return default_catalog().search(
+    static = default_catalog().search(
         q=q,
         type=type,
         practice=practice,
@@ -51,6 +52,14 @@ def get_library(
         sort=sort,
         limit=limit,
         offset=offset,
+    )
+    # OEI-006: the static response is computed FIRST and is never mutated — the
+    # engine merge only ever adds the two new fields on top. `model_copy(update=)`
+    # (rather than rebuilding the response) is what structurally guarantees the
+    # static fields stay byte-identical for existing consumers.
+    engine_items, engine_status = await merge_engine(q)
+    return static.model_copy(
+        update={"engine_items": engine_items, "engine_status": engine_status}
     )
 
 

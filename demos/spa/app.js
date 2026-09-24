@@ -328,6 +328,125 @@
     }
   }
 
+  // ----- OEI-006 — second source: documents recalled from the content engine.
+  // Additive only: the static catalogue rendering above is unchanged. The
+  // engine group is a *hint rail* next to the catalogue, never a replacement.
+
+  var CONSULTING_ENGINE_STATUS_COPY = {
+    "ok": "",
+    "unavailable": "内容引擎暂时不可用 — 以下仅为静态目录.",
+    "disabled": "本环境未接入内容引擎 — 以下仅为静态目录.",
+    "skipped": "输入关键词即可同时检索已索引文档."
+  };
+
+  var CONSULTING_ENGINE_SNIPPET_CHARS = 180;
+
+  function formatConsultingEngineTime(value) {
+    if (!value) return "—";
+    return String(value).replace("T", " ").replace("Z", "").slice(0, 16);
+  }
+
+  function consultingEngineSnippet(value) {
+    var text = value ? String(value) : "";
+    if (text.length <= CONSULTING_ENGINE_SNIPPET_CHARS) return text;
+    return text.slice(0, CONSULTING_ENGINE_SNIPPET_CHARS) + "…";
+  }
+
+  function renderConsultingEngine(items, status, staticTotal) {
+    var groupEl = document.getElementById("consulting-engine");
+    if (!groupEl) return;
+    var statusEl = document.getElementById("consulting-engine-status");
+    var cardsEl = document.getElementById("consulting-engine-cards");
+    var emptyEl = document.getElementById("consulting-engine-empty");
+
+    var list = items || [];
+    var copy = CONSULTING_ENGINE_STATUS_COPY[status] || "";
+    statusEl.textContent = copy;
+    statusEl.style.display = copy ? "block" : "none";
+
+    cardsEl.innerHTML = "";
+    for (var i = 0; i < list.length; i++) {
+      (function (doc) {
+        var card = document.createElement("div");
+        card.className = "consulting-card consulting-card-engine";
+        card.setAttribute("data-engine-doc-id", doc.engine_doc_id);
+
+        var title = document.createElement("h3");
+        title.textContent = doc.title || "(无标题)";
+
+        var snippet = document.createElement("p");
+        snippet.className = "consulting-snippet";
+        snippet.textContent = consultingEngineSnippet(doc.snippet);
+
+        var meta = document.createElement("div");
+        meta.className = "consulting-meta";
+        var b1 = document.createElement("span");
+        b1.className = "badge badge-done";
+        b1.textContent = "引擎召回";
+        var b2 = document.createElement("span");
+        b2.className = "badge badge-wip";
+        b2.textContent = doc.source_type || "—";
+        var b3 = document.createElement("span");
+        b3.className = "badge";
+        b3.textContent = "更新 " + formatConsultingEngineTime(doc.updated_at);
+        meta.appendChild(b1);
+        meta.appendChild(b2);
+        meta.appendChild(b3);
+
+        card.appendChild(title);
+        card.appendChild(snippet);
+        card.appendChild(meta);
+        card.addEventListener("click", function () { openConsultingEngineDetail(doc); });
+        cardsEl.appendChild(card);
+      })(list[i]);
+    }
+
+    // The group is shown when it has something to say: cards to display, or an
+    // explanation of why there are none (engine down / not wired up).
+    groupEl.hidden = !(list.length > 0 || copy !== "");
+
+    // Empty state must name WHICH source came up empty (TASK step 3): "the
+    // catalogue has no match" and "the indexed documents have no match" are
+    // different messages, and on this engine they genuinely differ.
+    if (staticTotal === 0) {
+      var staticEmptyEl = document.getElementById("consulting-empty");
+      if (staticEmptyEl) {
+        staticEmptyEl.textContent = (status === "ok" && list.length > 0)
+          ? "目录无命中 — 已索引文档里有相关内容, 见下方「引擎召回」."
+          : "目录无命中 — 已索引文档里也没有找到相近内容.";
+      }
+    }
+    emptyEl.hidden = list.length > 0;
+  }
+
+  // Engine cards reuse the existing detail drawer: no second panel, no extra
+  // round trip (the snippet is already in hand).
+  function openConsultingEngineDetail(doc) {
+    var drawer = document.getElementById("consulting-detail");
+    var titleEl = document.getElementById("consulting-detail-title");
+    var summaryEl = document.getElementById("consulting-detail-summary");
+    var fieldsEl = document.getElementById("consulting-detail-fields");
+    titleEl.textContent = doc.title || "(无标题)";
+    summaryEl.textContent = doc.snippet || "";
+    fieldsEl.innerHTML = "";
+    var rows = [
+      ["来源分组", "引擎召回 (已索引文档)"],
+      ["来源类型", doc.source_type || "—"],
+      ["更新时间", formatConsultingEngineTime(doc.updated_at)],
+      ["文档编号", doc.engine_doc_id || "—"]
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var dt = document.createElement("dt");
+      dt.textContent = rows[i][0];
+      var dd = document.createElement("dd");
+      dd.textContent = String(rows[i][1] || "—");
+      fieldsEl.appendChild(dt);
+      fieldsEl.appendChild(dd);
+    }
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+  }
+
   function runConsultingSearch() {
     var params = readConsultingFilters();
     var totalEl = document.getElementById("consulting-total");
@@ -340,6 +459,11 @@
         var total = body && typeof body.total === "number" ? body.total : 0;
         totalEl.textContent = "共 " + total + " 条结果";
         renderConsultingCards(body && body.items ? body.items : []);
+        renderConsultingEngine(
+          body && body.engine_items ? body.engine_items : [],
+          body && body.engine_status ? body.engine_status : "disabled",
+          total
+        );
       })
       .catch(function (err) {
         totalEl.textContent = "[GET /api/v1/consulting/library 失败] " +

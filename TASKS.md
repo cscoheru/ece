@@ -203,3 +203,43 @@ v0.1 的 PRD/ADR-004 权限模型（DB acl_entries + PermissionScope SQL 下推�
 - [ ] `docs/API.md` 新增 `/engine/status` 章节 — **OEI-004 step 4 完成**
 - [ ] `tests/unit/test_content_engine_port.py`（DB 无关的 adapter 单测）— 留给后续刀，避免 OEI-003 pytest 环境坑
 - [ ] `ece/` 仓真实改动 commit（不含 `._*` 垃圾、`.mypy_cache`、mutation-evidence 历史 dirty）— **OEI-004 step 7 完成**
+
+---
+
+## 附录 L — Consulting Knowledge Library × 内容引擎合并（KC-001 / OEI-006，2026-09-24）
+
+> 登记 KC-001（咨询知识库视图）与 OEI-006（接真实检索）的交付边界。
+> 说明：KC-001 本身的交付此前**未**在 TASKS.md 登记，本条为本附录首次登记（覆盖 KC-001 现状 + OEI-006 增量）。
+> 主线对应 `../onyx-lab/OEI-006/`；受 CLAUDE.md §2 铁律约束；本附录不是新 PRD 来源。
+
+### L.1 交付物
+
+| 能力 | 位置 | 状态 | 备注 |
+|---|---|---|---|
+| 静态目录（36 个 file-backed 种子对象） | `src/ece/consulting/`（`service.py` + 种子 JSON） | 已交付（KC-001） | 无 DB / 无 LLM / 无 embedding |
+| `GET /api/v1/consulting/library` | `src/ece/consulting/router.py` | **本刀改为 `async`** | 静态结果先算，引擎合并只**追加**字段 |
+| 引擎合并策略（纯函数 + 四态） | `src/ece/consulting/engine_merge.py` | **本刀新增** | `merge_engine()` / `to_engine_items()`；`DEFAULT_TOP_K=8` |
+| 新增契约 `EngineItem` / `EngineMergeStatus` | `src/ece/consulting/models.py` | **本刀新增** | 只允许新增，静态字段语义未动 |
+| SPA 视图 D 引擎分组 | `demos/spa/index.html` + `app.js` + `styles.css` | **本刀新增** | 复用既有详情抽屉；虚线边框蓝条卡片 |
+| 契约文档 | `docs/API.md` §11 | **本刀新增** | `engine_items` / `engine_status` 字段表 + 四态语义 + 实测示例 |
+| DB 无关单测（24 条） | `tests/unit/test_consulting_engine_merge.py` | **本刀新增** | 映射 / 合并 / 四态 / 异常路径 / 契约同构 / 端点级静态隔离 |
+
+### L.2 契约要点（消费者须知）
+
+- 静态侧 `items/total/limit/offset/facets` **语义与字段零变化**，既有消费者不受影响；引擎结果只走**新增**字段。
+- `engine_status` 四态是策略：`ok`（问了答了）/ `unavailable`（问了失败）/ `disabled`（没问，非 onyx 模式）/ `skipped`（`q` 为空）。
+- **fail-closed**：非 `onyx` 模式一律 `disabled` 且不打检索 —— mock 适配器返回内置样例，冒充"你已索引的文档"属谎报。
+- 引擎内部字段（`link` / `content` / `citation_id` / `raw`）**不出现在响应**。
+- 分页只作用于静态侧；引擎侧固定 `top_k=8`。
+
+### L.3 验收证据
+
+- 见 `../onyx-lab/OEI-006/evidence/01..12-*`；`02/03` 为 onyx 模式真实取证，`04` 降级（200 + 静态不变 + `unavailable`），`05` 空态，`06` 契约同构，`07` SPA 可见性自查。
+- A8 契约同构：mock 与 onyx（真实 `/api/search` 命中）经**同一** `EngineItem` 模型校验通过。
+
+### L.4 已知限制 / 移交
+
+- **时延**：`ok` 路径取决于内容引擎，Onyx 实测稳态 ≈4.2s、冷启动首查可达 15s（ECE 适配器超时 60s）。经 `scripts/cut_045_local_origin.py` 反代时其上游超时仅 **10s**，冷启动首查可能 `502`（重试即可）—— 属自查链路特性，非接口缺陷。
+- **相关性**：Onyx `/api/search` 返回**最近邻**而非相关性过滤，无意义 query 也会返回整库前 N 条；因此"引擎零命中"在已索引项目上并不可自然到达，该分支由单测确定性覆盖。UI 文案宜表述为"相关文档"而非"命中"。
+- **未做**（OEI-006 范围外）：上传管道（OEI-007）、权限壳层（OEI-008）、LLM Chat 生成答案。
+- **移交建议**：`make seed-fixtures` 未包含 `scripts/seed_v0_spike_fixture.py`（第 4 个 fixture），导致 `test_cut_045_local_origin_smoke` 在干净环境上失败；建议补入 Makefile（本刀 §7 未授权改 `Makefile`，故仅登记不修改）。

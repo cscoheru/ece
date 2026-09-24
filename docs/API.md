@@ -486,3 +486,112 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 
 - cookie **不**进 ECE 仓；运行时通过 `ECE_ONYX_COOKIE_FILE` 环境变量读取
 - 该端点**不**走权限 / 审计层——只用于内部演示，**不应**对外暴露
+
+## 11. Consulting Knowledge Library（KC-001 + OEI-006 引擎合并）
+
+> 视图 D「咨询知识库」的两个数据来源：**静态目录**（`36` 个 file-backed 种子对象）与
+> **引擎召回**（来自内容引擎已索引的真实文档）。两者在同一个响应里以**并列字段**返回，
+> 互不覆盖；静态侧语义与字段**完全未变**，引擎结果只走新增字段。
+
+### GET /api/v1/consulting/library
+
+**查询参数**：
+
+| 参数 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `q` | string | — | 关键词检索（标题/摘要/方法/问题类型/交付物）。**同时**用于引擎召回 |
+| `type` | string | — | 精确类型筛选 |
+| `practice` | string[] | `[]` | 任一匹配的实践筛选 |
+| `engagement_phase` | string[] | `[]` | 任一匹配的阶段筛选 |
+| `client_industry` | string[] | `[]` | 任一匹配的行业筛选 |
+| `problem_type` | string[] | `[]` | 任一匹配的问题类型筛选 |
+| `source_origin` | string | — | 精确来源筛选 |
+| `review_state` | string | — | 精确复核状态筛选 |
+| `sort` | string | `relevance` | `relevance` 或 `title` |
+| `limit` | int | `24` | 1–100（分页，**只作用于静态侧**） |
+| `offset` | int | `0` | ≥0（分页，**只作用于静态侧**） |
+
+**响应**（`LibraryResponse`）：
+
+```jsonc
+{
+  // ---- 静态目录（KC-001，语义与字段均未改变）----
+  "items":   [ /* KnowledgeObject[] */ ],
+  "total":   36,
+  "limit":   24,
+  "offset":  0,
+  "facets":  { "types": [], "practices": [], "engagement_phases": [],
+               "client_industries": [], "problem_types": [], "source_origins": [] },
+
+  // ---- 引擎召回（OEI-006 新增，唯一的新增部分）----
+  "engine_items":  [ /* EngineItem[] */ ],
+  "engine_status": "ok" | "unavailable" | "disabled" | "skipped"
+}
+```
+
+`items[]` 仍是 KC-001 的 `KnowledgeObject`：`id` / `type` / `title` / `summary` /
+`practice` / `engagement_phase` / `client_industry` / `problem_types` / `methods` /
+`deliverables` / `outcomes` / `confidence` / `source_origin` / `review_state`（未增未改）。
+
+#### `engine_items[]`（新增）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `engine_doc_id` | string | 引擎侧文档标识（Onyx `citation_id` 的字符串形式）。**引擎内部 ID**，不是 KC-001 的 `id` |
+| `title` | string | 源文件名，如 `methodology-framework.md` |
+| `snippet` | string | 文档内容片段，**最多 800 字符**，被截断时以 `…` 结尾 |
+| `source_type` | string | 引擎给的来源类型，如 `user_file` |
+| `updated_at` | string \| null | ISO 8601 UTC，如 `"2026-09-23T13:06:16Z"`；引擎未给则为 `null` |
+| `source` | `"engine"` | 判别字段：**恒为 `"engine"`**，让前端无需猜测分组 |
+
+引擎内部字段（`link`、`content`、`citation_id`、原始 `raw`）**不出现在响应里**——
+`link` 是会话态路径，泄漏无意义且有害。
+
+#### `engine_status`（新增）—— 四种取值是策略，不是格式
+
+| 取值 | 含义 | 前端表现 |
+|---|---|---|
+| `ok` | **问了，引擎答了**（答"没有"也算 `ok`） | 渲染引擎卡片；为空时显示引擎侧空态 |
+| `unavailable` | **问了，引擎失败**（不可达 / 401 / 非 200 / 非 JSON） | 一行提示"内容引擎暂时不可用"，静态目录照常 |
+| `disabled` | **没问**（未选真实引擎：`ECE_CONTENT_ENGINE` 为 `mock`/未设/未知值） | 一行提示"本环境未接入内容引擎" |
+| `skipped` | **没得问**（`q` 为空） | 不显示引擎分组；提示"输入关键词即可同时检索已索引文档" |
+
+**降级保证**：引擎不可达时 HTTP 仍为 **200**，静态侧 `items/total/limit/offset/facets`
+**逐字段不变**，`engine_items=[]`、`engine_status="unavailable"`，**不返回 500、不抛未捕获异常**。
+
+**分页语义**：`limit`/`offset` **只作用于静态目录**；引擎召回固定取 `top_k=8`（`DEFAULT_TOP_K`），
+不参与分页。
+
+**安全注意**：`disabled` 是**故意的 fail-closed**——mock 适配器返回的是三份内置样例文档，
+**不是**客户上传的文档；把它们当作"从你已索引文档召回"展示会是谎报。只有显式选择
+`ECE_CONTENT_ENGINE=onyx` 才会打真实检索。
+
+**示例**（`ECE_CONTENT_ENGINE=onyx`，实测输出）：
+
+```bash
+curl -s --get --data-urlencode 'q=问题树怎么用' \
+  http://127.0.0.1:8000/api/v1/consulting/library
+```
+
+```jsonc
+{
+  "items": [], "total": 0, "limit": 24, "offset": 0,
+  "facets": { "types": ["case", "deliverable_template", "..."] },
+  "engine_status": "ok",
+  "engine_items": [
+    { "engine_doc_id": "1",
+      "title": "methodology-framework.md",
+      "snippet": "# 咨询方法论：问题树、假设驱动与 MECE 的实战组合 …",
+      "source_type": "user_file",
+      "updated_at": "2026-09-23T13:06:16Z",
+      "source": "engine" }
+  ]
+}
+```
+
+> 上面这个例子恰好是"两个来源独立"的样本：该 query 静态目录 0 命中、引擎 1 条。
+> 空 query 时静态侧返回全部 36 条且 `engine_status="skipped"`。
+
+**性能注意**：`ok` 路径的响应时间取决于内容引擎，实测 Onyx 稳态约 **4.2 秒**、
+冷启动首查可达 **15 秒**（ECE 侧适配器超时 60 秒）。经本机 `cut_045_local_origin.py`
+反代时注意其上游超时仅 **10 秒**，冷启动首查可能得到 `502`（重试即可）。

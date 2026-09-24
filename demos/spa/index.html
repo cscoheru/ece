@@ -209,7 +209,18 @@
 
       <div id="consulting-total">载入中…</div>
       <div id="consulting-cards"></div>
-      <div id="consulting-empty">没有匹配的条目, 试试调整关键词或筛选条件.</div>
+      <div id="consulting-empty">目录无命中: 目录里没有匹配的条目, 试试调整关键词或筛选条件.</div>
+
+      <!-- OEI-006 — 第二个来源: 引擎召回 (来自已索引文档).
+           与上面的目录卡片分组展示; 引擎不可用/未接入时只显示提示, 不影响目录.
+           注意: 这里刻意用 div 而非嵌套的分节元素 — test_consulting_spa_view
+           以"下一个分节标签"作为 view-d 扫描区间的结束标志, 嵌套会把详情抽屉切出扫描区. -->
+      <div id="consulting-engine" hidden>
+        <h3>引擎召回 (来自已索引文档)</h3>
+        <p id="consulting-engine-status" class="muted"></p>
+        <div id="consulting-engine-cards"></div>
+        <p id="consulting-engine-empty" hidden></p>
+      </div>
 
       <!-- Detail drawer (KC-001 view-d detail panel) -->
       <aside id="consulting-detail" aria-hidden="true">
