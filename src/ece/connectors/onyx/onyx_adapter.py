@@ -1,11 +1,23 @@
 """OnyxContentEngineAdapter — real implementation against Onyx CE v4.7.8 (OEI-003 §4).
 
-Endpoints used (all read-only, verified by OEI-002 §1.1):
+Read endpoints (OEI-003, all read-only, verified by OEI-002 §1.1):
   GET  /api/admin/llm/provider        — providers + default_text
   GET  /api/user/projects             — list projects
   GET  /api/user/projects/files/{id}  — files in project
   POST /api/search                    — recall (returns results[])
   GET  /api/version                   — version string
+
+Write endpoints (OEI-007, verified live 2026-09-24 against v4.7.8):
+  POST /api/user/projects/file/upload    — multipart upload; field name `files`;
+                                           optional form field `project_id` (int);
+                                           response carries per-file `id` (user_file.id)
+                                           + `file_id` (engine-internal UUID) + `status`
+  POST /api/user/projects/file/statuses  — JSON `{"file_ids": [user_file.id, ...]}`;
+                                           status for the USER_FILE.ID, NOT the
+                                           inner file_id (which returns []). Server-side
+                                           `project_id` may be `null` in the response
+                                           even when supplied on upload — the project
+                                           association is finalized during indexing.
 
 Per OEI-003 §6 硬约束:cookie never enters ECE codebase; loaded at runtime from
 ECE_ONYX_COOKIE_FILE (chmod 600, default /home/fisher/.onyx-lab/.secrets/admin-cookies.txt).
@@ -14,6 +26,7 @@ never persisted, never imported into domain_packs/.
 """
 from __future__ import annotations
 
+import io
 import os
 import time
 from datetime import datetime
@@ -25,11 +38,11 @@ import httpx
 from ece.connectors.onyx.port import (
     ContentEnginePort,
     EngineDocument,
+    EngineDocumentStatus,
     EngineError,
     EngineProject,
     EngineStatus,
 )
-
 
 _DEFAULT_BASE = "http://127.0.0.1:8080"
 _DEFAULT_COOKIE_FILE = "/home/fisher/.onyx-lab/.secrets/admin-cookies.txt"
@@ -251,6 +264,116 @@ class OnyxContentEngineAdapter:
             if isinstance(p.get("id"), int)
         ]
 
+    # -- OEI-007 write path ----------------------------------------------------
+    #
+    # Two endpoints back this:
+    #   POST /api/user/projects/file/upload     — multipart, field name `files`
+    #   POST /api/user/projects/file/statuses   — JSON {file_ids: [<user_file.id>]}
+    #
+    # The upload response gives us TWO ids per row:
+    #   * id       — the public user_file.id (UUID); THIS is what the consulting
+    #                layer returns to the SPA and what `document_status` polls.
+    #   * file_id  — the engine-internal UUID; statuses return [] for this.
+    #
+    # `metadata` (the consulting-layer advisory dict) is currently NOT shipped
+    # to Onyx: v4.7.8 has no per-file metadata field on /file/upload and we
+    # deliberately don't smuggle it via the filename. The dictionary is kept
+    # as a parameter so the consulting layer's contract is stable; the adapter
+    # records it in `raw["_ece_consulting_metadata"]` so the status record is
+    # traceable end-to-end without Onyx supporting the field.
+
+    async def upload_document(
+        self,
+        filename: str,
+        content: bytes,
+        *,
+        project_id: int,
+        title: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> EngineDocumentStatus:
+        if not isinstance(content, (bytes, bytearray)):
+            raise EngineError(
+                f"Onyx upload requires bytes, got {type(content).__name__}"
+            )
+        try:
+            with self._client() as cli:
+                resp = cli.post(
+                    "/api/user/projects/file/upload",
+                    data={"project_id": str(project_id)},
+                    files={"files": (filename or "document", io.BytesIO(content))},
+                )
+        except (httpx.HTTPError, OSError) as e:
+            raise EngineError(f"Onyx upload transport failure: {e}") from e
+        if resp.status_code == 401 or resp.status_code == 403:
+            raise EngineError(
+                f"Onyx upload auth failure {resp.status_code}: cookie invalid or expired"
+            )
+        if resp.status_code >= 500:
+            raise EngineError(
+                f"Onyx upload returned {resp.status_code}: {resp.text[:200]}"
+            )
+        if resp.status_code != 200:
+            raise EngineError(
+                f"Onyx upload returned {resp.status_code}: {resp.text[:200]}"
+            )
+        try:
+            data = resp.json()
+        except Exception as e:
+            raise EngineError(f"Onyx upload non-JSON response: {e}") from e
+        rows = data.get("user_files") or []
+        rejected = data.get("rejected_files") or []
+        if rejected:
+            # Per-file rejection is normal (extension/size/empty); surface the first
+            reason = "; ".join(
+                str(r.get("reason") or r.get("error") or "rejected")
+                for r in rejected[:3]
+            )
+            raise EngineError(f"Onyx upload rejected file(s): {reason}")
+        if not rows:
+            raise EngineError("Onyx upload returned 200 with no user_files row")
+        status = _upload_status_record(rows[0])
+        if metadata is not None:
+            # round-trip the consulting-layer advice in `raw` so downstream debugging
+            # can see what was *attempted*, without lying about what Onyx stored.
+            status.raw["_ece_consulting_metadata"] = dict(metadata)
+            status.raw["_ece_consulting_title"] = title
+        return status
+
+    async def document_status(self, document_id: str) -> EngineDocumentStatus:
+        if not document_id:
+            raise EngineError("document_status called with empty document_id")
+        try:
+            with self._client() as cli:
+                resp = cli.post(
+                    "/api/user/projects/file/statuses",
+                    json={"file_ids": [document_id]},
+                )
+        except (httpx.HTTPError, OSError) as e:
+            raise EngineError(f"Onyx status transport failure: {e}") from e
+        if resp.status_code == 401 or resp.status_code == 403:
+            raise EngineError(
+                f"Onyx status auth failure {resp.status_code}: cookie invalid or expired"
+            )
+        if resp.status_code >= 500:
+            raise EngineError(
+                f"Onyx status returned {resp.status_code}: {resp.text[:200]}"
+            )
+        if resp.status_code != 200:
+            raise EngineError(
+                f"Onyx status returned {resp.status_code}: {resp.text[:200]}"
+            )
+        try:
+            data = resp.json()
+        except Exception as e:
+            raise EngineError(f"Onyx status non-JSON response: {e}") from e
+        if not isinstance(data, list):
+            raise EngineError("Onyx status response was not a JSON array")
+        if not data:
+            # Onyx's contract: empty list means the id is unknown to it
+            # (either never existed, or already garbage-collected after FAILED).
+            raise EngineError(f"Onyx status: document_id={document_id!r} not found")
+        return _upload_status_record(data[0])
+
 
 def _result_to_engine_document(result: dict[str, Any]) -> EngineDocument:
     """Map an Onyx /api/search result dict to EngineDocument.
@@ -275,6 +398,41 @@ def _result_to_engine_document(result: dict[str, Any]) -> EngineDocument:
         source_type=result.get("source_type") or "unknown",
         updated_at=updated_at,
         raw=result,
+    )
+
+
+# ---------------------------------------------------------------------------
+# OEI-007 — write path (upload + status)
+# ---------------------------------------------------------------------------
+
+
+def _upload_status_record(rec: dict[str, Any]) -> EngineDocumentStatus:
+    """Map one row of the Onyx file upload/status response to EngineDocumentStatus.
+
+    The same row shape is returned by BOTH `/file/upload` (one row in `user_files`)
+    and `/file/statuses` (one row in the array). The mapping is therefore shared.
+    """
+    status_raw = rec.get("status") or "PROCESSING"
+    if status_raw not in ("PROCESSING", "COMPLETED", "FAILED"):
+        # unknown — degrade to PROCESSING so the SPA still polls instead of pretending done
+        status_raw = "PROCESSING"
+    chunk_count = rec.get("chunk_count")
+    if not isinstance(chunk_count, int):
+        chunk_count = None
+    project_id = rec.get("project_id")
+    if not isinstance(project_id, int):
+        project_id = None
+    failure_reason = rec.get("failure_reason") or None
+    if status_raw != "FAILED":
+        failure_reason = None  # don't surface stale reasons from previous attempts
+    return EngineDocumentStatus(
+        document_id=str(rec.get("id") or ""),
+        name=str(rec.get("name") or ""),
+        status=status_raw,  # type: ignore[arg-type]
+        chunk_count=chunk_count,
+        project_id=project_id,
+        failure_reason=failure_reason,
+        raw=rec,
     )
 
 

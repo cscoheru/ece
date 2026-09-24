@@ -597,4 +597,132 @@
   if (closeBtn) {
     closeBtn.addEventListener("click", closeConsultingDetail);
   }
+
+  // ----- OEI-007 — upload + status wiring (additive; does not touch search) -----
+  var uploadBtn = document.getElementById("consulting-upload-submit");
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", submitConsultingUpload);
+  }
+
+  function renderUploadRow(rec) {
+    var li = document.createElement("li");
+    li.className = "consulting-upload-row" + (rec.accepted ? "" : " rejected");
+    li.setAttribute("data-document-id", rec.document_id || "");
+
+    var name = document.createElement("span");
+    name.className = "upload-row-name";
+    name.textContent = rec.name;
+    li.appendChild(name);
+
+    if (rec.accepted) {
+      var st = document.createElement("span");
+      st.className = "badge " + (rec.status || "processing").toLowerCase();
+      st.textContent = rec.status + (rec.chunk_count != null ? " · " + rec.chunk_count + " 块" : "");
+      li.appendChild(st);
+
+      var pollBtn = document.createElement("button");
+      pollBtn.type = "button";
+      pollBtn.textContent = "查询状态";
+      pollBtn.addEventListener("click", function () {
+        pollConsultingDocument(rec.document_id, li);
+      });
+      li.appendChild(pollBtn);
+    } else {
+      var reason = document.createElement("span");
+      reason.className = "upload-row-reason";
+      reason.textContent = rec.reason || "未知原因";
+      li.appendChild(reason);
+    }
+    return li;
+  }
+
+  function pollConsultingDocument(docId, li) {
+    fetch("/api/v1/consulting/documents/" + encodeURIComponent(docId))
+      .then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b }; }); })
+      .then(function (r) {
+        if (r.status !== 200) {
+          setUploadStatus("状态查询失败: HTTP " + r.status + " — " + (r.body && r.body.detail || "未知"), true);
+          return;
+        }
+        // Update the status badge inside the row.
+        var badges = li.getElementsByClassName("badge");
+        for (var bi = 0; bi < badges.length; bi++) {
+          var b = badges[bi];
+          b.className = "badge " + (r.body.status || "processing").toLowerCase();
+          b.textContent = r.body.status + (r.body.chunk_count != null ? " · " + r.body.chunk_count + " 块" : "");
+        }
+        if (r.body.status === "FAILED" && r.body.failure_reason) {
+          var existing = li.getElementsByClassName("upload-row-reason")[0];
+          if (!existing) {
+            var reason = document.createElement("span");
+            reason.className = "upload-row-reason";
+            reason.textContent = "失败原因: " + r.body.failure_reason;
+            li.appendChild(reason);
+          } else {
+            existing.textContent = "失败原因: " + r.body.failure_reason;
+          }
+        }
+        setUploadStatus("状态已更新: " + r.body.status);
+      })
+      .catch(function (e) { setUploadStatus("状态查询异常: " + e, true); });
+  }
+
+  function setUploadStatus(text, isError) {
+    var s = document.getElementById("consulting-upload-status");
+    if (!s) return;
+    s.textContent = text;
+    s.className = "muted" + (isError ? " error" : "");
+  }
+
+  function submitConsultingUpload() {
+    var fileInput = document.getElementById("consulting-upload-file");
+    var titleInput = document.getElementById("consulting-upload-title");
+    var listEl = document.getElementById("consulting-upload-list");
+    var rowsEl = document.getElementById("consulting-upload-rows");
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      setUploadStatus("请先选择至少一个文件.", true);
+      return;
+    }
+    var btn = document.getElementById("consulting-upload-submit");
+    if (btn) btn.disabled = true;
+    setUploadStatus("上传中…");
+
+    var fd = new FormData();
+    var title = titleInput && titleInput.value ? titleInput.value : "";
+    for (var i = 0; i < fileInput.files.length; i++) {
+      fd.append("file", fileInput.files[i], fileInput.files[i].name);
+      fd.append("title", title);
+    }
+
+    fetch("/api/v1/consulting/documents", { method: "POST", body: fd })
+      .then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b }; }); })
+      .then(function (r) {
+        var docs = (r.body && r.body.documents) || [];
+        var acceptedCount = 0;
+        var rejectedCount = 0;
+        for (var di = 0; di < docs.length; di++) {
+          if (docs[di].accepted) acceptedCount++;
+          else rejectedCount++;
+          if (listEl && rowsEl) {
+            listEl.hidden = false;
+            rowsEl.appendChild(renderUploadRow(docs[di]));
+          }
+        }
+        var msg = "上传完成: " + acceptedCount + " 个成功";
+        if (rejectedCount > 0) msg += ", " + rejectedCount + " 个被拒绝";
+        setUploadStatus(msg, rejectedCount > 0 && acceptedCount === 0);
+        if (fileInput) fileInput.value = "";
+        // After successful upload the new docs may be searchable. Trigger a search
+        // refresh so the "engine recall" group populates without a manual reload.
+        if (acceptedCount > 0) {
+          runConsultingSearch();
+        }
+      })
+      .catch(function (e) {
+        setUploadStatus("上传失败: " + e, true);
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
 })();

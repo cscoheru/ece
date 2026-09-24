@@ -243,3 +243,45 @@ v0.1 的 PRD/ADR-004 权限模型（DB acl_entries + PermissionScope SQL 下推�
 - **相关性**：Onyx `/api/search` 返回**最近邻**而非相关性过滤，无意义 query 也会返回整库前 N 条；因此"引擎零命中"在已索引项目上并不可自然到达，该分支由单测确定性覆盖。UI 文案宜表述为"相关文档"而非"命中"。
 - **未做**（OEI-006 范围外）：上传管道（OEI-007）、权限壳层（OEI-008）、LLM Chat 生成答案。
 - **移交建议**：`make seed-fixtures` 未包含 `scripts/seed_v0_spike_fixture.py`（第 4 个 fixture），导致 `test_cut_045_local_origin_smoke` 在干净环境上失败；建议补入 Makefile（本刀 §7 未授权改 `Makefile`，故仅登记不修改）。
+
+---
+
+## 附录 M — Consulting Knowledge Library × 真实上传入库（OEI-007，2026-09-24）
+
+> 登记 OEI-007：把客户的真实咨询文档拖进 ECE → 走内容引擎抽取 + 索引 →
+> 立刻在「引擎召回」分组里被检索到。**静态侧语义零变化**（附录 L 的 §L.2
+> 契约要点继续生效），新功能只走新增字段与新增端点。
+
+### M.1 交付物
+
+| 能力 | 位置 | 状态 | 备注 |
+|---|---|---|---|
+| Port 写路径扩展 `upload_document` / `document_status` | `src/ece/connectors/onyx/port.py` + `onyx_adapter.py` + `mock_adapter.py` | 已交付 | `EngineDocumentStatus` 模型；document_id = `user_file.id`（UUID），与搜索侧 `engine_doc_id` 分属两个命名空间 |
+| ECE 上传端点 `POST /api/v1/consulting/documents` | `src/ece/consulting/router.py` + `metadata.py` | 已交付 | 多文件、per-file 拒绝、白名单、4 MiB/16 MiB 上限 |
+| ECE 状态端点 `GET /api/v1/consulting/documents/{id}` | 同上 | 已交付 | 200 / 404（id 未知） / 502（引擎不可达） |
+| 咨询元数据确定性建议器 | `src/ece/consulting/metadata.py` | 已交付 | 词表严格来自 36 个种子对象；越界静默丢弃 |
+| SPA 视图 D 上传区 + 最近上传行表 | `demos/spa/index.html` + `app.js` + `styles.css` | 已交付 | 复用既有详情抽屉；上传成功后自动触发 library 检索 |
+| DB 无关单测（32 条） | `tests/unit/test_consulting_documents.py` | 已交付 | 白名单、大小、元数据、Port 写路径、上传/状态端点、引擎降级、静态侧零变化 |
+| 二进制样本 (docx) 入库 + 召回 | `evidence/09-binary-format.json` | 已交付 | stdlib `zipfile + XML` 构造；`pyproject.toml` 与 `uv.lock` diff 为空 |
+
+### M.2 步骤 0 处置
+
+- `Makefile` 的 `seed-fixtures` 已补上 `scripts/seed_v0_spike_fixture.py`（**采用「纳入 Makefile」方案**；TASK §4 step 0 给的二选一之一）。
+- `tests/integration/test_cut_045_local_origin_smoke.py` 的 skip 守卫补上了"无 DB"判断 —— 没有 `DATABASE_URL` 时显式 skip 而非失败（这是 TASK §4 step 0.2 的明确要求；之前版本曾在此类环境上 fail 而非 skip）。
+- 处置完跑 `make seed-fixtures && make test` → **705 passed / 0 failed**（与基线持平）。
+
+### M.3 已知限制 / 移交
+
+- **时延**：上传响应（`upload_document`）<1s；引擎抽取 + 索引通常 **5-15s**；检索查询稳态 **4.2s**，冷启动首查可达 **15s**。经反代链路时 `cut_045_local_origin.py` 的上游超时仅 **10s**，冷启动首查会 502；自查用「先直连做热启动」规避。
+- **相关性**：Onyx `/api/search` 仍按**最近邻**而非相关性过滤（A8 / §L.4 已记），故「上传 → 立即可召回」必须**等索引完成 + 短暂的索引传播时间**。证据 05 通过多查询 + 多等待（5/15/30/60s）验证。
+- **幂等策略**：每次上传生成独立的 `document_id`（不静默合并）；SPA 的去重靠"一张卡 = 一个 `engine_doc_id`"自然完成。
+- **未做**（OEI-007 范围外）：上传历史可视化、批量导入、定时同步、权限壳层（OEI-008）。
+- **移交**：建议下一刀把 SPA 引擎分组文案从「相关文档」调整为「已索引文档」（与 OEI-006 §L.4 一致）。
+
+### M.4 与既有咨询元数据的连接
+
+OEI-006 引入的 `engine_status` 四态继续生效：
+- 上传成功且文档已被引擎索引后 → `engine_status="ok"` 且 `engine_items` 包含新文档；
+- 引擎不可达 → `engine_status="unavailable"`（静态侧零影响）；
+- `ECE_CONTENT_ENGINE` 非 `onyx` → `engine_status="disabled"`（mock 模式的"未问"状态，**故意**不展示 mock 内置样例）；
+- 空 query → `engine_status="skipped"`。

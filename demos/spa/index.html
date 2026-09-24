@@ -222,6 +222,32 @@
         <p id="consulting-engine-empty" hidden></p>
       </div>
 
+      <!-- OEI-007 — 上传与状态区 (单页内闭环: 选文件 → 上传 → 轮询状态 → 重新检索即看到).
+           与 OEI-006 的"引擎召回"分组同一种视觉风格, 沿用同一详情抽屉. -->
+      <div id="consulting-upload">
+        <h3>上传文档至引擎索引</h3>
+        <p id="consulting-upload-help" class="muted">
+          支持 .md / .txt / .docx / .pdf (单文件 ≤ 4 MiB, 总量 ≤ 16 MiB).
+          元数据按文件名 + 标题自动建议, 落地后即可在「引擎召回」里被检索到.
+        </p>
+        <label>
+          <span>文档标题 (可选, 用于元数据建议)</span>
+          <input type="text" id="consulting-upload-title" placeholder="例如: 零售门店坪效诊断案例">
+        </label>
+        <label>
+          <span>选择文件 (可多选)</span>
+          <input type="file" id="consulting-upload-file" multiple
+                 accept=".md,.txt,.docx,.pdf,text/markdown,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        </label>
+        <button id="consulting-upload-submit" type="button">上传并索引</button>
+        <p id="consulting-upload-status" class="muted"></p>
+      </div>
+
+      <div id="consulting-upload-list" hidden>
+        <h4>最近上传</h4>
+        <ul id="consulting-upload-rows"></ul>
+      </div>
+
       <!-- Detail drawer (KC-001 view-d detail panel) -->
       <aside id="consulting-detail" aria-hidden="true">
         <header class="detail-header">

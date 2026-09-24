@@ -455,6 +455,115 @@ footer code {
   font-size: 0.9rem;
 }
 
+/* OEI-007 — upload + status region (mirrors OEI-006 engine group visual style) */
+#consulting-upload {
+  margin-top: 1.25em;
+  padding-top: 0.75em;
+  border-top: 2px dashed #c0c8d4;
+}
+#consulting-upload label {
+  display: block;
+  margin: 0.4em 0;
+}
+#consulting-upload input[type="text"],
+#consulting-upload input[type="file"] {
+  display: block;
+  margin-top: 0.25em;
+  padding: 0.4em;
+  border: 1px solid #c0c8d4;
+  border-radius: 3px;
+  font: inherit;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+}
+#consulting-upload-submit {
+  margin-top: 0.5em;
+  padding: 0.5em 1em;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+}
+#consulting-upload-submit:disabled {
+  background: #999;
+  border-color: #999;
+  cursor: not-allowed;
+}
+#consulting-upload-status {
+  margin-top: 0.6em;
+  font-size: 0.92em;
+}
+#consulting-upload-status.error {
+  color: #b00020;
+}
+#consulting-upload-list {
+  margin-top: 1em;
+  padding-top: 0.5em;
+  border-top: 1px solid #c0c8d4;
+}
+#consulting-upload-rows {
+  list-style: none;
+  padding: 0;
+  margin: 0.5em 0 0 0;
+}
+.consulting-upload-row {
+  padding: 0.5em 0.6em;
+  margin-bottom: 0.4em;
+  border: 1px solid #c0c8d4;
+  border-left: 3px solid #2563eb;
+  border-radius: 3px;
+  background: #fafbfc;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  align-items: center;
+}
+.consulting-upload-row.rejected {
+  border-left-color: #b00020;
+  background: #fdf2f3;
+}
+.consulting-upload-row .upload-row-name {
+  font-weight: 600;
+  flex: 1 1 12em;
+}
+.consulting-upload-row .badge {
+  font-size: 0.85em;
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  background: #e8eef5;
+  color: #1c2530;
+}
+.consulting-upload-row .badge.processing {
+  background: #fff3cd;
+  color: #664d03;
+}
+.consulting-upload-row .badge.completed {
+  background: #d1e7dd;
+  color: #0a3622;
+}
+.consulting-upload-row .badge.failed {
+  background: #f8d7da;
+  color: #58151c;
+}
+.consulting-upload-row button {
+  font-size: 0.85em;
+  padding: 0.25em 0.6em;
+  border: 1px solid #2563eb;
+  background: #fff;
+  color: #2563eb;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.consulting-upload-row .upload-row-reason {
+  width: 100%;
+  font-size: 0.85em;
+  color: #b00020;
+  margin-top: 0.3em;
+}
+
 
 #consulting-detail {
   position: fixed;

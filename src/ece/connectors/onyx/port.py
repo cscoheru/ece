@@ -1,18 +1,27 @@
 """ContentEnginePort — Protocol + Pydantic models (OEI-003 §4 步骤 2).
 
-Three methods:
+Three read methods (OEI-003):
 - search(query, *, top_k=None) -> list[EngineDocument]
 - engine_status() -> EngineStatus
 - list_projects() -> list[EngineProject]
 
+Two write methods (OEI-007):
+- upload_document(filename, content: bytes, *, project_id, title=None, metadata=None) -> EngineDocumentStatus
+- document_status(document_id: str) -> EngineDocumentStatus
+
 分层纪律:Onyx 专有字段(citation_id / source_type:user_file / 等)只能活在 adapter
 内部,Port 与统一返回模型(Pydantic)零依赖 Onyx。
+
+Note: OEI-007 deliberately keeps `engine_doc_id` on `EngineDocument` (the search-side
+identifier, set from Onyx `citation_id` for each recall) SEPARATE from `document_id`
+on `EngineDocumentStatus` (the upload-side identifier, set from Onyx `user_file.id`).
+They live in different namespaces — see `OnyxContentEngineAdapter.upload_document` for
+the mapping notes.
 """
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Protocol, runtime_checkable
-from uuid import UUID
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
@@ -69,6 +78,32 @@ class EngineError(RuntimeError):
     """
 
 
+# OEI-007 — write-path models ----------------------------------------------------
+
+# Status values mirror Onyx /api/user/projects/file/statuses response exactly so
+# the consulting layer can show "waiting → ready / failed" without parsing.
+EngineDocumentPhaseT = Literal["PROCESSING", "COMPLETED", "FAILED"]
+
+
+class EngineDocumentStatus(BaseModel):
+    """Status of a document previously submitted via `upload_document`.
+
+    `document_id` is the engine-side identifier returned by upload (Onyx
+    `user_file.id`, a UUID). It is deliberately a different namespace from
+    `EngineDocument.engine_doc_id` (the per-search citation id).
+    """
+
+    document_id: str = Field(..., description="Engine-side identifier (Onyx user_file.id, UUID).")
+    name: str = Field(..., description="Original filename at upload time.")
+    status: EngineDocumentPhaseT = Field(..., description="Indexing lifecycle state.")
+    chunk_count: int | None = Field(default=None, description="Indexed chunk count; null while PROCESSING or on FAILED.")
+    project_id: int | None = Field(default=None, description="Project this document belongs to.")
+    failure_reason: str | None = Field(
+        default=None, description="When status=FAILED, the engine-supplied reason if any."
+    )
+    raw: dict[str, Any] = Field(default_factory=dict, description="engine-specific extras")
+
+
 @runtime_checkable
 class ContentEnginePort(Protocol):
     """Abstract port to a content + search engine.
@@ -95,5 +130,38 @@ class ContentEnginePort(Protocol):
         """List all projects on the engine.
 
         MUST raise EngineError on transport failure.
+        """
+        ...
+
+    async def upload_document(
+        self,
+        filename: str,
+        content: bytes,
+        *,
+        project_id: int,
+        title: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> EngineDocumentStatus:
+        """Upload a document to the engine and return its initial status.
+
+        `content` is the raw file bytes (the engine does the text extraction).
+        `metadata` is engine-shaped advisory data — the adapter may store it
+        however the engine supports; MUST NOT raise when the engine ignores it.
+
+        MUST raise EngineError on transport / HTTP / parsing failures.
+        MUST raise EngineError if the engine rejects the upload (non-2xx).
+        The returned `status` will typically be PROCESSING — the caller polls
+        `document_status` for the lifecycle.
+        """
+        ...
+
+    async def document_status(self, document_id: str) -> EngineDocumentStatus:
+        """Poll the indexing status of a document previously uploaded.
+
+        MUST raise EngineError if the engine is unreachable.
+        MUST raise EngineError if `document_id` is not known to the engine
+        (adapters that get `[]` back from the engine's batch status endpoint
+        translate this into EngineError so the consulting layer can render
+        a clear "not found / expired" state).
         """
         ...

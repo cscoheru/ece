@@ -95,11 +95,23 @@ def _deployment_stack_gap() -> str | None:
     artifacts (served by scripts/cut_045_local_origin.py) plus a uvicorn
     upstream. When they are missing the test must SKIP with a clear reason
     instead of waiting out a timeout and FAILing.
+
+    OEI-007 step 0.2: also SKIP (not FAIL) when DATABASE_URL is unset. The
+    smoke spawns a real uvicorn which cannot boot without a reachable PG,
+    so without DATABASE_URL the right behaviour is to skip — not to
+    blindly fall back to localhost:55440 and watch the upstream timeout.
     """
     if not SPA_INDEX.exists():
         return f"SPA static artifacts missing: {SPA_INDEX}"
     if not UVICORN_BIN.exists():
         return f"uvicorn binary missing: {UVICORN_BIN}"
+    if not os.environ.get("DATABASE_URL"):
+        return (
+            "DATABASE_URL is unset; this smoke spawns a real uvicorn that "
+            "needs a reachable Postgres. Set DATABASE_URL (e.g. "
+            "'postgresql+psycopg://ece:ece@127.0.0.1:55432/ece') or run "
+            "`make pull-db && make db-upgrade && make seed-fixtures` first."
+        )
     return None
 
 

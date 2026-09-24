@@ -147,6 +147,79 @@ class FacetsResponse(BaseModel):
     total: int
 
 
+# ---------------------------------------------------------------------------
+# OEI-007 — document upload + status
+# ---------------------------------------------------------------------------
+
+
+# `status` mirrors the Onyx /api/user/projects/file/statuses lifecycle.
+DocumentStatusT = Literal["PROCESSING", "COMPLETED", "FAILED"]
+
+
+class UploadedDocument(BaseModel):
+    """One row of the upload response — what happened to a single file.
+
+    `accepted=True` means the file was uploaded to the engine (status will
+    typically be PROCESSING and the caller should poll for completion).
+    `accepted=False` means the upload endpoint refused the file *before* it
+    ever reached the engine (whitelist / empty / oversize / unknown reason);
+    `reason` carries the human-readable explanation.
+    """
+
+    name: str = Field(..., description="Original filename at upload time.")
+    accepted: bool = Field(..., description="True iff the file reached the engine.")
+    document_id: str | None = Field(
+        default=None, description="Engine-side document id (UUID); present iff accepted=True."
+    )
+    status: DocumentStatusT | None = Field(
+        default=None, description="Indexing lifecycle state (PROCESSING/COMPLETED/FAILED)."
+    )
+    chunk_count: int | None = Field(default=None, description="Indexed chunk count.")
+    reason: str | None = Field(default=None, description="Rejection reason when accepted=False.")
+    suggested_metadata: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Deterministic metadata suggestion (filename+title). Caller overrides.",
+    )
+
+
+class UploadResponse(BaseModel):
+    """POST /api/v1/consulting/documents response — one row per submitted file.
+
+    The HTTP status is **always 200** when the endpoint is reachable: per-file
+    acceptance lives in `documents[i].accepted` and `documents[i].reason`.
+    A request where *every* file is rejected still returns 200 + a `documents[]`
+    with `accepted=False` rows — that way the SPA can render individual reasons
+    instead of seeing a single 4xx hide everything.
+
+    `static_catalog_size` is a small affordance for the SPA: confirms the static
+    side was untouched by the upload, even when zero documents were accepted.
+    """
+
+    documents: list[UploadedDocument]
+    static_catalog_size: int = Field(
+        ..., description="Number of objects in the static seed catalog at upload time."
+    )
+    metadata_vocabulary_check: str = Field(
+        default="ok",
+        description="Diagnostic: 'ok' unless metadata validation explicitly dropped a value.",
+    )
+
+
+class DocumentStatusResponse(BaseModel):
+    """GET /api/v1/consulting/documents/{document_id} response payload.
+
+    Mirrors the engine's status record so the SPA can render "等待 / 已索引
+    (N 块) / 失败 (原因)" without knowing about Onyx-specific fields.
+    """
+
+    document_id: str
+    name: str
+    status: DocumentStatusT
+    chunk_count: int | None = None
+    project_id: int | None = None
+    failure_reason: str | None = None
+
+
 __all__ = [
     "KnowledgeObject",
     "LibraryResponse",
@@ -157,4 +230,8 @@ __all__ = [
     "SourceOriginT",
     "ConfidenceT",
     "ReviewStateT",
+    "DocumentStatusT",
+    "UploadedDocument",
+    "UploadResponse",
+    "DocumentStatusResponse",
 ]

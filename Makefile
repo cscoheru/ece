@@ -99,13 +99,15 @@ pull-db:
 #   uv run python scripts/seed_temporal_roles.py
 #   uv run python scripts/seed_knowledge_fixture.py
 #   uv run python scripts/seed_compliance_fixture.py
+#   uv run python scripts/seed_v0_spike_fixture.py  # OEI-007 step 0.1
 # 幂等:再跑一次会删除并重建 fixture 行(seed_*.py 内置 self-check + removed prior rows)。
 seed-fixtures:
-	@echo "Seeding integration test fixtures (temporal / knowledge / compliance)..."
+	@echo "Seeding integration test fixtures (temporal / knowledge / compliance / spike)..."
 	uv run python scripts/seed_temporal_roles.py
 	uv run python scripts/seed_knowledge_fixture.py
 	uv run python scripts/seed_compliance_fixture.py
-	@echo "All fixtures seeded. Now `make test` should reach baseline (≤1 known cut_045 deployment-smoke failure)."
+	uv run python scripts/seed_v0_spike_fixture.py
+	@echo "All fixtures seeded. Now `make test` should reach baseline (0 failed)."
 
 # OEI-005 (2026-09-24): 集成测试完整前置链(供 CI / 新开发者用)
 # 等价于:

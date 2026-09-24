@@ -595,3 +595,123 @@ curl -s --get --data-urlencode 'q=问题树怎么用' \
 **性能注意**：`ok` 路径的响应时间取决于内容引擎，实测 Onyx 稳态约 **4.2 秒**、
 冷启动首查可达 **15 秒**（ECE 侧适配器超时 60 秒）。经本机 `cut_045_local_origin.py`
 反代时注意其上游超时仅 **10 秒**，冷启动首查可能得到 `502`（重试即可）。
+
+## 12. 文档上传与索引（OEI-007）
+
+> OEI-007 在 Library 上加了**第二个入口**：把客户自己的咨询文档拖进来 → 真实引擎
+> 抽取文本 + 索引 → 立刻出现在「引擎召回」分组里。**静态侧一字未改**。
+> 三个端点（全部 `/api/v1/consulting/documents` 下）：
+
+```
+POST /api/v1/consulting/documents                  — 多文件 multipart 上传
+GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
+```
+
+### 12.1 POST /api/v1/consulting/documents
+
+**请求**：`multipart/form-data`，字段：
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `file` | **是** | 可重复出现多个；接受 `.md` `.txt` `.docx` `.pdf`，其它扩展名 415 之前就被拒（per-file `accepted=false`，HTTP 仍 200） |
+| `title` | 否 | 与 file 按下标对齐；用于元数据建议 |
+| `type` / `engagement_phase` / `client_industry` / `problem_types` / `methods` | 否 | 与 file 按下标对齐；必须落在既有 36 个种子对象的取值集合内（越界静默丢弃，`metadata_vocabulary_check=dropped`） |
+
+**响应**（HTTP **始终 200**；per-file `accepted` + `reason`）：
+
+```jsonc
+{
+  "documents": [
+    {
+      "name": "retail-case.md",
+      "accepted": true,
+      "document_id": "2a9347ac-ab22-4fd7-9cef-db10f47e8814",
+      "status": "PROCESSING",        // 立即返回的状态，通常 PROCESSING
+      "chunk_count": null,           // null 直到状态变成 COMPLETED
+      "reason": null,
+      "suggested_metadata": {
+        "type": [], "engagement_phase": [],
+        "client_industry": ["retail"],   // 由文件名/标题推出的确定性建议
+        "problem_types": [], "methods": []
+      }
+    },
+    {
+      "name": "bad.exe",
+      "accepted": false,             // 0 字节 / 扩展名不在白名单 / 引擎拒绝 等
+      "document_id": null,
+      "status": null,
+      "chunk_count": null,
+      "reason": "extension '.exe' not allowed; accepted: ['.docx', '.md', '.pdf', '.txt']",
+      "suggested_metadata": { ... }
+    }
+  ],
+  "static_catalog_size": 36,
+  "metadata_vocabulary_check": "ok"   // "dropped" iff 有越界元数据被丢弃
+}
+```
+
+**大小上限**（per-file / aggregate）：
+
+- 单文件 ≤ **4 MiB**（`MAX_SINGLE_FILE_BYTES`）
+- 单请求聚合 ≤ **16 MiB**（`MAX_TOTAL_BYTES`）
+
+越界表现：单个文件越界 → 该行 `accepted=false` + 理由；聚合越界 → 整个请求 **HTTP 413**。
+
+**白名单**（`ALLOWED_EXTENSIONS`，源码常量）：`.md` `.txt` `.docx` `.pdf`。
+文本抽取由 Onyx 完成 —— ECE 侧不做任何文本解析（**OEI-007 坚持零新依赖**，二进制样本用 stdlib `zipfile + XML` 构造，见 `09-binary-format.json`）。
+
+**元数据词表**（必须复用 §2.2/§11 的 36 个种子对象取值集合）：
+
+| 字段 | 取值来源 |
+|---|---|
+| `type` | `ALLOWED_TYPES`（6 个） |
+| `engagement_phase` | `ALLOWED_PHASES`（5 个） |
+| `client_industry` | `ALLOWED_INDUSTRIES`（10 个） |
+| `problem_types` | `ALLOWED_PROBLEM_TYPES`（37 个） |
+| `methods` | `ALLOWED_METHODS`（42 个） |
+
+`validate_metadata` 越界静默丢弃，并记入 `_dropped` —— 绝不私自扩词表（要扩值须先改种子 JSON）。
+
+**示例**（`ECE_CONTENT_ENGINE=onyx`）：
+
+```bash
+curl -X POST -F 'file=@retail-case.md' -F 'title=零售门店坪效诊断案例' \
+  http://127.0.0.1:8000/api/v1/consulting/documents
+```
+
+### 12.2 GET /api/v1/consulting/documents/{document_id}
+
+**用途**：轮询 `POST /documents` 返回的 `document_id` 的索引状态。
+
+**响应**（HTTP 200 / 404 / 502）：
+
+```jsonc
+{
+  "document_id": "2a9347ac-...",
+  "name": "retail-case.md",
+  "status": "COMPLETED",          // PROCESSING → COMPLETED 或 FAILED
+  "chunk_count": 4,               // null while PROCESSING / on FAILED
+  "project_id": 1,
+  "failure_reason": null          // status=FAILED 时有值
+}
+```
+
+| HTTP | 触发条件 |
+|---|---|
+| 200 | 引擎已知此 id（任何状态） |
+| 404 | 引擎报告"未找到此 id"（id 不存在或已过期） |
+| 502 | 引擎不可达 / 鉴权失败 / 非 200 响应 |
+
+`{document_id}` 的命名空间是 `user_file.id`（UUID），**与 `engine_items[*].engine_doc_id`
+（搜索侧 `citation_id`）不同**——两者一个是上传侧的稳定 id，一个是每次检索的临时 id。
+
+### 12.3 SPA 闭环（同源工具）
+
+`demos/spa` 视图 D 现在多了**上传区 + 最近上传行表**：
+
+- `consulting-upload` —— 文件 input + 可选标题 + 上传按钮
+- `consulting-upload-list` —— 最近上传行（含状态徽章 + 「查询状态」按钮）
+
+上传成功后自动触发一次 library 检索，新文档立刻出现在「引擎召回」分组。
+**`cut_045_local_origin.py` 上游超时 10 秒 + Onyx 冷启动 4-15 秒**决定了
+"上传 → 立即检索"链路上的第一次检索可能 502，刷新一次就好（稳态 4.2 秒）。
