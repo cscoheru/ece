@@ -21,6 +21,7 @@ from ece.api.engine_status import router as engine_status_router
 from ece.api.entities import router as entities_router
 from ece.api.identity import router as identity_router
 from ece.api.ingest import router as ingest_router
+from ece.api.memory import router as memory_router
 from ece.api.search import router as search_router
 from ece.consulting.router import router as consulting_router
 from ece.demo.api import DemoSpecError
@@ -40,6 +41,9 @@ app.include_router(entities_router)
 app.include_router(identity_router)
 # S3.4: context assembly endpoint
 app.include_router(context_router)
+# OEI-010: persistent memory (write goes through the permission engine;
+# GET/DELETE are the compliance surface)
+app.include_router(memory_router)
 # S4.3: unified search endpoint (FTS keyword route; vector/structured/rel stubbed)
 app.include_router(search_router)
 # S4.5+: actions preview endpoint (per ADR-004 /actions/execute v0 disabled)

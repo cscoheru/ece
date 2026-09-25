@@ -31,6 +31,7 @@ from sqlalchemy.engine import Engine
 
 from ece.api.org import get_user_org
 from ece.context.documents import get_documents
+from ece.context.memory import MemorySelection, select_memory
 from ece.context.provenance import build_sources, record_package
 from ece.context.relationships import get_relationships
 from ece.context.spec import load_spec
@@ -55,6 +56,13 @@ class ContextPackage:
       denied: [{ref, reason}] — anti-probing: existence + reason only
       sources: [{sid, system, record_id}]
       metadata: {generated_at, as_of, counts, insufficient_context?}
+      memory: [{ref, scope, statement, source, confidence, created_at,
+                expires_at}] — OEI-010. APPENDED key: the 11 keys above are
+               unchanged in shape and meaning (A10 pins them key-by-key).
+
+    `memory` is declared LAST and defaulted, so every existing hand-built
+    `ContextPackage(...)` (tests construct it with keyword args) keeps working
+    and no caller can be broken by a new required field.
     """
 
     package_id: str
@@ -68,6 +76,7 @@ class ContextPackage:
     denied: list[dict[str, Any]] = field(default_factory=list)
     sources: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    memory: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -82,11 +91,34 @@ class ContextPackage:
             "denied": self.denied,
             "sources": self.sources,
             "metadata": self.metadata,
+            # OEI-010: appended, never interleaved — a diff of this method
+            # should always read as "one new key at the end".
+            "memory": self.memory,
         }
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _memory_step(engine: Engine, identity: Any) -> MemorySelection:
+    """OEI-010 Step 6.9 — the memory read step (policy in `context/memory.py`).
+
+    Why this is a function called from TWO places: `assemble_context` has an
+    early return for "no root entities" (`insufficient_context`) that sits
+    *before* documents/structured data. Memory does not depend on root
+    entities — it is caller-scoped context that applies to every request — so
+    omitting it there would make the feature silently vanish on exactly the
+    requests that carry no entity, and would leave the early-return path as the
+    one assembly path with no memory step. Both paths go through this helper so
+    the policy cannot fork.
+
+    `as_of` is deliberately NOT forwarded as the authorization clock: it is a
+    *caller-supplied business* temporal anchor, and letting it drive the ACL
+    window / `expires_at` comparison would let a caller backdate their own
+    grants. The memory step always uses the real clock.
+    """
+    return select_memory(engine, identity)
 
 
 def _load_acl_for(engine: Engine, object_ref: str) -> list[dict]:
@@ -163,7 +195,10 @@ def assemble_context(
     src_display_ids: list[str] = []
 
     if not entities:
-        # No root entities → insufficient_context per API.md §1
+        # No root entities → insufficient_context per API.md §1.
+        # OEI-010: the memory step still runs (see `_memory_step`).
+        memory_selection = _memory_step(engine, identity)
+        items_for_audit.extend(memory_selection.audit)
         return _finalize(
             engine=engine,
             package_id=package_id,
@@ -179,6 +214,8 @@ def assemble_context(
             items_for_audit=items_for_audit,
             t0=t0,
             insufficient=True,
+            memory=memory_selection.items,
+            memory_dropped=memory_selection.dropped,
         )
 
     for ent in entities:
@@ -302,6 +339,14 @@ def assemble_context(
     documents = get_documents(engine, spec, identity, as_of=as_of)
     business_data = get_structured_data(engine, spec, identity, as_of=as_of)
 
+    # Step 6.9 (OEI-010): persistent memory. Position is contractual —
+    # AFTER identity/permission and after documents/structured data, BEFORE
+    # rank/truncate — because the step authorizes every row itself; injecting
+    # it earlier or filtering it later would re-create the post-filter
+    # side-channel OEI-009 closed.
+    memory_selection = _memory_step(engine, identity)
+    items_for_audit.extend(memory_selection.audit)
+
     # Step 8 already applied (as_of in get_relationships).
     # Step 9: rank + truncate per spec.limits.
     if len(resolved_entities) > spec.limits.max_entities:
@@ -332,6 +377,8 @@ def assemble_context(
         documents=documents,
         business_data=business_data,
         sources=sources,
+        memory=memory_selection.items,
+        memory_dropped=memory_selection.dropped,
     )
 
 
@@ -354,10 +401,13 @@ def _finalize(
     documents: list[dict[str, Any]] | None = None,
     business_data: list[dict[str, Any]] | None = None,
     sources: list[dict[str, Any]] | None = None,
+    memory: list[dict[str, Any]] | None = None,
+    memory_dropped: int = 0,
 ) -> ContextPackage:
     """Build ContextPackage + write context_requests/context_items (step 11-12)."""
     documents = documents or []
     business_data = business_data or []
+    memory = memory or []
     sources = sources if sources is not None else build_sources(items_for_audit)
 
     pkg = ContextPackage(
@@ -374,6 +424,10 @@ def _finalize(
         metadata={
             "generated_at": _now_iso(),
             "as_of": as_of.isoformat() if as_of else None,
+            # UNCHANGED: `counts` still has exactly these five keys. Memory is
+            # reported via the two keys appended below, not folded in here — so
+            # nothing that reads `counts` (audit export, webhook payload) sees a
+            # shape change (A10).
             "counts": {
                 "entities": len(resolved_entities),
                 "relationships": len(relationships),
@@ -382,7 +436,11 @@ def _finalize(
                 "denied": len(denied),
             },
             "insufficient_context": insufficient,
+            # OEI-010: additive metadata keys.
+            "memory_count": len(memory),
+            "memory_dropped": memory_dropped,
         },
+        memory=memory,
     )
 
     latency_ms = int((time.monotonic() - t0) * 1000)

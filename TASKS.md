@@ -416,3 +416,140 @@ OEI-006 引入的 `engine_status` 四态继续生效：
 - **`check_api_docs.py` 与迁移同源的回归钉**：若 §11/§12 改章节标题，
   解析器必须同步；不是本刀范围，是 §13.6.1 落地后的伴生约束。
 - **org scope 完整化**（`_subject_matches` 加 `'org'` 分支）→ OEI-010。
+
+## 附录 P — 持久上下文记忆（OEI-010，2026-09-25）
+
+把 `附录 O §O.4` 与 `附录 O §O.8` 移交的两件事做掉：**org 分支进
+`_subject_matches`**，以及**在装配流水线里加一步"记忆注入"，写与读都过既有
+权限引擎**。核心取舍：**权限即数据**——"谁能给谁写记忆"是 `acl_entries` 里的
+若干行，不是代码里的分支。
+
+### P.1 记忆表与迁移 0010（步骤 3）
+
+- 新表 `memories`：`scope ∈ {user, org}`（CHECK 兜底）、`owner_ref` 是
+  user_ref 或 org_id、`classification` 默认 `restricted`（**默认拒绝**：
+  没有 ACL 行 → 谁都读不到，含 owner 本人）。
+- `UNIQUE (scope, owner_ref, statement)` 是去重键，POST 用它做
+  `ON CONFLICT DO NOTHING` → 重复创建幂等（`created=false`，返回原行，
+  `updated_at` 不动，行数不变）。
+- 三个索引：`idx_memories_scope_owner` / `idx_memories_deleted_at` /
+  `idx_memories_expires_at`。
+- `downgrade()` 真删表（CI 跑 `downgrade base` → `upgrade head`，删不干净
+  就红）。三条约束都用**真违约**验证过，打印的是 DB 自己报的约束名。
+
+### P.2 写入的两道门（步骤 4）
+
+1. **主体门**：`body.owner_ref` 必须等于凭据主体。不符 → 403，**绝不改写**。
+   `org_admin` 只覆盖**自己那个 org**——"我是 A 的 admin 所以能给 B 写"死在
+   这一门，不是死在权限门。
+2. **授权门**：对作用域对象 `memory_scope`（`object_ref = 'user:<ref>'` /
+   `'org:<ref>'`，`classification='restricted'`）调 `check_permission`。
+
+换政策（候选 A→B/C/D）只需改 `acl_entries` 里的几行数据，
+`check_permission` 一行不动。候选对比与"改哪几行 SQL"见
+`onyx-lab/OEI-010/workspace/design-memory-policy.md`。
+
+### P.3 org 分支进 `_subject_matches`（步骤 2）
+
+- **只多一条规则**：`subject_type='org'` 且 `subject_ref == identity.org_id`。
+- **`check_permission` 的判定顺序未重排**：allow 侧是**对 `acl_entries`
+  按行序的单次遍历**，`_subject_matches` 只是被调用的匹配函数——没有新增
+  pass，没有新增优先级层。`附录 O §O.8` 移交的"加 org 分支"到此完成。
+- `Identity.org_id` 现由 `resolve_identity` 从 `entities.attributes.org_id`
+  填充（四态：同 org / 异 org / 无 org / 未知用户）；`upsert_identity` 增量写
+  **不覆盖**既有属性键。注意它与 `PermissionScope.org_id`（来自
+  `ECE_USER_ORGS` 环境变量）**仍是两条独立来源**，本刀未合并。
+
+### P.4 读侧注入步骤（步骤 5）
+
+- 位置：documents / structured 之后、rank/truncate 之前；**对每一行候选**单独
+  调一次 `check_permission`（对象类型 `memory`，引用 `memory:<id>`）。
+- 注入结果落在 `package["memory"]`，**追加在既有 11 键之后**（不改既有键序）。
+- 上限 10；`metadata.memory_count` / `metadata.memory_dropped`
+  （`dropped` 只算**被上限截断**，**不含**被权限拒绝）。
+- 顺序：org scope 在前，组内 `(created_at DESC, id DESC)` —— 全序，所以同输入
+  重复装配逐字节一致。
+- **两条返回路径都跑**（含 root entity 为空时的早退路径）：记忆只取决于调用者，
+  与 root entity 是否解析成功无关。
+- **被权限拒绝的候选不写审计**：既避免存在性侧信道，也避免把"看不见的东西"
+  的存在性泄进 `context_items`。
+
+### P.5 合规面与"不展示"（步骤 7）
+
+- `GET /api/v1/memory`：只列调用者可见（自己 user-scope + 自己 org 的
+  org-scope，未删未过期）；`?include_inactive=true` 放宽的**只是活跃度**，不是权限。
+- `DELETE /api/v1/memory/{id}`：软删（写 `deleted_at`，行保留），幂等。
+  `user` scope 只有本人能删（`org_admin` 也不行）；`org` scope 需 org 写权限。
+- `DELETE /api/v1/memory?scope=user|org`：全量软删**自己的**某个作用域；
+  `scope=org` 需 org 写权限（**无权限者 403 且一条不删**）。
+- **软删不毁审计**：删后不再注入，但 `context_items` 里 `item_kind='memory'`
+  的历史行仍在，`GET /api/v1/audit/context/{request_id}` 仍查得到。
+- **明确不做：不展示"本次回答用了哪几条记忆"**。`ece/demos/spa/**` 零改动
+  （逐文件内容哈希对照）。可追溯性只对审计面开放（且仅该 request 的 owner
+  可读）。理由：用户面上的"引用了几条记忆"等于存在性侧信道。
+
+### P.6 改动文件清单（OEI-010）
+
+| 类别 | 文件 |
+|---|---|
+| 新表 / 迁移 | `src/ece/migrations/versions/0010_memories.py` |
+| 新模块 | `src/ece/context/memory.py`（读步骤）、`src/ece/api/memory.py`（4 个端点） |
+| 改 | `src/ece/permissions/engine.py`（`_subject_matches` +org 一条）、`src/ece/identity/parser.py`（`_coerce_org_id` + `upsert_identity` 增量合并）、`src/ece/context/assembly.py`（memory 字段 + 步骤 6.9 + `metadata.memory_count/dropped`）、`src/ece/main.py`（挂 router）、`src/ece/seed.py`（org_id + `org_admin` + `memory_scope` ACL 行） |
+| 新测试（DB 无关） | `tests/unit/test_memory_policy.py`（28）、`tests/unit/test_check_permission_org.py`（13） |
+| 既有测试 | **零改动**（`git diff a884d41 HEAD -- tests/` 只剩两个新文件）。`tests/integration/test_s32_assembly.py:92` 的封闭 `item_kind` 集合与 `tests/unit/test_org_scope.py` 的过时 docstring **都按 §8「断言不得改动」保持原样**，作为转出项记录（见 §P.8） |
+| 文档 | `docs/DATA_MODEL.md §4.2`、`docs/API.md §14`（+ `§13.6.5` 过时声明更正）、`TASKS.md 附录 P` |
+| 设计文档 | `onyx-lab/OEI-010/workspace/design-memory-policy.md` |
+| 证据工装 | `onyx-lab/OEI-010/workspace/{_client,step1_org_identity,step3_schema_probe,step4_write_matrix,step5_read_matrix,step6_expiry_and_deleted,step7_compliance,step8_determinism,step9_package_keys}.*`、`step2_subject_matches.sh`、`step3_memory_migration.sh`、`step7_spa_nochange.sh` |
+| 证据 | `onyx-lab/OEI-010/evidence/00`…`14` + `evidence/raw/06-*.json` |
+
+### P.7 验收（A0–A14，对照 `OEI-010/TASK.md §6`）
+
+| ID | 状态 | 证据 |
+|---|---|---|
+| A0 前置与基线 | PASS | `00-baseline.txt`（806 passed / 0 failed，head 0009）；全程 `ECE_CONTENT_ENGINE=mock` |
+| A1 org 来源落地 | PASS | `01-org-identity.json`（四态；增量写前后 JSONB 对照，未覆盖既有键） |
+| A2 org 分支 | PASS | `02-subject-matches.txt`（diff 只多一条；判定顺序未重排；四态含 `org_id=None` 与空串不命中） |
+| A3 迁移 0010 | PASS | `03-memory-migration.txt`（升降往返；三条约束**真违约**打印 DB 约束名） |
+| A4 写入过权限引擎 | PASS | `04-write-permission-matrix.json`（9 格；谎报 owner → 403；重复 `created=false` 且行数不变） |
+| A5 读取在权限判定之后 | PASS | `05-read-matrix.json`（同 query 5 身份；异 org/无 org/未知 **statement 全文不出现**，按整响应子串校验） |
+| A6 失效与时间盒 | PASS | `06-expiry-and-deleted.json` + `raw/06-*.json`（过期/软删不注入；ACL `valid_to` 关窗即失权、恢复即复现；**候选数不变、仅 items 减少**证明拒绝发生在授权步） |
+| A7 确定性 | PASS | `09-determinism-n5.json`（N=5 逐字节一致；13 候选 → 注入 10；`memory_dropped=3` 与**独立从库算出**的截断数一致） |
+| A8 可追溯 + 无 UI | PASS | `07-audit-provenance.json`（`context_items` `item_kind='memory'` + owner 可读 trace、他人 403、删除后审计仍在）+ `07-audit-provenance.txt`（SPA 3 文件逐字节哈希对照 HEAD） |
+| A9 合规删除 | PASS | `08-compliance-delete.json`（单条软删 + 幂等；他人删 403 且行未动；自己的全量删；org 全量删**无权限 403 且一条未删**；删除后不注入但审计仍在） |
+| A10 既有契约不回归 | PASS | `10-package-keys-diff.txt`（pre-cut 源码 / 当前源码 / 运行时三方对照：11 键为不变前缀 + 追加 `memory`；`counts` 仍 5 键）+ `12a`（子集 53 passed）+ `12b`（全套件 847 passed / 0 failed，**memories 有数据与空表两次**，**断言为原版未改**）+ `12c`（s32 脆弱性**复现并转出**，本刀不修补） |
+| A11 文档 | PASS | `docs/DATA_MODEL.md §4.2`、`docs/API.md §14`、`TASKS.md 附录 P`、`workspace/design-memory-policy.md`；`make check-api-docs` App-only 0 |
+| A12 提交 | PASS | `13-git-commit.txt`（短 hash + 文件清单；**未 push**） |
+| A13 合规与资源 | PASS | `14-compliance-check.txt`（无凭据值落盘；Onyx/compose/`.env` 未动；种子既有对象未改；临时 PG 已释放；收尾三查；未 push） |
+| A14 证据纪律 | PASS | 全部证据为 HTTP 状态 + JSON + SQL 查表 + 单测原始输出；无用户截图；DB 无关层在**不可达 DATABASE_URL** 下仍 50 passed |
+
+### P.8 转出（移交下一刀 / 当前未做）
+
+- **`test_s32_assembly.py:92` 的封闭 `item_kind` 集合是潜在红灯**：该断言写死
+  `in ("entity", "relationship")`，而本刀起 `context_items` 会出现
+  `item_kind='memory'`。**已复现**（`evidence/12c-s32-item-kind-fragility.txt`）：
+  一旦 `demo-user-procurement`（或其 org）有可注入记忆，该测试**因正确行为而变红**。
+  本刀**没有**改成 `("entity", "relationship", "memory")`——§8 明写
+  "断言不得改动"，故仅复现并转出。现在绿灯是因为活跃记忆都属于
+  `demo-user-finance`，而该测试装配的是 `demo-user-procurement`——**靠 fixture
+  运气**，不是因为断言仍然正确。
+- **`tests/unit/test_org_scope.py` 的 docstring 已过时**：模块头与
+  A9(3) 段落仍写"`org_id` 不参与 `check_permission` 判定"，而本刀之后这句话
+  不成立（`_subject_matches` 已有 org 分支）。该文件**零改动**（同上，"断言不得
+  改动"之外也没授权改注释），更正写在 `docs/API.md §13.6.5` 与 `DATA_MODEL.md
+  §4.2`；测试函数名 `test_org_id_does_not_affect_check_permission_for_now`
+  同样已名不副实（其断言仍成立，因为传了空 ACL 列表）。下一刀应改名并更新注释。
+- **org scope 的两条来源未合并**：`Identity.org_id`（`entities.attributes.org_id`）
+  与 `PermissionScope.org_id`（`ECE_USER_ORGS`）仍是两套。`context_requests.org_id`
+  仍写后者。合并前 `tests/integration/test_s7_orgs.py` 的断言不能动。
+- **org-B 无管理员**：种子只让 `demo-user-admin`（属 org A）持有 `org_admin`，
+  于是**没有任何身份能写 org-B 的记忆**（主体门要求 `owner_ref == identity.org_id`）。
+  本刀把 org-B 的读用例做成 SQL fixture 并标注，未放宽政策。下一刀若给 org 分域
+  派管理员，这里要一并处理。
+- **`DELETE /api/v1/memory/{id}` 的 403/404 差异**是一个弱存在性预言机
+  （"存在但不是你的" vs "不存在"）。删除需猜 bigint id，本刀判定可接受，记录待评估。
+- **`engine_documents.org_id` 仍是 hook**（`附录 O §O.4`）：本刀只让 `Identity.org_id`
+  参与判定，未把 org 谓词下推到 `engine_documents` 的 SELECT。
+- **引擎调用审计持久化**（`附录 O §O.8` 移交）仍未实现。
+- **记忆的淘汰/合并策略未做**：只有 `expires_at` + 软删，没有"旧记忆被新记忆
+  取代"或冲突消解。上限 10 是硬截断（按 recency），不是相关性排序。
+- **记忆不参与排序打分**：注入的记忆不带 `score`，`rank/truncate` 不重排它们。

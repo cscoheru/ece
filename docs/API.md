@@ -953,11 +953,125 @@ semantics (per DATA_MODEL.md §3):
 #### 13.6.5 org scope 最小落位
 
 `Identity.org_id` / `PermissionScope.org_id` 现在是 first-class 字段。
-**当前不参与 SELECT-side 谓词**（OEI-009 只是把 carrier 加上）——这是
-OEI-010 记忆读步骤的挂接点。详见 `workspace/10-design-org-scope.md`。
+OEI-009 只把 carrier 加上，**当时不参与 SELECT-side 谓词**。详见
+`workspace/10-design-org-scope.md`。
+
+> **OEI-010 更新（本节原文已过时，勿再引用"不参与谓词"）**：
+> `Identity.org_id` 现在**会**影响权限判定——`_subject_matches` 多了一条
+> `subject_type='org'` 的匹配规则。`check_permission` 的**结构、遍历顺序、
+> 分级矩阵都没变**，但判定结果可以依赖 `org_id` 了。`PermissionScope.org_id`
+> 仍来自 `ECE_USER_ORGS`，与本刀的 `Identity.org_id`（来自
+> `entities.attributes.org_id`）是**两条独立来源**，本刀未合并它们。
+> 覆盖在 `tests/unit/test_check_permission_org.py`。
 
 #### 13.6.6 OEI-009 审计的持久化设计
 
 §13.4 描述的进程内 `audit_log` 仍存在；持久化设计见
 `workspace/09-design-engine-audit.md`（OEI-009 设计、未实现；推荐落
 分区表 + 90 天保留）。
+
+## 14. Memory — 持久上下文记忆（OEI-010）
+
+跨请求留存的"关于某个主体的事实"。作用域两值：`user`（属于某个人）与
+`org`（属于某个组织）。数据模型与可见性规则见 `DATA_MODEL.md §4.2`。
+
+### 14.0 注入语义（读侧，最重要的一节）
+
+记忆不是"再召回一批文档"，而是**装配流水线里的一步**：在 documents /
+structured 之后、rank/truncate 之前，对**每一行**候选记忆单独调一次
+`check_permission`。要点：
+
+- **先权限、后注入**：判定不过的行不会出现在结果里。默认拒绝
+  （`classification='restricted'`）：没有 ACL 行 → 连 `owner_ref` 本人也看不到。
+- **注入结果落在 `package["memory"]`**，与既有 11 个键并列（**追加在最后**，
+  不改动既有键的顺序；逐键对照见 `evidence/10-package-keys-diff.txt`）。
+- **条数上限 10**；被截断的数量写进 `metadata.memory_dropped`
+  （`metadata.memory_count` = 实际注入条数）。注意 `dropped` 只表示
+  **被上限截断**的条数，**不含被权限拒绝的条数**。
+- **顺序确定**：org scope 在前，组内按 `(created_at DESC, id DESC)`。
+  同输入重复装配**逐字节一致**（N=5 实测见 `evidence/09-determinism-n5.json`）。
+- **审计**：每条被注入的记忆在 `context_items` 落一行 `item_kind='memory'`，
+  `reason` 是命中的 ACL 规则名（如 `acl:allow-user`），**不是记忆正文**。
+  软删之后这些审计行**仍然保留**。
+- 记忆步骤在**两条返回路径**上都执行（含 root entity 为空时的
+  `insufficient_context` 早退路径）——记忆只取决于调用者，与 root entity
+  是否解析成功无关。
+
+> **明确不做：不展示"本次答案引用了哪几条记忆"。**
+> 这是本刀的有意取舍，不是遗漏。`ece/demos/spa/**` **零改动**
+> （逐文件内容哈希对照见 `evidence/07-audit-provenance.txt`）；后端也没有
+> 任何面向最终用户的"本回答用了哪几条记忆"字段。可追溯性只对**审计面**开放
+> （`context_items` + `GET /api/v1/audit/context/{request_id}`，且仅该
+> request 的 owner 可读，他人 403）。理由：把"用了哪几条记忆"暴露到用户面上，
+> 等于给出一个**存在性侧信道**——攻击者可以借回答反推自己看不见的记忆是否
+> 存在。同理，被权限拒绝的候选**不写入审计**。
+
+### 14.1 POST /api/v1/memory
+
+写入一条记忆。**两道门**，都要过（详见 `DATA_MODEL.md §4.2`）：
+
+1. **主体门**：`owner_ref` 必须等于凭据解析出的主体（`X-User-Id`，或
+   `Authorization: Bearer <jwt>`）。不符 → **403，且不改写**成调用者——
+   "谎报 owner" 不会变成"替别人写"。`org_admin` 也只能写**自己那个 org**。
+2. **授权门**：对作用域对象 `memory_scope`（`user:<ref>` / `org:<ref>`，
+   `classification='restricted'`）调 `check_permission`。
+
+```json
+{ "scope": "user", "owner_ref": "demo-user-finance",
+  "statement": "采购金额超过 50 万需要 CFO 复核",
+  "confidence": 0.9, "expires_at": "2026-12-31T00:00:00Z",
+  "source_ref": "ticket-4711" }
+```
+
+响应 `{"memory": {...}, "created": true|false}`。**幂等**：同一
+`(scope, owner_ref, statement)` 重复 POST → `created=false` 并返回**原行**
+（`updated_at` 不动、行数不变）。写入成功时在同一事务内落一行 allow ACL，
+否则该记忆谁都读不到。
+
+错误：`400` 无凭据 / `401` JWT 严格模式 / `403` 两道门任一不过（`detail.matched_rule`
+给出命中的规则名）。
+
+### 14.2 GET /api/v1/memory
+
+列出**调用者可见**的记忆：自己的 user-scope + 自己 org 的 org-scope，
+且未删、未过期。逐条过权限（与注入同一套判定）。
+
+`?include_inactive=true` **额外**返回**调用者自己**的已删/已过期记忆
+（org scope 的仍受权限约束）。它放宽的**只是活跃度过滤，不是权限**——
+别人的记忆在任何模式下都不会出现。
+
+响应：`{"memories": [...], "include_inactive": bool, "count": int}`。
+注意键名是复数 `memories`（与 `POST /api/v1/context` 返回体里的单数
+`memory` 不同，这是两个不同的契约）。
+
+### 14.3 DELETE /api/v1/memory/{memory_id}
+
+**软删**（写 `deleted_at`，行保留）。删除权：
+
+| 目标 `scope` | 谁可以删 |
+| --- | --- |
+| `user` | **只有本人**（`org_admin` 也不行） |
+| `org` | 需 `DATA_MODEL §4.2` 的 org 写权限（候选 A：`org_admin`） |
+
+**幂等**：重复删同一 id → `200` + `already_deleted=true`。不存在 → `404`。
+（注意：`403` 表示"存在但不是你的"，`404` 表示"不存在"——对已存在的行不泄露
+归属，但这两个状态码本身构成一个**弱存在性预言机**；删除需要猜到 bigint id，
+本刀判定其影响可接受，记录于此供后续评估。）
+
+### 14.4 DELETE /api/v1/memory
+
+**全量软删调用者自己的某个作用域**。查询参数 `scope`（必填，`user` 或 `org`）：
+
+- `scope=user`：删**调用者自己**的全部 user-scope 记忆（不碰别人的）。
+- `scope=org`：删**调用者自己那个 org** 的 org-scope 记忆，**需 org 写权限**；
+  无权限者 → `403`，且**一条都不删**（负例见 `evidence/08-compliance-delete.json`）。
+  调用者没有 org → `403`。
+
+响应：`{"deleted": [id...], "deleted_count": n, "scope": "...", "already_deleted": []}`。
+
+### 14.5 与合规的关系
+
+- **软删不毁审计**：删除后记忆不再被注入，但 `context_items` 里"它曾被注入"
+  的记录仍在，`GET /api/v1/audit/context/{request_id}` 仍可查到
+  （`item_kind='memory'`）。这正是"可追溯到 AI 看过什么"在记忆上的落地。
+- **不展示**：见 §14.0 末尾。后端与 SPA 都没有"本回答引用了哪几条记忆"的展示。

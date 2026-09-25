@@ -14,6 +14,23 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 
+def _coerce_org_id(raw: object) -> str | None:
+    """`entities.attributes.org_id` -> `str | None` (OEI-010 A1).
+
+    Missing key / non-string / empty-or-whitespace -> `None` ("no org claim").
+    A non-empty string is taken verbatim — no case folding, no normalization:
+    the value is used as an ACL `subject_ref` and must match byte-for-byte.
+
+    `None` is NOT the same as `""`: `_subject_matches` treats a falsy
+    `identity.org_id` as "cannot match any org row", so an absent org claim
+    can never satisfy an `subject_type='org'` ACL entry.
+    """
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip()
+    return value or None
+
+
 @dataclass
 class Identity:
     """Resolved identity for a user."""
@@ -27,10 +44,12 @@ class Identity:
     aliases: list[str] = field(default_factory=list)
     source_system: str = "api:header"
     is_management: bool = False  # cut-040R-2 R40R2.3: EXPLICIT seed attribute, never derived from role names
-    # OEI-009: org dimension is now first-class on Identity. Read-side filter
-    # (consulting/permissions_filter.py) does NOT yet use it as a WHERE clause
-    # predicate — that's the OEI-010 hook. We carry it here so the org-scope
-    # minimum placement is in place (A9: model + 1 deterministic rule).
+    # OEI-009 added the field (minimum placement); **OEI-010 A1 makes it real**:
+    # `resolve_identity` now reads `entities.attributes.org_id` and
+    # `upsert_identity(org_id=...)` writes it (incremental JSONB merge, so
+    # department/roles/is_management survive). Source of truth is the DB
+    # trusted attribute — the `X-Org-Id` header is NOT in the decision path
+    # (`OEI-009/workspace/10-design-org-scope.md` §2, decision 2.B).
     org_id: str | None = None
 
     @classmethod
@@ -109,7 +128,9 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
         ).first()
 
         if row is None:
-            # Person not yet created; return stub for auto-create in S2.4
+            # Person not yet created; return stub for auto-create in S2.4.
+            # OEI-010 A1: an unknown caller has NO trusted attributes, so
+            # `org_id` stays at its default None (four-state test: 未知用户).
             return Identity(
                 user_ref=x_user_id,
                 entity_id=None,
@@ -147,6 +168,11 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
         # six management-classification cases (expected deny) still leaked.
         is_management = bool(attrs.get("is_management", False))
 
+        # OEI-010 A1: org dimension now has a *source*. Same trust boundary as
+        # department / roles / is_management (all DB-derived attributes); a
+        # caller cannot claim an org. Missing / non-string / empty -> None.
+        org_id = _coerce_org_id(attrs.get("org_id"))
+
         return Identity(
             user_ref=x_user_id,
             entity_id=str(entity_id),
@@ -156,6 +182,7 @@ def resolve_identity(engine: Engine, x_user_id: str) -> Identity:
             roles=roles,
             aliases=aliases,
             is_management=is_management,
+            org_id=org_id,
         )
 
 
@@ -167,6 +194,7 @@ def upsert_identity(
     roles: list[str],
     aliases: list[str] | None = None,
     is_management: bool = False,
+    org_id: str | None = None,
 ) -> str:
     """Insert or update a person identity from API header info.
 
@@ -176,10 +204,32 @@ def upsert_identity(
     cut-040R-2 R40R2.3: `is_management` is stored as an explicit attribute
     (default False) so the permission engine never has to infer it from role
     names.
+
+    OEI-010 A1: `org_id` is a **keyword argument with a default of `None`**, so
+    every existing caller is unchanged and "not passed" means "do not write the
+    key" (back-compat).
+
+    ⚠️ The `attributes` write is NOT a plain overwrite. `upsert_entity` inserts
+    with `ON CONFLICT ... DO NOTHING`, so on a re-run (the canonical seed chain
+    is replayed on an existing DB) an already-present person row would keep its
+    OLD attributes and silently never receive `org_id`. We therefore merge with
+    `attributes || jsonb_build_object('org_id', ...)`: incremental, so
+    department / roles / is_management are preserved, and idempotent, so
+    re-running the seed is safe. This is the same `||` idiom `seed.py`'s
+    `_seed_entity_departments` uses.
     """
     from ece.entities.pipeline import upsert_entity
 
-    attrs = {"department": department, "roles": roles, "is_management": is_management}
+    attrs: dict[str, object] = {
+        "department": department,
+        "roles": roles,
+        "is_management": is_management,
+    }
+    # Only include the key when the caller actually supplied an org — "not
+    # passed" must stay "absent from the JSONB", not "set to null".
+    if org_id is not None:
+        attrs["org_id"] = org_id
+
     upsert_entity(
         engine,
         entity_type="person",
@@ -188,6 +238,22 @@ def upsert_identity(
         source_id=x_user_id,
         attributes=attrs,
     )
+
+    if org_id is not None:
+        # Self-heal path for rows that already existed (insert was a no-op).
+        # Scoped to this exact person row; `||` preserves every other key.
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    UPDATE entities
+                    SET attributes = COALESCE(attributes, '{}'::jsonb)
+                                     || jsonb_build_object('org_id', CAST(:org AS text))
+                    WHERE entity_type = 'person'
+                      AND source_system = 'api:header'
+                      AND source_id = :sid
+                """),
+                {"org": org_id, "sid": x_user_id},
+            )
 
     # Re-fetch display_id for caller
     with engine.connect() as conn:

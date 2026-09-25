@@ -25,6 +25,21 @@ OEI-009 changes (compare to OEI-008):
    = :org_id` in any store path). That is the OEI-010 hook — memory has to
    read *after* permission, and the hook lives here.
 
+OEI-010 changes (compare to OEI-009):
+
+3. **`_subject_matches` learns `subject_type='org'`** (A2). One match rule,
+   using the `Identity.org_id` that A1 now populates from
+   `entities.attributes.org_id`. `subject_type='org'` rows existed in the
+   model since `0001_initial` but could never fire — this is what makes the
+   org dimension *decidable* and lets an org-scoped memory be visible to
+   exactly "everyone in the same org".
+
+   This is a **subject-kind** addition, not a rule addition: `check_permission`
+   itself is byte-identical. `_acl_in_window`, the deny pass, the single allow
+   pass, the classification matrix and the default-deny tail are all untouched
+   — per TASK §8 the 判定顺序 is still frozen. All four OEI-009 org-free
+   behaviours are pinned by `tests/unit/test_check_permission_org.py`.
+
 The deny-then-allow order, the SQL subquery filter at Store level, and the
 classification matrix are all unchanged. Per TASK v1.3 §7, this module's
 判定顺序 is frozen.
@@ -287,6 +302,24 @@ def _subject_matches(entry: dict[str, object], identity: Identity) -> bool:
     if st == "user" and sr == identity.user_ref:
         return True
     if st == "role" and sr in identity.roles:
+        return True
+    # OEI-010 A2 — the org dimension becomes *decidable*. This is the one-line
+    # match rule `10-design-org-scope.md` §3.B.1 designed; it is what turns
+    # `Identity.org_id` from a carried field into an authorization input.
+    #
+    # The extra `identity.org_id and` is deliberate: `sr` is guaranteed
+    # non-empty by the guard above, so a falsy `org_id` (None / "") already
+    # cannot match — but stating it keeps the invariant local to this rule and
+    # survives any future edit to that guard. A caller with no org claim must
+    # NEVER hit an org row.
+    #
+    # ⚠️ This adds a *subject kind*, not a rule, and it reorders nothing.
+    # `check_permission` is unchanged: the deny pass (rule 1) and the allow
+    # pass (rules 2–4, one traversal over `acl_entries` in row order) both call
+    # this function, and the classification matrix still runs only if no entry
+    # matched. `org` therefore behaves exactly like `user` / `role` /
+    # `department` do — no new pass, no new precedence tier.
+    if st == "org" and identity.org_id and sr == identity.org_id:
         return True
     return st == "department" and sr == identity.department
 

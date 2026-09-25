@@ -100,6 +100,17 @@ def _normalize_record(record: object, idx: int, entity_type: str) -> tuple[str |
     return (name_str, src_id, attrs)
 
 
+# OEI-010 (TASK §5 步骤 1.3): the demo org ids. Two users share one org so the
+# "same org sees the same org memory" path is exercised by real seeds, and a
+# third sits in another org so the isolation path is too. The "no org" and
+# "unknown user" states are covered by probe identities in the cut's evidence
+# (`onyx-lab/OEI-010/workspace/step1_org_identity.py`) rather than by extra
+# seeds — adding a fifth `api:header` person would change
+# `seed_demo_relationships`' SUBMITTED_BY targets (it cycles over ALL persons),
+# which would silently rewrite the E4/E5 relationship fixture.
+ORG_CONSULTING_A = "org:consulting-a"
+ORG_CONSULTING_B = "org:consulting-b"
+
 # R1 (cut-006): seed a known test user with X-User-Id 'demo-user-procurement'
 # so permission filter tests have a known identity to resolve.
 _TEST_USERS: list[dict[str, str | list[str]]] = [
@@ -108,18 +119,21 @@ _TEST_USERS: list[dict[str, str | list[str]]] = [
         "name": "Demo Procurement Manager",
         "department": "procurement",
         "roles": ["procurement_manager", "buyer"],
+        "org_id": ORG_CONSULTING_A,
     },
     {
         "source_id": "demo-user-finance",
         "name": "Demo Finance Manager",
         "department": "finance",
         "roles": ["finance_manager"],
+        "org_id": ORG_CONSULTING_A,
     },
     {
         "source_id": "demo-user-engineering",
         "name": "Demo Engineering Manager",
         "department": "sales",  # 'sales' dept; not procurement/finance
         "roles": ["buyer"],
+        "org_id": ORG_CONSULTING_B,  # OEI-010: the OTHER org (isolation case)
     },
     {
         # cut-040R-2 R40R2.3: dedicated admin/ingestion identity.
@@ -133,10 +147,17 @@ _TEST_USERS: list[dict[str, str | list[str]]] = [
         #
         # This user is deliberately NOT management (admin ≠ management); it is
         # authorized via the explicit "admin" role, and it appears in no E2 case.
+        #
+        # OEI-010: `org_admin` is ADDED (the phrase above stays true — this is
+        # still not management). `org_admin` is the candidate-A predicate for
+        # "may write an ORG-scope memory"; membership tests like
+        # `"admin" in identity.roles` (api/entities.py) are unaffected by an
+        # extra role, and no E2 case references this user at all.
         "source_id": "demo-user-admin",
         "name": "Demo Admin",
         "department": "it",
-        "roles": ["admin"],
+        "roles": ["admin", "org_admin"],
+        "org_id": ORG_CONSULTING_A,
     },
 ]
 
@@ -152,15 +173,67 @@ def seed_test_users(engine) -> dict[str, int]:
         user_name: str = str(u["name"])
         user_dept: str = str(u["department"])
         user_roles: list[str] = list(u["roles"]) if isinstance(u["roles"], list) else []
+        # OEI-010 A1: the org claim. `upsert_identity` merges it into the
+        # existing JSONB attributes, so a DB seeded before this cut self-heals
+        # on the next `make seed` (department/roles/is_management survive).
+        raw_org = u.get("org_id")
+        user_org: str | None = (
+            raw_org if isinstance(raw_org, str) and raw_org else None
+        )
         display_id = upsert_identity(
             engine,
             x_user_id=user_id,
             name=user_name,
             department=user_dept,
             roles=user_roles,
+            org_id=user_org,
         )
-        if display_id:
-            counters["person"] += 1
+        if not display_id:
+            continue
+
+        # ⚠️ Convergence, not decoration. `upsert_entity` inserts with
+        # `ON CONFLICT DO NOTHING`, so on a database seeded by an EARLIER cut
+        # the person row already exists and NONE of the attributes above are
+        # written — `demo-user-admin` would keep `roles=["admin"]` forever and
+        # A4's "an org_admin may write org memory" would be unreachable on
+        # exactly the databases a reviewer is most likely to have.
+        #
+        # OEI-010 changes `roles` for a seeded identity, so the seed must be
+        # able to converge its OWN declared fixture. `upsert_identity` cannot do
+        # this: TASK §5 步骤 1.2 requires it to be additive (org_id only, never
+        # overwriting existing keys). So the merge lives here, where the declared
+        # state does, and is scoped to exactly these rows (source_system +
+        # source_id — a precise predicate, never a LIKE sweep).
+        #
+        # Only the keys THIS cut actually changes are converged: `roles` (the
+        # added `org_admin`) and `org_id` (the new claim). `department` and
+        # `is_management` are deliberately NOT here — they are untouched by
+        # OEI-010, and writing them would mean this seed silently overwrote a
+        # future cut's change to a demo identity. Convergence should be exactly
+        # as wide as the change that needs it.
+        #
+        # `||` preserves every key not named here, so attributes added by other
+        # cuts survive a re-seed.
+        declared: dict[str, object] = {"roles": user_roles}
+        if user_org is not None:
+            declared["org_id"] = user_org
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    UPDATE entities
+                    SET attributes = COALESCE(attributes, '{}'::jsonb)
+                                     || CAST(:attrs AS jsonb)
+                    WHERE entity_type = 'person'
+                      AND source_system = 'api:header'
+                      AND source_id = :sid
+                """),
+                {
+                    "attrs": json.dumps(declared, ensure_ascii=False),
+                    "sid": user_id,
+                },
+            )
+
+        counters["person"] += 1
     return dict(counters)
 
 
@@ -316,6 +389,81 @@ def seed_acl_entries(engine) -> dict[str, int]:
                     """
                 ),
                 {**r, "source_system": tag},
+            )
+            counters["created"] += 1
+    return dict(counters)
+
+
+#: `object_type` of the ACL objects that decide "may this subject write this
+#: scope" (OEI-010 §3.3). Distinct from `memory` — writing a scope and reading a
+#: single memory are different objects with different rows.
+MEMORY_SCOPE_OBJECT_TYPE = "memory_scope"
+
+#: Owned tag for the memory-policy ACL rows, so re-seeding replaces exactly its
+#: own rows and any future cleanup has a precise predicate (never a LIKE sweep).
+MEMORY_ACL_SOURCE_SYSTEM = "seed:oei010-memory"
+
+
+def seed_memory_acl_entries(engine) -> dict[str, int]:
+    """OEI-010 §3.3: seed the *write* policy for memory scopes.
+
+    Two policy decisions live here as DATA, not code:
+
+    1. **user scope** — each demo identity may write its OWN scope
+       (`memory_scope` / `user:<user_ref>`). The route already refuses a
+       `body.owner_ref` that differs from the credential; this row is the
+       *authorization* half, and without it the write is default-denied.
+    2. **org scope — candidate A (admins)** — `role=org_admin` may write an
+       org's scope (`memory_scope` / `org:<org_id>`). Candidate B/C/D are
+       deliberately not implemented; `workspace/design-memory-policy.md` §4
+       shows the exact rows to swap in for each, none of which need code.
+
+    Idempotent via DELETE-then-INSERT scoped to this function's OWN
+    `source_system` tag (the pattern `seed_acl_entries` uses): re-running
+    `make seed` replaces these rows instead of accumulating duplicates, and
+    rows owned by any other fixture are never touched.
+    """
+    rows: list[dict[str, str]] = []
+    for u in _TEST_USERS:
+        user_ref = str(u["source_id"])
+        rows.append({
+            "subject_type": "user",
+            "subject_ref": user_ref,
+            "object_type": MEMORY_SCOPE_OBJECT_TYPE,
+            "object_ref": f"user:{user_ref}",
+            "effect": "allow",
+            "note": "policy: may write own user-scope memory",
+        })
+    for org_id in (ORG_CONSULTING_A, ORG_CONSULTING_B):
+        rows.append({
+            "subject_type": "role",
+            "subject_ref": "org_admin",
+            "object_type": MEMORY_SCOPE_OBJECT_TYPE,
+            "object_ref": f"org:{org_id}",
+            "effect": "allow",
+            "note": "policy A (admins): may write org-scope memory",
+        })
+
+    counters: Counter[str] = Counter()
+    with engine.begin() as conn:
+        deleted = conn.execute(
+            text("DELETE FROM acl_entries WHERE source_system = :tag"),
+            {"tag": MEMORY_ACL_SOURCE_SYSTEM},
+        ).rowcount
+        counters["replaced"] += deleted
+        for r in rows:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO acl_entries
+                      (subject_type, subject_ref, object_type, object_ref,
+                       effect, source_system, note)
+                    VALUES (:subject_type, :subject_ref, :object_type, :object_ref,
+                            :effect, :source_system, :note)
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {**r, "source_system": MEMORY_ACL_SOURCE_SYSTEM},
             )
             counters["created"] += 1
     return dict(counters)
@@ -666,6 +814,10 @@ def run_seed() -> dict[str, object]:
     # re-injected here.
     # cut-040 R40.1a: seed 3 acl_entries for E2 explicit-acl cases
     out["acl_entries"] = seed_acl_entries(engine)
+    # OEI-010 §3.3: seed the memory write policy (user-scope self-write +
+    # candidate-A org write). Must come after seed_test_users — the user-scope
+    # rows name the identities that function creates.
+    out["memory_acl_entries"] = seed_memory_acl_entries(engine)
     # R2: relationships. Fails loudly rather than leaving a half-built
     # environment — a silent empty graph is what made E4/E5 vacuous.
     relationships = seed_demo_relationships(engine)

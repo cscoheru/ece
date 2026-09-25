@@ -212,6 +212,92 @@ title。`classification` 默认 `public`（保留"匿名也能看到"的演示�
 DO UPDATE SET engine_document_id = EXCLUDED.engine_document_id`——
 第二次跑同输入，行数不变。
 
+## 4.2 记忆表（OEI-010）
+
+`memories` 表是**持久上下文记忆**：跨请求、跨会话留存的"关于某个主体的事实"。
+与 `documents` / `engine_documents` 的区别是**主体不同**——那两张表描述"文
+档"，这张表描述"**人**（`scope='user'`）或**组织**（`scope='org'`）"。
+
+迁移：`0010_memories.py`（`down_revision = '0009_engine_documents'`）。
+
+```sql
+CREATE TABLE memories (
+    id             bigserial PRIMARY KEY,
+    -- 作用域。两值封闭集，DB 层 CHECK 兜底，不靠应用自觉。
+    scope          text NOT NULL,              -- 'user' | 'org'
+    -- 归属。scope='user' → user_ref；scope='org' → org_id。
+    -- 即"这条记忆属于谁"，与"谁能读"是两件事（见下）。
+    owner_ref      text NOT NULL,
+    statement      text NOT NULL,              -- 记忆正文（自然语言陈述）
+    -- 分级。本刀全部为 'restricted' → 默认拒绝：**没有 ACL 行 = 谁都读不到**。
+    classification text NOT NULL DEFAULT 'restricted',
+    source         text NOT NULL,              -- 'explicit:api' 等
+    source_ref     text,                       -- 外部引用（可空）
+    confidence     numeric(3,2),               -- 0..1，CHECK 兜底
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    updated_at     timestamptz NOT NULL DEFAULT now(),
+    expires_at     timestamptz,                -- 半开区间：expires_at <= now 即失效
+    deleted_at     timestamptz,                -- 软删；NULL = 未删
+    CONSTRAINT ck_memories_scope
+        CHECK (scope IN ('user', 'org')),
+    CONSTRAINT ck_memories_confidence
+        CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+    -- 去重键：同一主体对同一句话只存一行。POST 用它做 ON CONFLICT DO NOTHING，
+    -- 因此重复创建是幂等的（返回原行，created=false，不动 updated_at）。
+    CONSTRAINT uq_memories_scope_owner_ref_statement
+        UNIQUE (scope, owner_ref, statement)
+);
+CREATE INDEX idx_memories_scope_owner ON memories (owner_ref, scope);
+CREATE INDEX idx_memories_deleted_at  ON memories (deleted_at);
+CREATE INDEX idx_memories_expires_at  ON memories (expires_at);
+```
+
+### 可见性规则（读侧）
+
+读发生在**权限判定之后**，且**逐条**判定：候选行先按 `scope` + 活跃度收窄，
+再对**每一行**调用 `check_permission`（对象类型 `memory`，对象引用
+`memory:<id>`，`classification` 取该行自身的值）。
+
+| `scope` | `owner_ref` | 可见者 |
+| --- | --- | --- |
+| `user` | `user_ref` | 仅该 `user_ref` 本人（同 org 的他人也看不到） |
+| `org` | `org_id` | 该 org 的成员——实际上由 ACL 行决定，见下 |
+
+**ACL 不是可有可无的补充，而是唯一的读入口。** `classification='restricted'`
+意味着默认拒绝：一条记忆若没有任何 `subject_type`/`subject_ref` 命中的 allow
+行，**连它自己的 `owner_ref` 都读不到**。所以"写入"必须同时落一行 allow，
+否则写进去的就是一条谁都看不见的记忆（`POST /api/v1/memory` 在同一事务里做
+这两件事）。
+
+### 写权限对象 `memory_scope`（写侧）
+
+写权限不挂在 `memories` 行上，而挂在一个**作用域对象**上：
+
+| 字段 | 值 |
+| --- | --- |
+| `object_type` | `memory_scope` |
+| `object_ref` | `user:<user_ref>` 或 `org:<org_id>` |
+| `classification` | `restricted`（→ 默认拒绝） |
+
+于是**「谁能给谁写记忆」是数据，不是代码**：候选 A（本刀采用）只往
+`acl_entries` 里插了两类行——`('user', <自己>, 'memory_scope', 'user:<自己>')`
+和 `('role', 'org_admin', 'memory_scope', 'org:<org>')`。换政策只需改这几行
+数据，`check_permission` 一行不用动（依据见
+`onyx-lab/OEI-010/workspace/design-memory-policy.md`）。
+
+**两道门，缺一不可**（这是"主体只来自凭据"的落地）：
+
+1. **主体门**：`body.owner_ref` 必须等于**凭据**解析出的主体。不符 → 403，
+   **绝不改写成调用者**。"我是 org_admin 所以能给别的 org 写"在这一门被挡住
+   ——`org_admin` 只覆盖**自己那个 org**（`owner_ref == identity.org_id`）。
+2. **授权门**：对上面的 `memory_scope` 对象调 `check_permission`。
+
+注意 `owner_ref` 对 org scope 存的是 org id 本身，而 ADR-004 的
+`PermissionScope.org_id` 来自 `ECE_USER_ORGS` 环境变量、**与
+`entities.attributes.org_id` 是两条独立来源**；本刀让 `Identity.org_id` 走
+后者（`resolve_identity`），未改动前者（`tests/integration/test_s7_orgs.py`
+的断言仍成立）。
+
 ## 5. 审计与溯源（PRD §22/§31）
 
 ```sql
