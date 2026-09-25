@@ -22,8 +22,20 @@ _SKIP_METHODS = {"HEAD", "OPTIONS"}
 
 
 def parse_api_md_endpoints(path: Path) -> set[tuple[str, str]]:
-    """Parse `### <METHOD> <path>` headers from docs/API.md."""
-    pattern = re.compile(r"^###\s+(GET|POST|PUT|DELETE|PATCH)\s+(/[^\s]+)")
+    """Parse `### <METHOD> <path>` headers from docs/API.md.
+
+    Accepts both plain (`### POST /path`) and numbered (`### 12.1 POST /path`)
+    titles — the numbered form is the OEI-008 §11/§12 / §13 convention and the
+    previous parser only matched the plain form, which is why the script
+    flagged 4 consulting routes as "implemented but not documented" (false
+    positive). OEI-009 §0 step 2.
+    """
+    # Accept an optional `N.M ` (or `N. `) section-number prefix before the method.
+    # Format is `### 12.1 POST /path` — no trailing dot after the number.
+    pattern = re.compile(
+        r"^###\s+(?:\d+(?:\.\d+)*\.?\s+)?"
+        r"(GET|POST|PUT|DELETE|PATCH)\s+(/[^\s]+)"
+    )
     endpoints: set[tuple[str, str]] = set()
     if not path.exists():
         print(f"WARN: {path} not found", file=sys.stderr)

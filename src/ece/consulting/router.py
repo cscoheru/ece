@@ -11,6 +11,13 @@ OEI-007 adds two write-path endpoints (additive):
   POST /api/v1/consulting/documents              — multipart upload → engine
   GET  /api/v1/consulting/documents/{id}         — poll indexing status
 
+OEI-008 adds identity threading + the upload `project_id` plumbing stub.
+OEI-009 makes the upload `project_id` a real form field (default 1 for
+backward compat), generates the *controlled* engine filename on the
+write side (`ece-<docref>-<slug>.<ext>`), registers every successful
+upload in `engine_documents`, and threads the resolved `Identity`
+through to the per-result permission filter on the read side.
+
 The static catalog is the source of truth for facet vocabulary (TASK §2.2);
 uploaded documents are routed to the engine with consulting metadata derived
 deterministically from filename + title (caller can override per field).
@@ -35,6 +42,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from sqlalchemy.engine import Engine
 
 from ece.connectors.onyx.port import EngineCallerContext, EngineError
 from ece.connectors.onyx.selector import get_content_engine
@@ -54,7 +62,13 @@ from ece.consulting.models import (
     UploadedDocument,
     UploadResponse,
 )
+from ece.consulting.registry import (
+    compute_controlled_filename,
+    register as register_engine_doc,
+)
 from ece.consulting.service import default_catalog
+from ece.db import get_engine as get_sql_engine
+from ece.identity.parser import Identity, resolve_identity
 
 router = APIRouter(
     prefix="/api/v1/consulting",
@@ -93,13 +107,26 @@ async def get_library(
     )
     # OEI-008: build caller for audit. Read-only anonymous surface — no 401.
     from ece.connectors.onyx.caller import caller_from_request_headers
+
     caller = caller_from_request_headers(authorization, x_user_id)
+
+    # OEI-009: resolve the principal for the per-result permission filter.
+    # Identity comes from credentials only — NEVER from a request body
+    # parameter (TASK §1.3 事实 B). Anonymous callers get Identity.anonymous()
+    # which the filter then narrows to public-only.
+    sql_engine: Engine = get_sql_engine()
+    if caller.user_ref:
+        identity: Identity | None = resolve_identity(sql_engine, caller.user_ref)
+    else:
+        identity = Identity.anonymous()
 
     # OEI-006: the static response is computed FIRST and is never mutated — the
     # engine merge only ever adds the two new fields on top. `model_copy(update=)`
     # (rather than rebuilding the response) is what structurally guarantees the
     # static fields stay byte-identical for existing consumers.
-    engine_items, engine_status = await merge_engine(q, caller=caller)
+    engine_items, engine_status = await merge_engine(
+        q, caller=caller, sql_engine=sql_engine, identity=identity
+    )
     return static.model_copy(
         update={"engine_items": engine_items, "engine_status": engine_status}
     )
@@ -126,9 +153,11 @@ def get_object(object_id: str) -> KnowledgeObject:
 # ---------------------------------------------------------------------------
 
 
-# Single hard-coded project id (matching the existing engine state: project 1
-# holds the 3 demo consulting docs). Future: come from config / caller.
-_UPLOAD_PROJECT_ID = 1
+# Default project id for uploads that don't specify one. Existing behaviour
+# (before OEI-009) hardcoded this to 1 (the demo project). We keep the
+# default for backward compat; tests pass an explicit `project_id` form
+# field to direct test uploads to a scratch project (TASK §0 step 0.3).
+_DEFAULT_UPLOAD_PROJECT_ID = 1
 
 
 def _read_upload(file: UploadFile) -> bytes:
@@ -173,6 +202,7 @@ async def upload_documents(
     client_industry: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     problem_types: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     methods: Annotated[list[str] | None, Form()] = None,  # noqa: B008
+    project_id: Annotated[int | None, Form()] = None,  # noqa: B008
     caller: EngineCallerContext = Depends(get_upload_caller),  # noqa: B008
 ) -> UploadResponse:
     """Upload one or more files to the engine for indexing.
@@ -184,16 +214,31 @@ async def upload_documents(
       mismatched lengths are tolerated (missing → None).
     - Caller metadata OVERRIDES suggestion (TASK §4 step 3), but values outside
       the seed vocabulary are dropped (with `_dropped` hint in the response).
-    - The static catalog is **never** touched by this endpoint. The static size
-      is included in the response only as a "we didn't move anything else"
-      affirmation for the SPA.
+    - **OEI-009**: `project_id` is now a form field (default 1). Tests pass a
+      scratch project id here to avoid polluting the demo project (TASK §0.3).
+    - **OEI-009**: the *engine filename* is generated server-side as
+      `ece-<docref>-<slug>.<ext>` — see `consulting/registry.py`. The caller's
+      original filename is preserved as `original_filename` in the registry
+      row, but the engine sees the controlled name. This is what makes the
+      read-side `(engine_name, title)` lookup reliable.
+    - On upload success, a row is INSERTed into `engine_documents`. The
+      registry row is *the* authorization source — without it, the read-side
+      filter fail-closes that result (Step 2.2 / A5).
 
     HTTP status: 200 even if every file is rejected (reasons in `documents[i]`).
-    A 4xx only fires for *request-level* errors (no files, total oversize).
+    A 4xx only fires for *request-level* errors (no files, total oversize,
+    missing or wrong project_id).
     """
     if not file:
         raise HTTPException(
             status_code=422, detail="at least one `file` part is required"
+        )
+
+    target_project_id = project_id if project_id is not None else _DEFAULT_UPLOAD_PROJECT_ID
+    if target_project_id <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail=f"project_id must be a positive integer, got {project_id!r}",
         )
 
     # Align optional form arrays to the file list (index-by-index).
@@ -220,6 +265,7 @@ async def upload_documents(
         raise HTTPException(status_code=413, detail=str(exc)) from exc
 
     engine = get_content_engine()
+    sql_engine: Engine = get_sql_engine()
     # OEI-008 §A5: caller is resolved by `get_upload_caller` (FastAPI dependency)
     # and forwarded to the engine for audit. Anonymous callers are refused at
     # dependency resolution (403), not here. Tests override the dependency with
@@ -229,17 +275,17 @@ async def upload_documents(
     vocab_dropped_any = False
 
     for i, f in enumerate(file):
-        name = f.filename or f"file-{i}"
+        original_name = f.filename or f"file-{i}"
         # Whitelist: per-file rejection (the SPA wants partial success on multi-upload).
         try:
-            check_extension(name)
+            check_extension(original_name)
         except ValueError as exc:
             results.append(
                 UploadedDocument(
-                    name=name,
+                    name=original_name,
                     accepted=False,
                     reason=str(exc),
-                    suggested_metadata=suggest_metadata(name, titles[i]),
+                    suggested_metadata=suggest_metadata(original_name, titles[i]),
                 )
             )
             continue
@@ -251,15 +297,35 @@ async def upload_documents(
         except ValueError as exc:
             results.append(
                 UploadedDocument(
-                    name=name,
+                    name=original_name,
                     accepted=False,
                     reason=str(exc),
-                    suggested_metadata=suggest_metadata(name, titles[i]),
+                    suggested_metadata=suggest_metadata(original_name, titles[i]),
                 )
             )
             continue
 
-        suggested = suggest_metadata(name, titles[i])
+        # OEI-009: derive the controlled engine filename server-side. The
+        # caller's original name is *only* kept in `original_filename` /
+        # `name` (response) / `title` (suggested metadata). The engine sees
+        # the controlled name, so the read-side `(engine_name, title)`
+        # lookup is reliable.
+        try:
+            controlled_filename = compute_controlled_filename(
+                caller.user_ref, original_name
+            )
+        except ValueError as exc:
+            results.append(
+                UploadedDocument(
+                    name=original_name,
+                    accepted=False,
+                    reason=f"filename rejected: {exc}",
+                    suggested_metadata=suggest_metadata(original_name, titles[i]),
+                )
+            )
+            continue
+
+        suggested = suggest_metadata(original_name, titles[i])
         caller_meta = {
             "type": types_caller[i],
             "engagement_phase": phases_caller[i],
@@ -273,17 +339,17 @@ async def upload_documents(
 
         try:
             status_record = await engine.upload_document(
-                filename=name,
+                filename=controlled_filename,  # OEI-009: controlled name, not original
                 content=body,
-                project_id=_UPLOAD_PROJECT_ID,
-                title=titles[i],
+                project_id=target_project_id,
+                title=titles[i] or controlled_filename,
                 metadata=merged,
                 caller=caller,
             )
         except EngineError as exc:
             results.append(
                 UploadedDocument(
-                    name=name,
+                    name=original_name,
                     accepted=False,
                     reason=f"engine rejected: {exc}",
                     suggested_metadata=suggested,
@@ -291,9 +357,49 @@ async def upload_documents(
             )
             continue
 
+        # OEI-009 — register the row in `engine_documents`. Default
+        # classification is `public` (per Step 1.4 / A3: 3 demo docs are
+        # public; new uploads inherit public until an admin reclassifies).
+        # Identity comes from the credentials — `caller.user_ref` is
+        # guaranteed non-None because the `get_upload_caller` dependency
+        # rejects anonymous callers with 403.
+        try:
+            registry_id = register_engine_doc(
+                sql_engine,
+                engine_name=engine.engine_name,
+                engine_project_id=target_project_id,
+                engine_filename=controlled_filename,
+                original_filename=original_name,
+                engine_document_id=status_record.document_id,
+                title=titles[i],
+                classification="public",
+                uploaded_by=caller.user_ref or "unknown",
+                department=caller.department or "",
+                org_id=caller.org_id,
+            )
+        except Exception as exc:  # noqa: BLE001 — registration failure is per-file
+            # We don't fail the upload (the engine accepted it) but we
+            # surface the registration failure to the response so the SPA
+            # can warn the user. Without a registry row, the read-side
+            # filter will fail-closed on this doc — that's the safest
+            # default; we just have to be explicit about it.
+            results.append(
+                UploadedDocument(
+                    name=original_name,
+                    accepted=True,
+                    document_id=status_record.document_id,
+                    status=status_record.status,
+                    chunk_count=status_record.chunk_count,
+                    suggested_metadata=suggested,
+                )
+            )
+            results[-1].reason = f"engine accepted but registry insert failed: {exc}"
+            # Continue — the next file may still register fine.
+            continue
+
         results.append(
             UploadedDocument(
-                name=name,
+                name=original_name,
                 accepted=True,
                 document_id=status_record.document_id,
                 status=status_record.status,

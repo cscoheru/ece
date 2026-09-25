@@ -61,6 +61,45 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+def _wait_for_events(
+    predicate,
+    *,
+    timeout: float = 5.0,
+    interval: float = 0.05,
+) -> list[dict]:
+    """Poll `_WebhookHandler.received_events` until `predicate(events)` is truthy.
+
+    OEI-009 step 0.1 — replaces the previous fixed `time.sleep(0.5)` (and
+    `time.sleep(1.5)` for the failure path). The previous version slept a
+    constant amount and depended on the background thread being faster than
+    that — when the box was warm (LLM cold start, Onyx container under load,
+    many integration tests already running), the thread could miss the window
+    and the next assertion saw an empty list. Now we wait *up to* `timeout`
+    seconds, polling every `interval`. The default 5s × 0.05s is ~40× the
+    old fixed sleep, so even a fully loaded box stays well inside the budget;
+    a fast box still returns within the first interval (~50ms).
+
+    The lock is taken on every poll so the background thread can append
+    safely between iterations. The final returned snapshot is also taken
+    under the lock for the same reason.
+
+    Assertion semantics are unchanged: callers do
+        events = _wait_for_events(lambda e: len(e) >= 1)
+        assert len(events) >= 1
+    — the variable name, the assertion shape, and the `received_lock`
+    discipline are all preserved.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with _WebhookHandler.received_lock:
+            events = list(_WebhookHandler.received_events)
+        if predicate(events):
+            return events
+        time.sleep(interval)
+    with _WebhookHandler.received_lock:
+        return list(_WebhookHandler.received_events)
+
+
 @pytest.fixture
 def webhook_server():
     """Start a local HTTP server to receive webhook POSTs."""
@@ -105,9 +144,7 @@ def test_webhook_receives_event(
         "status": "ok",
     })
     # Wait briefly for thread to complete
-    time.sleep(0.5)
-    with _WebhookHandler.received_lock:
-        events = list(_WebhookHandler.received_events)
+    events = _wait_for_events(lambda e: len(e) >= 1)
     assert len(events) >= 1
     event = events[0]
     assert event["request_id"] == "req_abc"
@@ -129,9 +166,9 @@ def test_assemble_context_triggers_webhook(
         intent="evaluate_purchase_request",
         entities=[{"type": "purchase_request", "id": "PR_WEBHOOK_1"}],
     )
-    time.sleep(0.5)
-    with _WebhookHandler.received_lock:
-        events = list(_WebhookHandler.received_events)
+    # Wait for the webhook for THIS request_id to arrive (event arrives out of
+    # order; OEI-008 R1 audit rows share the queue with other tests in the file)
+    events = _wait_for_events(lambda e: any(ev.get("request_id") == pkg.request_id for ev in e))
     # Find event matching this request_id
     matching = [e for e in events if e.get("request_id") == pkg.request_id]
     assert len(matching) == 1
@@ -169,9 +206,7 @@ def test_webhook_multiple_events(
     monkeypatch.setenv("ECE_AUDIT_WEBHOOK_URL", webhook_server)
     for i in range(3):
         send_audit_event({"request_id": f"req_{i}", "user_ref": "alice"})
-    time.sleep(0.5)
-    with _WebhookHandler.received_lock:
-        events = list(_WebhookHandler.received_events)
+    events = _wait_for_events(lambda e: len(e) >= 3)
     assert len(events) >= 3
     request_ids = {e["request_id"] for e in events}
     assert "req_0" in request_ids
@@ -198,7 +233,5 @@ def test_webhook_includes_delivery_metadata(
     monkeypatch.setenv("ECE_AUDIT_WEBHOOK_URL", webhook_server)
     t0 = time.time()
     send_audit_event({"request_id": "req_meta", "user_ref": "alice"})
-    time.sleep(0.5)
-    with _WebhookHandler.received_lock:
-        events = list(_WebhookHandler.received_events)
+    events = _wait_for_events(lambda e: len(e) >= 1)
     assert events[0]["delivered_at"] >= t0

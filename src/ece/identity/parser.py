@@ -19,14 +19,70 @@ class Identity:
     """Resolved identity for a user."""
 
     user_ref: str  # the original X-User-Id value
-    entity_id: str | None  # uuid of the person entity, None if not yet created
-    display_id: str | None  # human-readable id like 'U001'
+    entity_id: str | None = None  # uuid of the person entity, None if not yet created
+    display_id: str | None = None  # human-readable id like 'U001'
     name: str = ""
     department: str = ""
     roles: list[str] = field(default_factory=list)
     aliases: list[str] = field(default_factory=list)
     source_system: str = "api:header"
     is_management: bool = False  # cut-040R-2 R40R2.3: EXPLICIT seed attribute, never derived from role names
+    # OEI-009: org dimension is now first-class on Identity. Read-side filter
+    # (consulting/permissions_filter.py) does NOT yet use it as a WHERE clause
+    # predicate — that's the OEI-010 hook. We carry it here so the org-scope
+    # minimum placement is in place (A9: model + 1 deterministic rule).
+    org_id: str | None = None
+
+    @classmethod
+    def anonymous(cls) -> Identity:
+        """An Identity representing an unauthenticated caller.
+
+        `user_ref=""` is the sentinel — the consulting permissions filter
+        (`_is_anonymous`) treats None-or-empty as anonymous. All other fields
+        are deliberately zero so any ACL subject match fails (no user, no
+        dept, no roles, not management).
+        """
+        return cls(
+            user_ref="",
+            entity_id=None,
+            display_id=None,
+            name="",
+            department="",
+            roles=[],
+            aliases=[],
+            is_management=False,
+            org_id=None,
+        )
+
+    @classmethod
+    def from_engine_caller(
+        cls, user_ref: str | None, *, source: str = "header"
+    ) -> Identity:
+        """Build a minimal Identity from the Port-side caller.
+
+        Used when the filter needs an Identity but the consulting route has
+        not (or could not) resolved the full DB row. We accept the caller
+        at face value — the *filter* layer is the only place that enforces
+        anonymous semantics, and the *route* layer is the only place that
+        must guard against caller-supplied principal (TASK §1.3 事实 B).
+        For identified callers, the consulting route should prefer
+        `resolve_identity(engine, user_ref)` to get department / roles /
+        is_management; this classmethod is the no-DB shortcut.
+        """
+        if not user_ref:
+            return cls.anonymous()
+        return cls(
+            user_ref=user_ref,
+            entity_id=None,
+            display_id=None,
+            name="",
+            department="",
+            roles=[],
+            aliases=[],
+            source_system=f"caller:{source}",
+            is_management=False,
+            org_id=None,
+        )
 
 
 def resolve_identity(engine: Engine, x_user_id: str) -> Identity:

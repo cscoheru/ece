@@ -603,6 +603,43 @@ curl -s --get --data-urlencode 'q=问题树怎么用' \
 冷启动首查可达 **15 秒**（ECE 侧适配器超时 60 秒）。经本机 `cut_045_local_origin.py`
 反代时注意其上游超时仅 **10 秒**，冷启动首查可能得到 `502`（重试即可）。
 
+### GET /api/v1/consulting/facets
+
+**身份**：匿名可用（只读）。
+
+**查询参数**：无。
+
+**响应**（`FacetsResponse`）：返回**全集** facet 词表（不随当前 library 筛选而收窄）。
+字段与 `LibraryResponse.facets` 同构：`{ types, practices, engagement_phases,
+client_industries, problem_types, source_origins }`，每个数组是该维度的全部枚举取值，
+去重排序。
+
+```bash
+curl -s http://127.0.0.1:8000/api/v1/consulting/facets
+```
+
+> 设计动机：`/library` 的 `facets` 是全集（不随 query 收窄），所以前端可在进入页面前
+> 先取一次 `/facets` 用于侧栏筛选器；两个端点契约同构，可互换消费。
+
+### GET /api/v1/consulting/objects/{object_id}
+
+**身份**：匿名可用（只读）。
+
+**路径参数**：
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `object_id` | string | KC-001 知识对象 `id`（如 `OBJ-CASE-001`），非引擎 `engine_doc_id` |
+
+**响应**：找到 → `KnowledgeObject`；找不到 → **HTTP 404**（不是 422）。
+
+```bash
+curl -s http://127.0.0.1:8000/api/v1/consulting/objects/OBJ-CASE-001
+```
+
+> 与 `/library` 的区别：`/library` 是**过滤 + 分页后的子集**，本端点是**单条详情**。
+> 两者都只读静态目录，与引擎召回无关。
+
 ## 12. 文档上传与索引（OEI-007）
 
 > OEI-007 在 Library 上加了**第二个入口**：把客户自己的咨询文档拖进来 → 真实引擎
@@ -816,3 +853,111 @@ OEI-006/007 期间 `engine_merge.py` 自己 `os.environ.get("ECE_CONTENT_ENGINE"
 `tests/unit/test_content_engine_identity.py` 钉住了这个回归：
 `def _engine_switch_is_onyx` 不得重现，`engine_merge.py` 里不得再出现
 `os.environ.get("ECE_CONTENT_ENGINE")`。
+
+### 13.6 OEI-009 — 结果级授权 + 来源登记 + 时间盒生效
+
+OEI-009 把"引擎召回也受 ECE 权限约束"这条线接上 §13.3 的设计契约。
+三个原子改动：
+
+#### 13.6.1 受控引擎文件名（写侧）
+
+`POST /api/v1/consulting/documents` 上传时，**引擎看到的文件名不再由调用方
+直接给出**，而是 ECE 服务端派生的受控名：
+
+```
+engine_filename = ece-<docref>-<slug>.<ext>
+
+  docref = first 12 hex chars of sha256(user_ref + "\x00" + original_filename)
+  slug   = lowercase + 非字母数字折叠成 "-" + 去首尾 "-"; 空 fallback 到 "doc"
+```
+
+例：调用方上传 `play-sales-delivery.md`，用户 `fisher` →
+`engine_filename = ece-3f9a1b2c4d5e-play-sales-delivery.md`。
+
+- **确定性**：相同 `(user_ref, original_filename)` 永远产生同一个 `engine_filename`。
+  实测 N=5 同名；见 `tests/unit/test_engine_documents_registry.py::test_deterministic_n5`。
+- **可读性换安全性**：引擎管理员能看到 `ece-` 前缀，立刻知道这是 ECE 托管的。
+- **扩展名小写化**：`.MD` 与 `.md` 在受控名上等价，但 `docref` 仍按原始大小写算（避免
+  命名冲突）。
+- `project_id` 同步从硬编码 `1` 改为 multipart 表单字段（默认仍是 `1`，保证向后兼容）。
+
+`docs/API.md §11` 的 POST 端点描述同步更新。
+
+#### 13.6.2 读取侧键 = 受控名
+
+`/api/search` 结果里**没有** `document_id` 字段——这是 Onyx CE v4.7.8 实测
+结果（详见 `onyx-lab/OEI-009/VERDICT.md` §3 的排除法）。OEI-009 的唯一
+可用读侧键是 **`title` = 引擎侧的 `engine_filename`**（精确匹配，加上
+`source_type == "user_file"` 作为旁路守卫，避免 web/slack 等非 user_file
+来源走这条路径）。
+
+每条 `/api/search` 结果 → 按 `(engine_name, title)` 在 `engine_documents`
+表里查 → 查不到则 fail-closed（结果丢弃，不暴露存在性），查到则走 §13.6.3。
+
+#### 13.6.3 逐条判定（per-result auth）
+
+`src/ece/consulting/permissions_filter.py` 是这条线的**唯一**入口：
+
+```
+for each EngineDocument:
+  if source_type != "user_file":        hide("non_user_file")
+  if not registry.lookup(title):        hide("no_registry")     # fail-closed
+  if is_anonymous(identity):
+      if classification != "public":    hide("anonymous_restricted")
+      else:                             keep (deduped by engine_filename)
+  else:
+      acl = load_acl(object_type="engine_document", object_ref="engine_document:<id>")
+      decision = check_permission(identity, "engine_document", object_ref, classification, acl, now=today)
+      keep iff decision.allowed
+```
+
+**侧信道规则**（A6）：
+- 返回的 `engine_items` **就是**授权后集合。条数、顺序、标题、片段不得泄露
+  被过滤项的存在。
+- 不暴露 `hidden_count`；只用于 `engine_audit_events`（设计见 `workspace/09-design-engine-audit.md`）。
+- 多 chunk → 同标题 → 去重为**一张卡**（取第一条 `EngineDocument` 的 `snippet` / `updated_at`）。
+
+**匿名 = 仅 public**（A6 + A4 矩阵边缘）：`Identity.user_ref=""` 时，分类
+为 `public` 的允许；`internal` / `department` / `restricted` / `management`
+/ `confidential` / `finance` / `procurement` 全部拒。
+
+**主体只来自凭据**（A4）：判定路径不接受 `req.user_ref` 之类的调用方自选
+主体——`Identity` 来自 `caller_from_request_headers`/`resolve_identity`
+读取的请求头/JWT/DB，不来自请求 body。
+
+#### 13.6.4 时间盒授权
+
+`acl_entries.valid_from` / `valid_to` 列从 §3 的 schema 一直存在，但
+`check_permission` 之前从不读这两列。OEI-009 把它们**真正接入**判定：
+
+```
+semantics (per DATA_MODEL.md §3):
+  valid_from IS NULL  → -∞
+  valid_to   IS NULL  → +∞
+  effective iff valid_from <= now < valid_to     (half-open)
+```
+
+`check_permission(..., now=<date>)` 的 `now` 形参让测试可以驱动边界确定
+性覆盖。生产路径 `now=None` → UTC today，行为对既有数据集不变。
+
+边界用例（在 `tests/unit/test_check_permission_timebox.py` 钉住）：
+
+| `valid_from` | `valid_to` | today | 期望 |
+|---|---|---|---|
+| `NULL` | `NULL` | 任意 | 生效 |
+| 2026-09-25 | `NULL` | 2026-09-25 | 生效（边界含左） |
+| `NULL` | 2026-09-25 | 2026-09-25 | **失效**（边界不含右） |
+| `NULL` | 2026-09-26 | 2026-09-25 | 生效 |
+| 2026-09-26 | `NULL` | 2026-09-25 | **失效**（未生效） |
+
+#### 13.6.5 org scope 最小落位
+
+`Identity.org_id` / `PermissionScope.org_id` 现在是 first-class 字段。
+**当前不参与 SELECT-side 谓词**（OEI-009 只是把 carrier 加上）——这是
+OEI-010 记忆读步骤的挂接点。详见 `workspace/10-design-org-scope.md`。
+
+#### 13.6.6 OEI-009 审计的持久化设计
+
+§13.4 描述的进程内 `audit_log` 仍存在；持久化设计见
+`workspace/09-design-engine-audit.md`（OEI-009 设计、未实现；推荐落
+分区表 + 90 天保留）。

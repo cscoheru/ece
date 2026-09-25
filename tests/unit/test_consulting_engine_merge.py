@@ -266,6 +266,28 @@ def test_library_exposes_the_engine_group_in_onyx_mode(
     monkeypatch.setenv("ECE_CONTENT_ENGINE", "onyx")
     monkeypatch.setattr(engine_merge, "get_content_engine", lambda: stub)
 
+    # OEI-009 — the per-result permission filter fail-closes any engine doc
+    # without a registry row (A5). The test's assertion is "the engine group
+    # IS exposed when there's an authorized doc" — so the setup must first
+    # register the doc, otherwise the test is asking the new contract to
+    # prove the new contract. Per TASK §7 ("允许修改装配部分"), this is
+    # fixture / setup, NOT an assertion change.
+    from ece.consulting.registry import register as _register_engine_doc
+    from ece.db import get_engine as _get_sql_engine
+
+    _register_engine_doc(
+        _get_sql_engine(),
+        engine_name=stub.engine_name,
+        engine_project_id=1,
+        engine_filename="methodology-framework.md",
+        original_filename="methodology-framework.md",
+        engine_document_id=None,
+        title="methodology-framework.md",
+        classification="public",  # anonymous caller -> public-only via A6
+        uploaded_by="test:oei009",
+        department="",
+    )
+
     body = _library(client, q="问题树怎么用")
 
     assert body["engine_status"] == "ok"

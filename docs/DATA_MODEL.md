@@ -88,8 +88,8 @@ CREATE TABLE acl_entries (
   id           bigserial PRIMARY KEY,
   subject_type text NOT NULL,           -- user|role|department
   subject_ref  text NOT NULL,           -- display_id：'U001' / 'R:procurement_manager' / 'D03'
-  object_type  text NOT NULL,           -- entity|document
-  object_ref   text NOT NULL,           -- display_id / document id
+  object_type  text NOT NULL,           -- entity|document|engine_document
+  object_ref   text NOT NULL,           -- display_id / document id / 'engine_document:<id>'
   effect       text NOT NULL,           -- allow|deny
   valid_from   date, valid_to   date,
   source_system text NOT NULL,
@@ -102,6 +102,25 @@ CREATE INDEX idx_acl_subject ON acl_entries (subject_type, subject_ref);
 - 判定顺序（ARCHITECTURE §5）：deny > user > role > department > 文档 classification 默认 > deny。
 - 文档 classification 默认矩阵（seed 固化，可被 acl_entries 覆盖）：
   `public→全员；department→本部门+上级部门+management；finance→finance+management；procurement→procurement+management；management/confidential→management + 显式 allow`。
+
+### 3.1 时间盒生效（OEI-009）
+
+`valid_from` / `valid_to` 列自 `0001_initial.py` 起就存在；OEI-009
+把它们真正接入 `check_permission` 判定（deny + allow 两侧）：
+
+```
+valid_from IS NULL  → -∞
+valid_to   IS NULL  → +∞
+effective iff valid_from <= now < valid_to      -- 半开区间（左侧含、右侧不含）
+
+判定时点由 check_permission(..., now=<date>) 形参控制；
+  now=None 时取 UTC today（生产路径，行为对既有数据集不变）。
+```
+
+`subject_type='org'`（OEI-010 候选）：`_subject_matches` 加一行
+`if st == "org" and sr == identity.org_id: return True`。OEI-009
+最小落位只把 `Identity.org_id` / `PermissionScope.org_id` 字段加上，
+**不**修改 `_subject_matches`——属于 OEI-010 范围。
 
 ## 4. 文档与分块
 
@@ -135,6 +154,63 @@ CREATE INDEX idx_chunks_vec ON doc_chunks USING ivfflat (embedding vector_cosine
 
 - 中文检索：`simple` 分词 + 应用层 bigram 兜底 + 向量主导；`zhparser` 为可选增强（ADR-009 附录）。
 - Embedding 提供方：`ECE_EMBED_PROVIDER=local|api`（local=sentence-transformers 进程内；api=OpenAI 兼容 `/embeddings`）。**同一部署只用一个模型**，换模型必须回填，禁止混维。
+
+## 4.1 引擎文档登记表（OEI-009）
+
+`engine_documents` 表是 **ECE 对"已送进引擎的文档"的来源与权限记录方**。
+注意：与 `documents` 表解耦——`documents` 是 ECE 原生 ingest 路径
+（带 `doc_chunks` / FTS / vector，被 `context/assembly.py` 读），而
+`engine_documents` 只承担"由 ECE 主导上传并维护权限"的子集。
+
+迁移：`0009_engine_documents.py`。
+
+```sql
+CREATE TABLE engine_documents (
+    id                  bigserial PRIMARY KEY,
+    engine_name         text NOT NULL,           -- 'onyx' (Port.engine_name)
+    engine_project_id   int    NOT NULL,
+    -- 读侧唯一键：与 /api/search 结果的 `title` 精确匹配。
+    -- 新上传 = 'ece-<docref>-<slug>.<ext>'（ECE 服务端派生）；
+    -- 回填的旧文档 = 历史 title 原样（不改名、不重传）。
+    engine_filename     text NOT NULL,
+    -- 给人看的原名（可能与 engine_filename 不同；新上传一定有别）。
+    original_filename   text NOT NULL,
+    -- 写侧溯源 = Onyx user_file.id (UUID)。**仅写侧用，绝不参与读侧 lookup**。
+    -- 注释在 src/ece/consulting/registry.py 写明，禁止后人重新推出错误契约。
+    engine_document_id  text,
+    title               text,
+    content_sha256      text,
+    classification      text NOT NULL DEFAULT 'public',
+                                              -- public/internal/department/restricted/management
+                                              -- /confidential/finance/procurement
+    uploaded_by         text NOT NULL,         -- user_ref；anonymous 上传被路由层拒
+    department          text NOT NULL DEFAULT '',
+    org_id              text,                  -- OEI-010 hook；当前不参与 SELECT-side 谓词
+    created_at          timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (engine_name, engine_filename)
+);
+CREATE INDEX idx_engine_docs_project  ON engine_documents (engine_project_id);
+CREATE INDEX idx_engine_docs_uploader ON engine_documents (uploaded_by);
+CREATE INDEX idx_engine_docs_lookup   ON engine_documents (engine_name, engine_filename);
+```
+
+**读侧 lookup 契约**（写进代码注释，`src/ece/consulting/registry.py`）：
+
+```python
+# Lookup key = (engine_name, engine_filename), NOT engine_document_id.
+# engine_document_id is the Onyx user_file.id (UUID), returned by upload.
+# It is NEVER returned by /api/search, so it CANNOT be the read-side key.
+# Source of this rule: OEI-009 VERDICT.md §3 (exclusion of citation_id,
+# document_id, link, content_sha256 on Onyx CE v4.7.8).
+```
+
+**回填语义**（步骤 1.4）：历史 3 份演示文档以它们**当前**的 title 直接
+建行（不改名、不重传）。`engine_filename` = `original_filename` = 原
+title。`classification` 默认 `public`（保留"匿名也能看到"的演示行为）。
+
+**幂等性**：`register()` 用 `ON CONFLICT (engine_name, engine_filename)
+DO UPDATE SET engine_document_id = EXCLUDED.engine_document_id`——
+第二次跑同输入，行数不变。
 
 ## 5. 审计与溯源（PRD §22/§31）
 

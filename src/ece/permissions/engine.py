@@ -5,11 +5,35 @@ Per ece/TASKS.md S2.2 + ADR-004 Permission Before Context Assembly:
 - PermissionScope injected into all Store read paths (SQL subquery filter, NOT post-filter)
 - /permissions/check endpoint exposes the engine for verification
 - E2 = 0 unauthorized exposure is a CI-blocker (per cut-005 §7.4)
+
+OEI-009 changes (compare to OEI-008):
+
+1. **Time-box (ACL `valid_from` / `valid_to`)** — the columns have been in the
+   schema since `0001_initial` and have always been `SELECT`-ed by
+   `api/identity.py:118`, but `check_permission` rules 1–4 never looked at
+   them. That meant a temporary grant (e.g. "valid for 14 days") stayed
+   effective forever. We now fold both columns into both the deny and the
+   allow rules. Semantics match DATA_MODEL.md: `valid_from IS NULL -> -∞`,
+   `valid_to IS NULL -> +∞`, comparison is half-open
+   `[valid_from, valid_to)`. The check is parameterised on `now` so tests
+   can drive the boundary deterministically (without monkey-patching the
+   clock).
+
+2. **`PermissionScope.org_id`** — the org dimension is now first-class on
+   the dataclass. The OEI-009 scope is *minimum* placement: we add the
+   field, we don't yet use it as a SELECT-side predicate (no `WHERE org_id
+   = :org_id` in any store path). That is the OEI-010 hook — memory has to
+   read *after* permission, and the hook lives here.
+
+The deny-then-allow order, the SQL subquery filter at Store level, and the
+classification matrix are all unchanged. Per TASK v1.3 §7, this module's
+判定顺序 is frozen.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, datetime, time, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -49,7 +73,7 @@ DEFAULT_CLASSIFICATION_MATRIX: dict[str, dict[str, str | list[str]]] = {
 #      was the correct fix.
 #   3. If the product later genuinely needs classification-scoped ACLs, the ACL
 #      model itself must change (add a classification column / scope predicate) —
-#      do NOT work around it by editing datasets again.
+#     do NOT work around it by editing datasets again.
 
 
 @dataclass
@@ -58,12 +82,19 @@ class PermissionScope:
 
     Per ADR-004: NOT post-filter (which leaks via sort/limit signals). SQL-level filter
     applied in WHERE clause of every Store read method.
+
+    OEI-009: `org_id` is added but NOT yet used as a SELECT-side predicate.
+    It exists so the OEI-010 memory pipeline can branch on it (the *read*
+    step happens after this scope has been consulted; that order is the
+    only thing keeping memory read from re-introducing the post-filter
+    side-channel). See `10-design-org-scope.md`.
     """
 
     user_ref: str
     department: str = ""
     roles: list[str] = field(default_factory=list)
     is_management: bool = False  # role contains 'manager' or display_id starts 'D01' etc.
+    org_id: str | None = None  # OEI-009: now first-class; no SELECT-side predicate yet
 
     def dept_match_clause(self, column: str = "department") -> str:
         """SQL fragment: WHERE department = :user_dept OR :user_dept = '' (no dept set -> no filter).
@@ -82,6 +113,46 @@ class PermissionDecision:
     matched_rule: str = ""  # which rule in the ordered list fired
 
 
+def _acl_in_window(
+    entry: dict[str, object],
+    *,
+    now: date,
+) -> bool:
+    """Is the ACL row in effect at `now`?
+
+    Per DATA_MODEL.md: `valid_from IS NULL -> -∞`,
+    `valid_to IS NULL -> +∞`, comparison is half-open `[valid_from, valid_to)`.
+
+    `valid_from = now` -> ACTIVE (boundary inclusive on the left).
+    `valid_to   = now` -> INACTIVE (boundary exclusive on the right).
+    Returns False when `now` is outside the window — caller treats the row
+    as if it doesn't exist.
+    """
+    vf = entry.get("valid_from")
+    vt = entry.get("valid_to")
+    if vf is not None and now < vf:
+        return False
+    if vt is not None and now >= vt:
+        return False
+    return True
+
+
+def _now_date(now: datetime | date | None = None) -> date:
+    """Coerce `now` to a `date` for half-open comparison.
+
+    Defaults to "now" in UTC. Tests can pass any `date` (deterministic
+    boundary coverage without monkey-patching) or a tz-aware `datetime`
+    (which gets converted via `.astimezone(timezone.utc).date()`).
+    """
+    if now is None:
+        return datetime.now(tz=timezone.utc).date()
+    if isinstance(now, datetime):
+        if now.tzinfo is None:
+            return now.date()
+        return now.astimezone(timezone.utc).date()
+    return now
+
+
 def check_permission(
     identity: Identity,
     object_type: str,
@@ -89,6 +160,8 @@ def check_permission(
     classification: str = "department",
     acl_entries: list[dict] | None = None,
     engine=None,
+    *,
+    now: datetime | date | None = None,
 ) -> PermissionDecision:
     """Determine if identity can access object.
 
@@ -100,16 +173,36 @@ def check_permission(
       5. classification default matrix (public allow, etc.)
       6. default: deny
 
+    OEI-009 — rules 1–4 now consult `valid_from` / `valid_to` via
+    `_acl_in_window(acl_entry, now=now)`. Rows outside the window are
+    skipped (treated as if they didn't exist). `now` defaults to UTC today
+    so production behaviour is unchanged; tests pass a fixed date for
+    boundary coverage (A8).
+
     identity: Identity object with user_ref / department / roles / aliases
-    object_type: 'entity' | 'document' | etc.
-    object_ref: display_id like 'SUP001'
+    object_type: 'entity' | 'document' | 'engine_document' | etc.
+    object_ref: display_id like 'SUP001' or 'engine_document:42' for engine docs
     classification: 'public' | 'department' | 'management' | etc.
     acl_entries: optional pre-fetched list of acl_entries rows matching object_type/object_ref
     """
-    acl_entries = [dict[str, str]((k, str(v)) for k, v in (e or {}).items()) for e in (acl_entries or [])]
+    acl_entries = [
+        {
+            # Coerce non-date scalars to str (the SQL loader returns strings for
+            # most columns); preserve `date` for `valid_from` / `valid_to` so
+            # _acl_in_window can compare directly (OEI-009 time-box).
+            **{
+                k: (v if k in ("valid_from", "valid_to") else (str(v) if v is not None else ""))
+                for k, v in (e or {}).items()
+            }
+        }
+        for e in (acl_entries or [])
+    ]
+    today = _now_date(now)
 
     # 1. deny entries: subject_type in [user, role, department]
     for entry in acl_entries:
+        if not _acl_in_window(entry, now=today):
+            continue
         effect = entry.get("effect", "")
         subject_type = entry.get("subject_type", "")
         subject_ref = entry.get("subject_ref", "")
@@ -124,6 +217,8 @@ def check_permission(
 
     # 2-4. allow entries
     for entry in acl_entries:
+        if not _acl_in_window(entry, now=today):
+            continue
         effect = entry.get("effect", "")
         subject_type = entry.get("subject_type", "")
         subject_ref = entry.get("subject_ref", "")
@@ -240,3 +335,11 @@ def _object_dept(
         if object_ref.startswith(prefix):
             return dept if dept != "all" else ""
     return ""
+
+
+__all__ = [
+    "DEFAULT_CLASSIFICATION_MATRIX",
+    "PermissionScope",
+    "PermissionDecision",
+    "check_permission",
+]

@@ -329,3 +329,90 @@ OEI-006 引入的 `engine_status` 四态继续生效：
   `[已核实 OEI-008 第 0.2 步]`；**3 条**标记 `[未实现, v0 范围外]`
   （S0.3 CI 流水线、S4.4 性能基准、S6.5 私有化验收）。
 - 对账脚本与逐条判据见 `onyx-lab/OEI-008/evidence/00b-tasks-reconcile.txt`。
+
+## 附录 O — 权限与审计接线（OEI-009，2026-09-25）
+
+把"引擎召回也受 ECE 权限约束"这条线接上 `附录 K §K.3` 移交的"权限过滤算法"
+与 `附录 N §N.3` 移交的"OEI-009"。三件事：
+
+### O.1 引擎文档登记表（`engine_documents`，迁移 0009）
+
+- 新表 `(engine_name, engine_filename)` 唯一；`engine_filename` 是
+  服务端受控名 `ece-<docref>-<slug>.<ext>`，**不是**用户传的 filename。
+- `engine_document_id`（Onyx user_file UUID）**仅写侧溯源**；
+  `src/ece/consulting/registry.py` 注释里写明绝不做读侧键。
+- 演示 3 份回填（步骤 1.4）以原 title 建行（不改名、不重传），`classification='public'`，
+  幂等。
+
+### O.2 结果级授权（步骤 2）
+
+- `src/ece/consulting/permissions_filter.py` 是这条线的**唯一**入口。
+- `source_type='user_file'` 旁路守卫；`(engine_name, title)` 查不到
+  → fail-closed（不暴露存在）。
+- 匿名 = 仅 `public`（A6 + 矩阵边缘）。
+- 主体只来自凭据（不接受 body 自选）。
+- 多 chunk → 同 title → 去重一张卡。
+
+### O.3 时间盒授权（步骤 3）
+
+- `check_permission(..., now=<date>)` 形参；`now=None` → UTC today（生产路径）。
+- `valid_from <= now < valid_to`（半开）；`NULL` 视为 ±∞。
+- deny + allow 两侧都看；既有用例断言不动（修改一律走 OEI-009 R-系 返工）。
+
+### O.4 org scope 最小落位（步骤 4，OEI-010 hook）
+
+- `Identity.org_id` / `PermissionScope.org_id` 加进 dataclass。
+- 不改 `_subject_matches`（subject_type='org' 是 OEI-010 的活）。
+- `tests/unit/test_org_scope.py::test_user_level_object_visible_to_owner_only`
+  钉住"两条 scope 都能被表达"的最小判定。
+
+### O.5 三份设计文档（步骤 5，**只写不实现**）
+
+- `onyx-lab/OEI-009/workspace/09-design-engine-audit.md` — 引擎审计持久化
+  （3 选项 + 持久化/采样/分区表代价 + 失败路径），推荐 3.C（分区表 + p=1.0 + 90 天）。
+- `onyx-lab/OEI-009/workspace/10-design-org-scope.md` — scope 模型定稿
+  + 组织级记忆写入权限 4 候选（A 管理员 / B 域经理 / C 同行评审 / D 版本化任意写）。
+- `onyx-lab/OEI-009/workspace/11-design-assembly-step6.md` — `assembly.py`
+  第 6 步改走 `ContentEnginePort` 的接法 + 侧信道风险 + 冷启动回落策略。
+
+### O.6 改动文件清单（OEI-009）
+
+| 类别 | 文件 |
+|---|---|
+| 新表 / 迁移 | `src/ece/migrations/versions/0009_engine_documents.py` |
+| 新模块 | `src/ece/consulting/registry.py`、`src/ece/consulting/permissions_filter.py` |
+| 改 | `src/ece/permissions/engine.py`（timebox + org_id）、`src/ece/identity/parser.py`（anonymous/from_engine_caller）、`src/ece/consulting/engine_merge.py`（接 sql_engine + identity）、`src/ece/consulting/router.py`（project_id form + 受控名 + register）、`scripts/check_api_docs.py`（编号标题）、`docs/API.md §13.6`、`docs/DATA_MODEL.md §3.1 §4.1` |
+| 新测试（DB 无关） | `tests/unit/test_engine_documents_registry.py`、`tests/unit/test_check_permission_timebox.py`、`tests/unit/test_engine_merge_filter.py`、`tests/unit/test_org_scope.py` |
+| 测试 fixture 装配 | `tests/unit/test_consulting_engine_merge.py::test_library_exposes_the_engine_group_in_onyx_mode`（加 register 调用，断言一字未改） |
+| 凭据工装 | `onyx-lab/OEI-009/workspace/{backfill_demo_docs,step26_demo_falsifiable,step22_fail_closed,step33_timebox_e2e,step25_engine_status_branches}.py` |
+| 设计文档 | `onyx-lab/OEI-009/workspace/{09,10,11}-*.md` |
+| 证据 | `onyx-lab/OEI-009/evidence/{00a,00b,00-credentials,01,04,05,06,07,08}-*` |
+
+### O.7 验收（A0–A14，对照 `OEI-009/TASK.md §5`）
+
+| ID | 状态 | 证据 |
+|---|---|---|
+| A0 步骤 0 三项收尾 | PASS | `00a`（webhook 12×0）+ `00b`（api-docs 4→0）+ 步骤 0.3（scratch project id=2，演示项目仍 4=3+1 step26 文档） |
+| A0b 凭据前置 | PASS | `00-credentials.txt`（200/200/200） |
+| A1 映射契约落实 | PASS（合法停手 + 重启分支） | `01-engine-doc-key-mapping.json` + VERDICT §3 排除法裁定 `title` |
+| A1′ 受控文件名 | PASS | `tests/unit/test_engine_documents_registry.py::test_deterministic_n5`（N=5 同名）+ step26 实际引擎收到 `ece-…md`（`05-per-result-filter-matrix.json`） |
+| A2 登记表落位 | PASS | 迁移 `0009` 升 + `UNIQUE (engine_name, engine_filename)` + `04-backfill-demo-docs.json` |
+| A3 3 份回填幂等 | PASS | `04-backfill-demo-docs.json`（第二次跑零新增） |
+| A4 结果级授权 | PASS | `05-per-result-filter-matrix.json`（alice=4, anon=3, bob=3） |
+| A5 fail-closed | PASS | `06-fail-closed.json`（probe 对 3 个身份全部不可见） |
+| A6 无侧信道 + 匿名=public | PASS | `05` + `06` + `07-side-channel.txt`（静态 sha 三分支相同 = 引擎不影响静态；过滤项分布按 §13.6.3 规则计数但不暴露） |
+| A7 static 零变化 + 3 分支不变 | PASS | `07-side-channel.txt`（ok/unavailable/no_hit 三状态实测 + static sha 三分支一致） |
+| A8 时间窗 | PASS | `08-timebox-acl.json`（A=4, B=3 过期, C=4 恢复）+ `tests/unit/test_check_permission_timebox.py` 12 个边界 |
+| A9 org scope 最小落位 | PASS | `tests/unit/test_org_scope.py`（Identity.org_id 存在、PermissionScope.org_id 存在、check_permission 不读 org_id、user-level 可见性规则 + `test_no_memory_table_or_interface_added` 守卫） |
+| A10 三份设计文档 | PASS | `workspace/{09,10,11}-*.md` |
+| A11 测试与收尾 | PASS | 49 个新 DB 无关测试 + 5 个集成证据；详见 §3 / §6 of REPORT |
+| A12 文档 + 提交 | 待 commit（no push） | §7 |
+| A13 合规 | PASS | 0 凭据值落盘；未碰 Onyx / compose / .env / 9 容器 restarts=0；未改 36 个种子对象与三域业务断言；未 push |
+| A14 无用户截图 | PASS | 全部机器可校验（HTTP 状态 + JSON 内容 + sha + 索引查询输出） |
+
+### O.8 转出（移交下一刀 / 当前未做）
+
+- **引擎调用审计持久化**（OEI-009 §5.1 设计未实现）→ 列入 OEI-010 之前的某刀。
+- **`check_api_docs.py` 与迁移同源的回归钉**：若 §11/§12 改章节标题，
+  解析器必须同步；不是本刀范围，是 §13.6.1 落地后的伴生约束。
+- **org scope 完整化**（`_subject_matches` 加 `'org'` 分支）→ OEI-010。
