@@ -24,9 +24,19 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 
-from ece.connectors.onyx.port import EngineError
+from ece.connectors.onyx.port import EngineCallerContext, EngineError
 from ece.connectors.onyx.selector import get_content_engine
 from ece.consulting.engine_merge import merge_engine
 from ece.consulting.metadata import (
@@ -127,6 +137,29 @@ def _read_upload(file: UploadFile) -> bytes:
     return file.file.read()
 
 
+def get_upload_caller(
+    authorization: str | None = Header(default=None),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+) -> EngineCallerContext:
+    """FastAPI dependency — resolve the caller for the auth-required write path.
+
+    Pulled out of `upload_documents` (OEI-008 R1) so it can be replaced through
+    `app.dependency_overrides[get_upload_caller]`. That is what keeps
+    `tests/unit/test_consulting_documents.py` DB-free: those 32 tests inject a
+    stub caller instead of letting `caller_from_db_identity` reach for Postgres.
+
+    Anonymous callers raise 403 here, i.e. the dependency — not the endpoint
+    body — is the enforcement point.
+    """
+    from ece.connectors.onyx.caller import caller_from_db_identity
+    from ece.db import get_engine
+
+    try:
+        return caller_from_db_identity(get_engine(), authorization, x_user_id)
+    except EngineError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
 @router.post(
     "/documents",
     response_model=UploadResponse,
@@ -140,8 +173,7 @@ async def upload_documents(
     client_industry: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     problem_types: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     methods: Annotated[list[str] | None, Form()] = None,  # noqa: B008
-    authorization: str | None = Header(default=None),
-    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+    caller: EngineCallerContext = Depends(get_upload_caller),  # noqa: B008
 ) -> UploadResponse:
     """Upload one or more files to the engine for indexing.
 
@@ -188,16 +220,10 @@ async def upload_documents(
         raise HTTPException(status_code=413, detail=str(exc)) from exc
 
     engine = get_content_engine()
-    # OEI-008 §A5: build the caller's EngineCallerContext from headers + DB.
-    # Anonymous callers → 403 (the upload is auth-required). The adapter
-    # additionally refuses anonymous callers defensively (see onyx_adapter.py).
-    from ece.connectors.onyx.caller import caller_from_db_identity
-    from ece.connectors.onyx.port import EngineError
-    from ece.db import get_engine as _get_db
-    try:
-        caller = caller_from_db_identity(_get_db(), authorization, x_user_id)
-    except EngineError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    # OEI-008 §A5: caller is resolved by `get_upload_caller` (FastAPI dependency)
+    # and forwarded to the engine for audit. Anonymous callers are refused at
+    # dependency resolution (403), not here. Tests override the dependency with
+    # a stub so they don't need a real DB.
 
     results: list[UploadedDocument] = []
     vocab_dropped_any = False

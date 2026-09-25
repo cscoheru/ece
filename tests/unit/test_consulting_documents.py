@@ -17,7 +17,6 @@ No DB, no Onyx — runs in 0.0x seconds.
 from __future__ import annotations
 
 import asyncio
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,6 +28,7 @@ from ece.connectors.onyx.mock_adapter import (
 from ece.connectors.onyx.onyx_adapter import OnyxContentEngineAdapter
 from ece.connectors.onyx.port import (
     ContentEnginePort,
+    EngineCallerContext,
     EngineDocumentStatus,
 )
 from ece.consulting import metadata as md
@@ -36,6 +36,7 @@ from ece.consulting.models import (
     DocumentStatusResponse,
     UploadResponse,
 )
+from ece.consulting.router import get_upload_caller
 from ece.main import app
 
 # ---------------------------------------------------------------------------
@@ -233,21 +234,18 @@ def test_reset_mock_engine_store_clears_state() -> None:
 
 @pytest.fixture
 def client() -> TestClient:
-    # The consulting upload route calls `caller_from_db_identity` which resolves
-    # the test-user via `ece.identity.parser.resolve_identity` against the DB.
-    # Default `ece.db.get_engine()` targets `localhost:5432` (compose); without
-    # an override the call hangs on connection refused / TCP retry. Override
-    # to the test PG (or 127.0.0.1) — tests do not actually require a row,
-    # because `resolve_identity` returns a bare Identity on miss (the call
-    # itself just needs the engine to construct without raising).
-    os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://ece:ece@127.0.0.1:55432/ece")
+    # OEI-008 R1 — the upload route resolves its caller through the
+    # `get_upload_caller` FastAPI dependency. To keep this file DB-free we
+    # override that dependency with a stub that returns a fixed test caller,
+    # then restore the original dependency on teardown. No `DATABASE_URL` is
+    # set; the real resolver is never invoked. Assertions are unchanged.
     reset_mock_engine_store()
-    # OEI-008 — the upload route is auth-required (write path). All existing
-    # tests assume an authenticated caller; we satisfy that by attaching a
-    # default `X-User-Id` header at the fixture level. Assertions are
-    # unchanged; the only behavioural change is "requests now carry identity"
-    # which is the new policy under test.
-    return TestClient(app, headers={"X-User-Id": "test-user"})
+    stub_caller = EngineCallerContext(user_ref="test-user", source="test")
+    app.dependency_overrides[get_upload_caller] = lambda: stub_caller
+    try:
+        yield TestClient(app, headers={"X-User-Id": "test-user"})
+    finally:
+        app.dependency_overrides.pop(get_upload_caller, None)
 
 
 def _post_files(c: TestClient, files, data=None):
