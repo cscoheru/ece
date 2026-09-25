@@ -492,9 +492,13 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 
 ## 11. Consulting Knowledge Library（KC-001 + OEI-006 引擎合并）
 
-> 视图 D「咨询知识库」的两个数据来源：**静态目录**（`36` 个 file-backed 种子对象）与
+> 视图 D「咨询知识库」的两个数据来源：**静态目录**（`45` 个 file-backed 种子对象）与
 > **引擎召回**（来自内容引擎已索引的真实文档）。两者在同一个响应里以**并列字段**返回，
 > 互不覆盖；静态侧语义与字段**完全未变**，引擎结果只走新增字段。
+>
+> **`45` 的来历**：KC-001 基线是 `36`，OEI-011 按有界规则新增 9 条（补薄行业与薄类型）。
+> 「素材不得少于 KC-001 基线」是**下限**，不是钉死数量——`static_catalog_size` 与
+> `total` 的契约是 `>= 36`。
 
 ### GET /api/v1/consulting/library
 
@@ -524,7 +528,7 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 {
   // ---- 静态目录（KC-001，语义与字段均未改变）----
   "items":   [ /* KnowledgeObject[] */ ],
-  "total":   36,
+  "total":   45,
   "limit":   24,
   "offset":  0,
   "facets":  { "types": [], "practices": [], "engagement_phases": [],
@@ -597,7 +601,7 @@ curl -s --get --data-urlencode 'q=问题树怎么用' \
 ```
 
 > 上面这个例子恰好是"两个来源独立"的样本：该 query 静态目录 0 命中、引擎 1 条。
-> 空 query 时静态侧返回全部 36 条且 `engine_status="skipped"`。
+> 空 query 时静态侧返回全部 45 条且 `engine_status="skipped"`。
 
 **性能注意**：`ok` 路径的响应时间取决于内容引擎，实测 Onyx 稳态约 **4.2 秒**、
 冷启动首查可达 **15 秒**（ECE 侧适配器超时 60 秒）。经本机 `cut_045_local_origin.py`
@@ -620,6 +624,27 @@ curl -s http://127.0.0.1:8000/api/v1/consulting/facets
 
 > 设计动机：`/library` 的 `facets` 是全集（不随 query 收窄），所以前端可在进入页面前
 > 先取一次 `/facets` 用于侧栏筛选器；两个端点契约同构，可互换消费。
+
+#### `client_industries`（行业轴）的语义 —— OEI-011 之后
+
+行业轴是**数据驱动**的：前端把 `client_industries` 原样填进行业下拉（`demos/spa/app.js`
+拉本端点），因此"这个下拉有没有用"完全由**内容**决定，不由前端代码决定。
+
+| | OEI-011 之前 | OEI-011 之后 |
+|---|---|---|
+| `client_industry` 为空的种子对象 | 24 / 36 | **0 / 45** |
+| 具体行业里"只有 1 条对象"的 | 7 个 | **0 个** |
+| `client_industries` 的取值 | 10 个具体行业 | 10 个具体行业 + **`cross_industry`** |
+
+**语义**：`cross_industry` = **通用 / 跨行业**，表示"这条方法 / 模板 / 风险清单不针对特定行业"。
+它是一条**诚实性**取值，不是占位符——没有它，一条通用方法只能硬贴一个具体行业（伪造）
+或留空（轴更空）。**`case` 与 `industry_note` 描述的是"发生在某个行业的事"，不允许取
+`cross_industry`**；只有 `methodology` / `proposal_play` / `deliverable_template` /
+`risk_check` 里确实是通用的对象才标它。
+
+**可用性保证（机检，见 `TASKS.md 附录 Q`）**：对 `client_industries` 里的**每一个**取值 `v`，
+`GET /api/v1/consulting/library?client_industry=<v>` 都命中 **≥ 2** 条。
+即下拉里**不存在"选出来是空的"选项**。
 
 ### GET /api/v1/consulting/objects/{object_id}
 
@@ -659,7 +684,7 @@ GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
 |---|---|---|
 | `file` | **是** | 可重复出现多个；接受 `.md` `.txt` `.docx` `.pdf`，其它扩展名 415 之前就被拒（per-file `accepted=false`，HTTP 仍 200） |
 | `title` | 否 | 与 file 按下标对齐；用于元数据建议 |
-| `type` / `engagement_phase` / `client_industry` / `problem_types` / `methods` | 否 | 与 file 按下标对齐；必须落在既有 36 个种子对象的取值集合内（越界静默丢弃，`metadata_vocabulary_check=dropped`） |
+| `type` / `engagement_phase` / `client_industry` / `problem_types` / `methods` | 否 | 与 file 按下标对齐；必须落在词表内（`ALLOWED_*`，由种子对象取值集合派生；**越界静默丢弃**，`metadata_vocabulary_check=dropped`） |
 
 **响应**（HTTP **始终 200**；per-file `accepted` + `reason`）：
 
@@ -689,7 +714,7 @@ GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
       "suggested_metadata": { ... }
     }
   ],
-  "static_catalog_size": 36,
+  "static_catalog_size": 45,
   "metadata_vocabulary_check": "ok"   // "dropped" iff 有越界元数据被丢弃
 }
 ```
@@ -704,17 +729,21 @@ GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
 **白名单**（`ALLOWED_EXTENSIONS`，源码常量）：`.md` `.txt` `.docx` `.pdf`。
 文本抽取由 Onyx 完成 —— ECE 侧不做任何文本解析（**OEI-007 坚持零新依赖**，二进制样本用 stdlib `zipfile + XML` 构造，见 `09-binary-format.json`）。
 
-**元数据词表**（必须复用 §2.2/§11 的 36 个种子对象取值集合）：
+**元数据词表**（由种子对象的取值集合派生；OEI-011 之后种子为 45 条对象）：
 
 | 字段 | 取值来源 |
 |---|---|
 | `type` | `ALLOWED_TYPES`（6 个） |
 | `engagement_phase` | `ALLOWED_PHASES`（5 个） |
-| `client_industry` | `ALLOWED_INDUSTRIES`（10 个） |
+| `client_industry` | `ALLOWED_INDUSTRIES`（**11 个** = 10 个具体行业 + `cross_industry` 通用/跨行业，见 §11） |
 | `problem_types` | `ALLOWED_PROBLEM_TYPES`（37 个） |
 | `methods` | `ALLOWED_METHODS`（42 个） |
 
 `validate_metadata` 越界静默丢弃，并记入 `_dropped` —— 绝不私自扩词表（要扩值须先改种子 JSON）。
+
+> **OEI-011 只加了 `cross_industry` 一项**（`ALLOWED_TYPES` / `ALLOWED_PHASES` /
+> `ALLOWED_PROBLEM_TYPES` / `ALLOWED_METHODS` 一字未动）。
+> `cross_industry` 是**合法值**（不会被丢弃）；未知值仍照旧被丢弃——两条路径都有实测。
 
 **示例**（`ECE_CONTENT_ENGINE=onyx`）：
 

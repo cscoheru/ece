@@ -260,7 +260,11 @@ def test_upload_happy(client: TestClient) -> None:
     UploadResponse.model_validate(body)
     assert body["documents"][0]["accepted"] is True
     assert body["documents"][0]["document_id"].startswith("mock-")
-    assert body["static_catalog_size"] == 36  # KC-001 baseline preserved
+    # `>= 36`, not `== 36`: KC-001's 36 is a FLOOR ("the bundled catalogue is at
+    # least the KC-001 baseline"), not a cap. OEI-011 added 9 objects, so the
+    # actual value is 45; pinning it to 36 would make every future content cut
+    # fail here for no reason. See TASKS.md 附录 Q.
+    assert body["static_catalog_size"] >= 36  # KC-001 baseline is a floor
 
 
 def test_upload_bad_extension_rejected(client: TestClient) -> None:
@@ -312,7 +316,8 @@ def test_upload_multi_file_partial_success(client: TestClient) -> None:
     assert docs[0]["accepted"] is True
     assert docs[1]["accepted"] is False
     assert docs[2]["accepted"] is False
-    assert r.json()["static_catalog_size"] == 36
+    # Floor, not a cap — see the note in test_upload_happy above.
+    assert r.json()["static_catalog_size"] >= 36
 
 
 def test_upload_metadata_vocab_check_field(client: TestClient) -> None:

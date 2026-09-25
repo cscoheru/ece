@@ -247,7 +247,9 @@ CREATE TABLE memories (
     CONSTRAINT uq_memories_scope_owner_ref_statement
         UNIQUE (scope, owner_ref, statement)
 );
-CREATE INDEX idx_memories_scope_owner ON memories (owner_ref, scope);
+-- 列序与迁移 0010_memories 一致：(scope, owner_ref)。此前这里误写成
+-- (owner_ref, scope)（OEI-010 的文档笔误，OEI-011 步骤 0 订正）。
+CREATE INDEX idx_memories_scope_owner ON memories (scope, owner_ref);
 CREATE INDEX idx_memories_deleted_at  ON memories (deleted_at);
 CREATE INDEX idx_memories_expires_at  ON memories (expires_at);
 ```

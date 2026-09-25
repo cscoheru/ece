@@ -130,6 +130,13 @@ ALLOWED_INDUSTRIES: frozenset[str] = frozenset(
         "public_sector",
         "retail",
         "technology",
+        # `cross_industry` = 通用 / 跨行业：不针对特定行业的方法、模板与风险清单
+        # （OEI-011 §3.3 新增，且是唯一新增的一项）。它存在的理由是**诚实**：
+        # 没有它，一条通用方法只有两个选择——硬贴一个具体行业（伪造），或留空
+        # （行业轴更空）。`case` / `industry_note` 描述的是"发生在某个行业的事"，
+        # 不允许取这个值；只有 methodology / proposal_play / deliverable_template /
+        # risk_check 里确实是通用对象的才标它。
+        "cross_industry",
     }
 )
 ALLOWED_PROBLEM_TYPES: frozenset[str] = frozenset(

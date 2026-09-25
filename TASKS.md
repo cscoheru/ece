@@ -553,3 +553,130 @@ OEI-006 引入的 `engine_status` 四态继续生效：
 - **记忆的淘汰/合并策略未做**：只有 `expires_at` + 软删，没有"旧记忆被新记忆
   取代"或冲突消解。上限 10 是硬截断（按 recency），不是相关性排序。
 - **记忆不参与排序打分**：注入的记忆不带 `score`，`rank/truncate` 不重排它们。
+
+---
+
+## 附录 Q — 咨询内容补全：行业轴 + 有界增量 + facets 可用（OEI-011，2026-09-25）
+
+> 本刀是**内容刀**：只改种子内容与词表，不动引擎、不动检索、不动前端。
+> 任务书 `onyx-lab/OEI-011/TASK.md`（v1 → **v1.1**）。证据 `onyx-lab/OEI-011/evidence/`。
+
+### Q.1 行业轴补齐（步骤 1）
+
+- 36 个既有对象里 **24 个 `client_industry` 为空**（唯一缺口），本刀补齐 → **0 个空**。
+- **只允许动这一个字段**：`evidence/02-existing-36-unchanged-hashes.txt` 对每个对象
+  计算"除 `client_industry` 外全部字段"的规范化 JSON sha256，与 `a463658` 的原值
+  **逐条相等（36/36）**。种子文件的序列化方式先做了**字节级往返校验**，
+  所以"其余字段未变"是内容层面的结论，不是格式层面的巧合。
+- 24 条标注**全部**是 `cross_industry`，依据统一且可机检（§3.1.6）：
+  该对象的 `title / summary / practice / problem_types / methods` 里**没有具体行业锚点**，
+  属通用方法 / 通用模板 / 通用风险清单。依据表 `evidence/01-industry-annotation-basis.json`
+  每行带 `basis_quote`，并机检该引文**确实是该对象自身字段的子串**（24/24 通过）。
+- **一个例外单独写了依据**：`methodology-lean-waste-walk-005` 自述"用于制造业与
+  服务运营场景"——**同时**覆盖制造业与服务业，不是行业专属；贴 `manufacturing`
+  就是 §3.1.5 禁止的"硬贴行业"，故仍判 `cross_industry`。
+- 扫描器**假阳性**也记在依据行里（`supply_ch**ai**n` / `av**ai**lability` /
+  `public_benchmark` 会被英文关键词的子串匹配命中）：每行同时给出**词边界严格扫描**
+  与**子串宽松扫描**两个结果，不靠"我觉得"。
+
+### Q.2 有界增量（步骤 2）
+
+**新增 9 条**（TASK 建议 8–12）。每条都写清"补的是哪个目标"：
+
+| 新对象 | type | industry | 补的目标 |
+|---|---|---|---|
+| `industry-note-cn-manufacturing-2026-003` | industry_note | manufacturing | industry_note +1；manufacturing 1→2 |
+| `industry-note-cn-logistics-2026-004` | industry_note | logistics | 同上；logistics 1→2 |
+| `industry-note-cn-healthcare-2026-005` | industry_note | healthcare | 同上；healthcare 1→2 |
+| `industry-note-cn-energy-2026-006` | industry_note | energy | 同上；energy 1→2 |
+| `case-technology-data-platform-011` | case | technology | technology 1→2 |
+| `case-public-sector-service-window-012` | case | public_sector | public_sector 1→2 |
+| `case-insurance-underwriting-013` | case | insurance | insurance 1→2 |
+| `risk-check-timeline-slippage-005` | risk_check | cross_industry | risk_check +1（通用） |
+| `risk-check-benefit-realization-006` | risk_check | cross_industry | risk_check +1（通用） |
+
+**前后对照**（`evidence/04-coverage-targets.json`）：
+
+| 目标 | 阈值 | 前 | 后 |
+|---|---|---|---|
+| 总数 | ≥ 44 | 36 | **45** |
+| 每个具体行业 | ≥ 2 | 7 个行业只有 1 | **全部 = 2** |
+| `industry_note` | ≥ 6 | 2 | **6** |
+| `risk_check` | ≥ 6 | 4 | **6** |
+| `cross_industry` | ≥ 10 | 0（词表里还没有） | **26** |
+
+**实际类型分布（OEI-011 之后）**：case **13** / methodology **10** / proposal_play **6** /
+deliverable_template **4** / risk_check **6** / industry_note **6**。KC-001 §4.2 的
+"建议分布"（10/10/6/4/4/2）自此作为**每类型的下限**保留，见 Q.4。
+
+### Q.3 词表与 facets（步骤 3 / 4）
+
+- `ALLOWED_INDUSTRIES` 新增 **`cross_industry`**（**唯一**一项）＝ **通用 / 跨行业**。
+  它存在的理由是**诚实**：没有它，一条通用方法只能硬贴行业（伪造）或留空（轴更空）。
+  `ALLOWED_TYPES` / `ALLOWED_PHASES` / `ALLOWED_PROBLEM_TYPES` / `ALLOWED_METHODS` 一字未动。
+- 上传路径的校验**机制不变**（越界仍静默丢弃 + `_dropped`）：`evidence/07-vocabulary-cross-industry.txt`
+  分两层证明——HTTP 层（合法值 `ok` / 越界值 `dropped`）与机制层（把 `a463658` 的
+  `metadata.py` 载为独立模块，逐探针比较 `validate_metadata` 的返回：**除含
+  `cross_industry` 的探针外 100% 一致**）。
+- **facets 行业轴可用**（`evidence/05-facet-value-match-counts.json`）：
+  `client_industries` = 10 个具体行业 + `cross_industry`，每个取值经
+  `GET /library?client_industry=<v>` 实测命中 **≥ 2**（实际：10 个行业各 2 条，
+  `cross_industry` 26 条）→ **不存在"拉出来是空的"选项**。
+- **不需要改前端**：`demos/spa/app.js` 从 `/facets` 拉取填充下拉，是数据驱动的；
+  本刀 `ece/demos/spa/**` **逐字节未变**。
+
+### Q.4 数量断言的有界解冻（步骤 5）
+
+KC-001 留下的 6 处与语料规模耦合的断言，其中**四处**按 TASK v1.1 §3.4 解冻为"下限"：
+
+| 位置 | 原 | 现 |
+|---|---|---|
+| `test_consulting_documents.py:263` | `static_catalog_size == 36` | `>= 36` |
+| `test_consulting_documents.py:315` | 同上 | `>= 36` |
+| `test_consulting_engine_merge.py:339` | `total == 36` | `>= 36` |
+| `test_consulting_seed_count.py:34-50` | 六种类型 `actual[t] == expected[t]` | `>=`（KC-001 六个数作为**每类型下限**）+ docstring 改为 "FLOORS" + 新增自洽断言 `sum(expected) <= len(objects)` |
+
+另两处本来就是加法式（`test_consulting_seed_count.py:29`、`test_consulting_api_contract.py:55` 的
+`>= 36`）**未动**。改后重跑盘点命令证明**没有第七处**：`evidence/09b-assertion-inventory-after.txt`。
+
+> **为什么"六种类型全 `==`"必须改**：`sum(expected) == 36 == 当时总数`，所以它不只是
+> 钉住分布，还**顺带禁止了语料任何增长**——任何新增对象都会让它变假。而它的真实意图
+> （"不许把某一类悄悄做没"）用 `>=` 就完整保留。此事由本刀的 BLOCKED 报告发现
+> （任务书 v1 §1.5 的清单漏了这一处），v1.1 已把它纳入授权。
+
+### Q.5 改动文件清单（OEI-011）
+
+内容与词表：
+- `src/ece/consulting/seed/consulting_objects.json`（24 条补 `client_industry` + 追加 9 条）
+- `src/ece/consulting/metadata.py`（`ALLOWED_INDUSTRIES` + `cross_industry` 一项 + 语义注释）
+
+测试（**只有解冻清单里的四处 + 步骤 0.1 一处**）：
+- `tests/unit/test_consulting_documents.py`、`tests/unit/test_consulting_engine_merge.py`
+- `tests/unit/test_consulting_seed_count.py`
+- `tests/integration/test_s32_assembly.py`（步骤 0.1：`item_kind` 封闭集合 → 真正的不变量）
+
+文档：
+- `docs/API.md`（§11 行业轴语义 + 45 条来历；§12 词表含 `cross_industry`）
+- `docs/DATA_MODEL.md`（§4.2 `idx_memories_scope_owner` 列序笔误订正 — OEI-010 转出）
+- `TASKS.md`（本附录 Q）
+
+**未改**：`ece/demos/spa/**`（逐字节不变）、`pyproject.toml` / `uv.lock`（零 diff）、
+引擎 / 检索 / 记忆 / 三域业务断言。
+
+### Q.6 转出 / 遗留
+
+- **`industry-note-cn-consumer-2026-002` 带 2 个具体行业**（`consumer_goods` + `retail`），
+  而 §3.1.3 要求 `industry_note` **恰好 1 个**具体行业。本刀**未收窄**它：§2 范围锁
+  明写"**不收窄也不替换** 36 个既有对象的任何字段（只允许填 `client_industry`）"，
+  而该对象本来就有值，属于"既有值"。A2 的机检只要求 `industry_note` **不得**带
+  `cross_industry`（实测 0 违规），并未要求"恰好 1"。**若下一刀要把 §3.1.3 的
+  "恰好 1 个"落到既有对象上，需在任务书里显式授权收窄。**
+- **`methodology-mckinsey-7s-004` 的 id 里含竞品名（小写 `mckinsey`）**：内容纪律
+  闸门只扫 `title / summary / methods / deliverables / outcomes`（不含 id），故不违规；
+  但它是一条**不体面的 id**。改 id 属于"改既有对象的非 `client_industry` 字段"，
+  本刀无权。转出待评估。
+- **行业轴仍只有 10 个具体行业 + 1 个通用档**：若将来要覆盖更多行业（如教育、地产、
+  农业），需先扩 `ALLOWED_INDUSTRIES`（那是**第二项**词表变更，本刀明令不做）。
+- **facets 仍只返回值集合，不含计数**：本刀的"值 → 命中数"聚合表是**证据**里算的，
+  不是 API 返回的。若前端要在下拉里显示条数，需要改 `FacetsResponse`（会动键集合）——
+  那是一次**契约变更**，不在本刀范围。

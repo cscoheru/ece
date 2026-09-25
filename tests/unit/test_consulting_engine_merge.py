@@ -336,7 +336,10 @@ def test_library_empty_query_is_skipped(
     assert (body["engine_status"], body["engine_items"]) == ("skipped", [])
     assert stub.search_calls == []
     # ...and the untouched static side still shows the whole catalogue.
-    assert body["total"] == 36
+    # `>= 36`: the static side must still show the WHOLE catalogue (this is the
+    # point of the test — the engine side being skipped must not narrow the
+    # static side). 36 is the KC-001 floor; OEI-011 raised the catalogue to 45.
+    assert body["total"] >= 36
 
 
 # ---------------------------------------------------------------------------

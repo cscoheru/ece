@@ -87,9 +87,17 @@ def test_assemble_writes_context_items_with_valid_decisions(engine) -> None:
             {"r": pkg.request_id},
         ).fetchall()
     assert len(rows) >= 1
-    # Each item has a decision ∈ {allowed, denied}
+    # `item_kind` is an OPEN set, not a closed one: this assertion used to read
+    # `r[0] in ("entity", "relationship")`, which was correct until OEI-010 added
+    # `item_kind='memory'` to the same table. At that point the assertion became
+    # too narrow — it would fail on correct behaviour as soon as any memory was
+    # visible to this caller (reproduced in
+    # onyx-lab/OEI-010/evidence/12c-s32-item-kind-fragility.txt). Enumerating the
+    # kinds was never what this test is about, so assert the invariant it actually
+    # cares about: every audit row carries a kind, a decision from the closed
+    # decision vocabulary, and a non-empty reason.
     for r in rows:
-        assert r[0] in ("entity", "relationship")
+        assert r[0] and isinstance(r[0], str)
         assert r[1] in ("allowed", "denied")
         assert r[2] != ""  # reason should be non-empty
 

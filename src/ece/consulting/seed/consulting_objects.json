@@ -366,7 +366,9 @@
       "diagnosis",
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "situation_overview"
     ],
@@ -396,7 +398,9 @@
       "diagnosis",
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "competitive_landscape"
     ],
@@ -425,7 +429,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "value_chain_breakdown"
     ],
@@ -454,7 +460,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "organization_alignment"
     ],
@@ -483,7 +491,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "waste_identification"
     ],
@@ -513,7 +523,9 @@
       "diagnosis",
       "implementation"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "role_clarity"
     ],
@@ -543,7 +555,9 @@
       "diagnosis",
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "kpi_alignment"
     ],
@@ -572,7 +586,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "customer_experience"
     ],
@@ -600,7 +616,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "cost_reduction",
       "supplier_consolidation"
@@ -631,7 +649,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "performance_gap"
     ],
@@ -661,7 +681,9 @@
       "qualification",
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "engagement_setup"
     ],
@@ -689,7 +711,9 @@
     "engagement_phase": [
       "qualification"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "lead_qualification"
     ],
@@ -717,7 +741,9 @@
     "engagement_phase": [
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "proposal_setup"
     ],
@@ -745,7 +771,9 @@
     "engagement_phase": [
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "pricing_conversation"
     ],
@@ -774,7 +802,9 @@
     "engagement_phase": [
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "team_setup"
     ],
@@ -803,7 +833,9 @@
     "engagement_phase": [
       "proposal"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "risk_disclosure"
     ],
@@ -831,7 +863,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "deliverable_structure"
     ],
@@ -860,7 +894,9 @@
     "engagement_phase": [
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "deliverable_structure"
     ],
@@ -889,7 +925,9 @@
     "engagement_phase": [
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "deliverable_structure"
     ],
@@ -917,7 +955,9 @@
     "engagement_phase": [
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "deliverable_structure"
     ],
@@ -946,7 +986,9 @@
     "engagement_phase": [
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "data_availability"
     ],
@@ -976,7 +1018,9 @@
       "qualification",
       "diagnosis"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "stakeholder_alignment"
     ],
@@ -1005,7 +1049,9 @@
     "engagement_phase": [
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "scope_creep"
     ],
@@ -1035,7 +1081,9 @@
       "diagnosis",
       "delivery"
     ],
-    "client_industry": [],
+    "client_industry": [
+      "cross_industry"
+    ],
     "problem_types": [
       "data_confidentiality"
     ],
@@ -1115,6 +1163,313 @@
     ],
     "source_origin": "licensed_public",
     "confidence": "medium",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-manufacturing-2026-003",
+    "type": "industry_note",
+    "title": "中国制造业 2026 供应链关注点",
+    "summary": "公开行业观察整理: 制造企业的产能布局、关键物料替代与供应商集中度三类关注点, 不涉及具体公司数据, 仅作行业语境.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "manufacturing"
+    ],
+    "problem_types": [
+      "industry_context",
+      "supply_resilience"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-logistics-2026-004",
+    "type": "industry_note",
+    "title": "中国物流行业 2026 网络布局观察",
+    "summary": "公开行业观察整理: 干支线衔接、仓储节点分层与时效承诺口径三类议题, 不涉及具体公司数据, 仅作行业语境.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "logistics"
+    ],
+    "problem_types": [
+      "industry_context",
+      "network_efficiency"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-healthcare-2026-005",
+    "type": "industry_note",
+    "title": "中国医疗健康行业 2026 服务运营观察",
+    "summary": "公开行业观察整理: 连锁医疗机构的分级衔接、服务一致性与一线人员配置三类议题, 仅作行业语境.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "healthcare"
+    ],
+    "problem_types": [
+      "industry_context",
+      "service_consistency"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "industry-note-cn-energy-2026-006",
+    "type": "industry_note",
+    "title": "中国能源行业 2026 采购与合规观察",
+    "summary": "公开行业观察整理: 能源企业的事业部授权层级、采购合规审视与风险分级口径三类议题, 仅作行业语境.",
+    "practice": [
+      "strategy",
+      "industry_analysis"
+    ],
+    "engagement_phase": [
+      "qualification",
+      "proposal"
+    ],
+    "client_industry": [
+      "energy"
+    ],
+    "problem_types": [
+      "industry_context",
+      "compliance_gap"
+    ],
+    "methods": [
+      "public_observation"
+    ],
+    "deliverables": [
+      "industry_brief"
+    ],
+    "outcomes": [
+      "industry_context_visible"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-technology-data-platform-011",
+    "type": "case",
+    "title": "某科技公司数据平台选型诊断",
+    "summary": "为某中型科技公司梳理数据平台现状与工具链重叠情况, 输出选型标准与分阶段落地建议. 客户名脱敏, 数字仅作示意.",
+    "practice": [
+      "operations",
+      "consulting_delivery"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "proposal"
+    ],
+    "client_industry": [
+      "technology"
+    ],
+    "problem_types": [
+      "data_availability",
+      "decision_latency"
+    ],
+    "methods": [
+      "stakeholder_interview",
+      "data_sampling"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "roadmap"
+    ],
+    "outcomes": [
+      "data_risks_visible",
+      "roadmap_communicated"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-public-sector-service-window-012",
+    "type": "case",
+    "title": "某事业单位窗口服务流程梳理",
+    "summary": "协助某事业单位梳理窗口服务流程与前后台衔接, 输出职责矩阵与短期过渡安排. 客户名脱敏, 数字仅作示意.",
+    "practice": [
+      "governance",
+      "process_redesign"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "delivery"
+    ],
+    "client_industry": [
+      "public_sector"
+    ],
+    "problem_types": [
+      "process_breakdown",
+      "role_clarity"
+    ],
+    "methods": [
+      "process_mapping",
+      "raci_matrix"
+    ],
+    "deliverables": [
+      "raci_matrix",
+      "transition_plan"
+    ],
+    "outcomes": [
+      "decision_rights_clarified",
+      "process_breakdowns_identified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "case-insurance-underwriting-013",
+    "type": "case",
+    "title": "某保险公司核保流程时效评估",
+    "summary": "为某中型保险公司评估核保环节的等待时间与复核集中度, 给出分级授权与流程改进建议. 客户名脱敏, 数据为示意.",
+    "practice": [
+      "operations",
+      "risk_management"
+    ],
+    "engagement_phase": [
+      "diagnosis",
+      "implementation"
+    ],
+    "client_industry": [
+      "insurance"
+    ],
+    "problem_types": [
+      "turnaround_time",
+      "approval_breakdown"
+    ],
+    "methods": [
+      "process_mapping",
+      "queue_analysis"
+    ],
+    "deliverables": [
+      "diagnostic_report",
+      "sop"
+    ],
+    "outcomes": [
+      "bottleneck_identified",
+      "process_breakdowns_identified"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-timeline-slippage-005",
+    "type": "risk_check",
+    "title": "进度延期风险",
+    "summary": "项目排期延期的早期信号与三步应对 (里程碑复核、关键路径识别、客户侧资源确认), 适用于各类咨询项目.",
+    "practice": [
+      "consulting_delivery",
+      "change_management"
+    ],
+    "engagement_phase": [
+      "proposal",
+      "delivery"
+    ],
+    "client_industry": [
+      "cross_industry"
+    ],
+    "problem_types": [
+      "capacity_planning",
+      "stakeholder_alignment"
+    ],
+    "methods": [
+      "risk_register",
+      "change_control"
+    ],
+    "deliverables": [
+      "risk_register"
+    ],
+    "outcomes": [
+      "risks_documented"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
+    "review_state": "approved"
+  },
+  {
+    "id": "risk-check-benefit-realization-006",
+    "type": "risk_check",
+    "title": "收益兑现风险",
+    "summary": "项目结项后改进措施未落地的常见成因与三道检查 (责任归属、度量口径、复盘节奏), 适用于各类改进项目.",
+    "practice": [
+      "consulting_delivery",
+      "performance_management"
+    ],
+    "engagement_phase": [
+      "delivery"
+    ],
+    "client_industry": [
+      "cross_industry"
+    ],
+    "problem_types": [
+      "kpi_alignment",
+      "organization_alignment"
+    ],
+    "methods": [
+      "kpi_tree",
+      "risk_register"
+    ],
+    "deliverables": [
+      "risk_register"
+    ],
+    "outcomes": [
+      "risks_documented"
+    ],
+    "source_origin": "synthetic_variant",
+    "confidence": "synthetic",
     "review_state": "approved"
   }
 ]
