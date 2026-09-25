@@ -431,6 +431,9 @@ N=5 byte-equal 确定性 + denied 零副作用 + 真实运行 `elapsed_ms > 0`�
 ## 6. Engine Status（OEI-003，Engine Core 内部状态页）
 
 > ⚠️ 本端点**不在 `/api/v1/` 前缀下**——它是 Engine Core 内部状态页，由 `ContentEnginePort` 抽象支撑，**不**走 JWT / 权限层。用于演示与排障，**不进**外部 v1 契约。
+>
+> **身份**（OEI-008）：匿名可用。请求头若带 `X-User-Id` / `Authorization`，会被解析成
+> `EngineCallerContext` 并透传给 Port（见 §13）；这是为了审计"谁读了引擎"，**不**构成鉴权。
 
 ### GET /engine/status
 
@@ -494,6 +497,10 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 > 互不覆盖；静态侧语义与字段**完全未变**，引擎结果只走新增字段。
 
 ### GET /api/v1/consulting/library
+
+**身份**：匿名可用（只读）。若请求带了 `X-User-Id` 或 `Authorization: Bearer`，
+调用方会被解析成 `EngineCallerContext` 并随检索一起下推给内容引擎、记入引擎侧审计
+（见 §13）——但**不因此过滤结果**。缺失身份不报错。
 
 **查询参数**：
 
@@ -715,3 +722,97 @@ curl -X POST -F 'file=@retail-case.md' -F 'title=零售门店坪效诊断案例'
 上传成功后自动触发一次 library 检索，新文档立刻出现在「引擎召回」分组。
 **`cut_045_local_origin.py` 上游超时 10 秒 + Onyx 冷启动 4-15 秒**决定了
 "上传 → 立即检索"链路上的第一次检索可能 502，刷新一次就好（稳态 4.2 秒）。
+
+## 13. 身份穿透到内容引擎（OEI-008）
+
+> 目的：让"是谁在问引擎"在**每一次引擎调用**上都有记录，并把"是否接入真实引擎"的
+> 判断从**手抄的环境变量**改成**Port 自己声明的名字**。
+> 这不是权限过滤（那件事明确不属于 OEI-008，见 §13.3）。
+
+### 13.1 契约：`ContentEnginePort` 的五个方法都收 `caller`
+
+| 方法 | `caller` 参数 | 说明 |
+|---|---|---|
+| `search(q, *, top_k, caller)` | ✅ | 唯一被 Library 召回调用的方法 |
+| `engine_status(*, caller)` | ✅ | Engine Status 页 |
+| `list_projects(*, caller)` | ✅ | 引擎项目列表 |
+| `upload_document(..., *, caller)` | ✅ | **写路径**：匿名被拒（见 §13.2） |
+| `document_status(id, *, caller)` | ✅ | 轮询状态 |
+
+`caller` 的类型是 `EngineCallerContext`（`src/ece/connectors/onyx/port.py`，冻结 dataclass）：
+
+```jsonc
+{
+  "user_ref": "U001",          // 或 None（匿名）
+  "roles": ["buyer"],          // tuple；只读路径通常为空（不求 DB）
+  "department": "procurement",
+  "is_management": false,
+  "org_id": null,
+  "source": "jwt" | "header" | "anonymous" | "test"
+}
+```
+
+两个构造入口（`src/ece/connectors/onyx/caller.py`）：
+
+- `caller_from_request_headers(authorization, x_user_id)` —— **廉价路径**，只读端点用；
+  不查 DB，所以 `roles`/`department` 为空。
+- `caller_from_db_identity(sql_engine, authorization, x_user_id)` —— **写路径**用；
+  经 `ece.identity.parser.resolve_identity` 查 DB 拿到完整身份。匿名 → 抛
+  `EngineError("identity-required …")`，路由层映射为 **403**。
+
+**层级纪律**：`port.py` 不 import 任何 Onyx / JWT / DB 相关的东西；`EngineCallerContext`
+是纯标准库对象。两个构造器住在 `caller.py`，**不**住在 `port.py`。
+
+### 13.2 四个调用点的匿名策略
+
+| 调用点 | 身份 | 匿名行为 |
+|---|---|---|
+| `GET /api/v1/consulting/library` | 廉价路径 | **允许**，记 `<anonymous>`，照常检索 |
+| `GET /engine/status`（含 `?q=`） | 廉价路径 | **允许**，记 `<anonymous>` |
+| `POST /api/v1/consulting/documents` | DB 路径 | **403** `identity-required (upload endpoints require an authenticated caller)` |
+| `GET /api/v1/consulting/documents/{id}` | 廉价路径 | **允许**（只读轮询） |
+
+适配器另外做**防御性**复核：`upload_document` 收到显式的
+`EngineCallerContext.anonymous()` 直接抛 `EngineError("identity-required …")`，
+**在任何 HTTP 发出之前**。这样即使未来有调用点绕过路由，匿名上传也进不去引擎。
+
+> 兼容性说明：`caller=None`（完全没传，等价于"跳过审计"）仍被接受，因为 OEI-008 之前
+> 的调用点就是这个形状。生产路径**永远**传非 None 的 caller；路由层先拦匿名。
+
+### 13.3 已知限制：内容引擎**无法**下推权限
+
+这是本刀的**边界声明**，不是待办：
+
+- 社区版 Onyx 的 `/api/search` **没有**按用户/部门的 ACL 过滤参数。ECE 把
+  `caller` 传下去，引擎**只能**用它做审计，不能用它裁剪结果。
+- 因此：**引擎召回的分组里，一个采购用户可能看到合规文档的片段**——
+  权限过滤是 ECE 侧的活儿（OEI-009 范围）。
+- 缓解方向（已记录、未实施）见 `onyx-lab/OEI-008/evidence/07-ce-permission-limitation.md`：
+  ECE 侧按 classification 过滤 + 收紧 `top_k`、按域拆 project、片段脱敏、
+  升级 EE、审计 + 速率限制。
+
+### 13.4 审计形态
+
+两个适配器都实现了同一个 `_audit(what, *, caller, result, **extra)`，写进程内
+`audit_log`（`list[dict]`，每次调用一行）：
+
+```jsonc
+{ "when": 1790296266.7, "what": "search", "caller": "alice[jwt,dept=finance,mgmt=False]",
+  "caller_user_ref": "alice", "caller_source": "jwt",
+  "result": "ok", "hits": 3, "query": "问题树", "top_k": null }
+```
+
+- `result` 取值覆盖每条出口：`ok` / `not_found` / `transport_failure` / `auth_failure` /
+  `server_error` / `non_2xx` / `non_json` / `non_array` / `empty` / `rejected`。
+  **成功路径也记**——只记失败的审计答不了"谁读了引擎"。
+- 这是**进程内**日志，不是 `src/ece/audit/` 那张表：per-call 落库会引入每次检索一次
+  DB 写，属于 §13.3 里"尚未承担的缓解成本"。样本见 `evidence/06-audit-trail.json`。
+
+### 13.5 为什么删掉了环境变量镜像
+
+OEI-006/007 期间 `engine_merge.py` 自己 `os.environ.get("ECE_CONTENT_ENGINE")`
+判断要不要走真实引擎——这是**手抄适配器的 selector**，加第三个适配器就必然漂移。
+现在改成读 `engine.engine_name`（`"onyx"` / `"mock"`），由 Port 自己声明。
+`tests/unit/test_content_engine_identity.py` 钉住了这个回归：
+`def _engine_switch_is_onyx` 不得重现，`engine_merge.py` 里不得再出现
+`os.environ.get("ECE_CONTENT_ENGINE")`。

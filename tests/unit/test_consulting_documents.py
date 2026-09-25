@@ -17,6 +17,7 @@ No DB, no Onyx — runs in 0.0x seconds.
 from __future__ import annotations
 
 import asyncio
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -232,8 +233,21 @@ def test_reset_mock_engine_store_clears_state() -> None:
 
 @pytest.fixture
 def client() -> TestClient:
+    # The consulting upload route calls `caller_from_db_identity` which resolves
+    # the test-user via `ece.identity.parser.resolve_identity` against the DB.
+    # Default `ece.db.get_engine()` targets `localhost:5432` (compose); without
+    # an override the call hangs on connection refused / TCP retry. Override
+    # to the test PG (or 127.0.0.1) — tests do not actually require a row,
+    # because `resolve_identity` returns a bare Identity on miss (the call
+    # itself just needs the engine to construct without raising).
+    os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://ece:ece@127.0.0.1:55432/ece")
     reset_mock_engine_store()
-    return TestClient(app)
+    # OEI-008 — the upload route is auth-required (write path). All existing
+    # tests assume an authenticated caller; we satisfy that by attaching a
+    # default `X-User-Id` header at the fixture level. Assertions are
+    # unchanged; the only behavioural change is "requests now carry identity"
+    # which is the new policy under test.
+    return TestClient(app, headers={"X-User-Id": "test-user"})
 
 
 def _post_files(c: TestClient, files, data=None):

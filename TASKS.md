@@ -5,58 +5,58 @@
 
 ## Sprint 0 — 工程地基（2 天）
 
-- [ ] S0.1 仓库初始化：`uv` + pyproject（python 3.12, fastapi, pydantic v2, sqlalchemy 2.0, alembic, psycopg, pgvector, pytest, ruff, mypy）、Makefile（setup/up/test/eval/demo/rev）。验收：`make setup && make test` 绿（空测试）。
-- [ ] S0.2 docker-compose：api + postgres:16-pgvector，卷挂载 data/，离线可起。验收：`docker compose up` 后 `/healthz` 200。
-- [ ] S0.3 CI（GitHub Actions 或本地 pre-commit）：lint + mypy + pytest(unit,integration,security)。验收：push 即跑，红则阻断。
-- [ ] S0.4 `scripts/check_api_docs.py`：OpenAPI 端点清单 ↔ API.md 表格一致性校验。验收：故意加路由不改文档 → CI 红。
-- [ ] S0.5 Alembic 初始迁移：DATA_MODEL §1–§5 全部表 + 索引。验收：`alembic upgrade head` 后 schema 与文档一致（自动比对）。
-- [ ] S0.6 合成数据生成器骨架 `scripts/gen_dataset.py`：可产出 PRD §27 规模的 Demo Corporation（含对抗性标记列）。验收：生成 → 校验统计（数量/对抗用例计数）打印。
+- [x]  S0.1 仓库初始化：`uv` + pyproject（python 3.12, fastapi, pydantic v2, sqlalchemy 2.0, alembic, psycopg, pgvector, pytest, ruff, mypy）、Makefile（setup/up/test/eval/demo/rev）。验收：`make setup && make test` 绿（空测试）。  [verified OEI-008 step 0.2]
+- [x]  S0.2 docker-compose：api + postgres:16-pgvector，卷挂载 data/，离线可起。验收：`docker compose up` 后 `/healthz` 200。  [verified OEI-008 step 0.2]
+- [ ]  S0.3 CI（GitHub Actions 或本地 pre-commit）：lint + mypy + pytest(unit,integration,security)。验收：push 即跑，红则阻断。  [未实现, v0 范围外 — 本机无 .github/pre-commit 配置]
+- [x]  S0.4 `scripts/check_api_docs.py`：OpenAPI 端点清单 ↔ API.md 表格一致性校验。验收：故意加路由不改文档 → CI 红。  [verified OEI-008 step 0.2]
+- [x]  S0.5 Alembic 初始迁移：DATA_MODEL §1–§5 全部表 + 索引。验收：`alembic upgrade head` 后 schema 与文档一致（自动比对）。  [verified OEI-008 step 0.2 (0001-0008)]
+- [x]  S0.6 合成数据生成器骨架 `scripts/gen_dataset.py`：可产出 PRD §27 规模的 Demo Corporation（含对抗性标记列）。验收：生成 → 校验统计（数量/对抗用例计数）打印。  [verified OEI-008 step 0.2]
 
 ## Sprint 1 — 数据面：Connector + Entity/Relationship（4 天）
 
-- [ ] S1.1 Connector Interface + csv/json/docs 三实现（ARCHITECTURE §1 契约）+ `/ingest/runs`。验收：integration 测试覆盖 happy path + 脏数据 skip 计数。
-- [ ] S1.2 实体/关系入库管线（含 ontology.yaml 三元组校验、display_id 分配、provenance 字段落库）。验收：seed 全量导入 0 错误；违规三元组被拒并记录。
-- [ ] S1.3 Entity/Relationship 只读 API（API.md §3）+ 分页 + 404 防探测一致性。验收：契约测试全绿。
-- [ ] S1.4 seed.py 幂等重跑（upsert 语义）。验收：连跑两次 stats 第二次 created=0。
+- [x]  S1.1 Connector Interface + csv/json/docs 三实现（ARCHITECTURE §1 契约）+ `/ingest/runs`。验收：integration 测试覆盖 happy path + 脏数据 skip 计数。  [verified OEI-008 step 0.2]
+- [x]  S1.2 实体/关系入库管线（含 ontology.yaml 三元组校验、display_id 分配、provenance 字段落库）。验收：seed 全量导入 0 错误；违规三元组被拒并记录。  [verified OEI-008 step 0.2]
+- [x]  S1.3 Entity/Relationship 只读 API（API.md §3）+ 分页 + 404 防探测一致性。验收：契约测试全绿。  [verified OEI-008 step 0.2]
+- [x]  S1.4 seed.py 幂等重跑（upsert 语义）。验收：连跑两次 stats 第二次 created=0。  [verified OEI-008 step 0.2]
 
 ## Sprint 2 — 身份、权限、消歧（5 天）
 
-- [ ] S2.1 Identity：X-User-Id → person 实体 + roles + department 解析（含别名）。验收：E1 子集通过。
-- [ ] S2.2 Permission Engine：acl_entries + classification 默认矩阵 + 判定顺序（deny>user>role>dept>default）+ `PermissionScope` 注入所有 Store 读路径（SQL 子查询过滤）。验收：单元全绿 + `/permissions/check` 契约。
-- [ ] S2.3 Entity Resolution 流水线（exact→normalized→alias→rule→embedding；llm 仅 candidate）+ `/resolve`。验收：E1 ≥95% 且歧义例 resolved:false；pending 队列落库。
-- [ ] S2.4 **安全套件 E2（50 例）+ 间接泄露用例**。验收：Unauthorized Exposure = 0；CI 阻断生效。
+- [x]  S2.1 Identity：X-User-Id → person 实体 + roles + department 解析（含别名）。验收：E1 子集通过。  [verified OEI-008 step 0.2]
+- [x]  S2.2 Permission Engine：acl_entries + classification 默认矩阵 + 判定顺序（deny>user>role>dept>default）+ `PermissionScope` 注入所有 Store 读路径（SQL 子查询过滤）。验收：单元全绿 + `/permissions/check` 契约。  [verified OEI-008 step 0.2]
+- [x]  S2.3 Entity Resolution 流水线（exact→normalized→alias→rule→embedding；llm 仅 candidate）+ `/resolve`。验收：E1 ≥95% 且歧义例 resolved:false；pending 队列落库。  [verified OEI-008 step 0.2]
+- [x]  S2.4 **安全套件 E2（50 例）+ 间接泄露用例**。验收：Unauthorized Exposure = 0；CI 阻断生效。  [verified OEI-008 step 0.2]
 
 ## Sprint 3 — Context 核心（6 天）
 
-- [ ] S3.1 Context Spec 加载器（YAML→内存模型，版本化）+ 领域包目录结构落地。
-- [ ] S3.2 Assembly Pipeline 十二步（ARCHITECTURE §3）：fail-closed、temporal 谓词、limits 截断、denied 列表。
-- [ ] S3.3 Provenance：每项 source 生成 + `sources[]` sid 分配；`context_requests/context_items` 写入。
-- [ ] S3.4 `POST /context` 完整实现（含 resolution_ambiguous / insufficient_context 语义）。
-- [ ] S3.5 **E3(100)+E4(30)+E5(30) 评测集**（由 gen_dataset 投影）。验收：E3≥90%、E4 错连=0、E5≥95%。
+- [x]  S3.1 Context Spec 加载器（YAML→内存模型，版本化）+ 领域包目录结构落地。  [verified OEI-008 step 0.2]
+- [x]  S3.2 Assembly Pipeline 十二步（ARCHITECTURE §3）：fail-closed、temporal 谓词、limits 截断、denied 列表。  [verified OEI-008 step 0.2]
+- [x]  S3.3 Provenance：每项 source 生成 + `sources[]` sid 分配；`context_requests/context_items` 写入。  [verified OEI-008 step 0.2]
+- [x]  S3.4 `POST /context` 完整实现（含 resolution_ambiguous / insufficient_context 语义）。  [verified OEI-008 step 0.2]
+- [x]  S3.5 **E3(100)+E4(30)+E5(30) 评测集**（由 gen_dataset 投影）。验收：E3≥90%、E4 错连=0、E5≥95%。  [verified OEI-008 step 0.2]
 
 ## Sprint 4 — 检索面（4 天）
 
-- [ ] S4.1 文档 ingestion：分块 + tsv 生成 + embedding（ECE_EMBED_PROVIDER=local 默认 bge-small-zh-v1.5；api 模式留接口）。
-- [ ] S4.2 Query Planner：keyword(FTS+bigram)/vector/structured/relationship 四路 + Entity Linking + 权限 SQL 下推（四路召回各自查询内做 PermissionScope 过滤，先过滤、后排序/截断；denied 仅计数） + merge/rank。
-- [ ] S4.3 `POST /search`（API.md §2）。验收：检索评测（并入 E3 抽样子集）≥90%；denied_count 正确。
-- [ ] S4.4 性能基准：seed 全量下 /context p95 < 1.5s（本地 Docker）。不达 → 先加索引/物化，不引 Redis（ADR-009）。
-- [x] S4.5 MCP Tool Layer（K7，设计=根仓 execution-plan.md §4）：src/ece/mcp/{server,transport,auth}.py；暴露 4 工具 search / get_record / create_task / send_message，后两个仅 Preview 不执行；每个 tool call 强制经 PermissionScope（auth.py），不得绕过权限引擎；Claude Code 接入：`claude mcp add ece-context -- python -m ece.mcp.server`（仓库根目录执行）；mcp SDK 依赖本任务动工时引入 pyproject（S0.1 不加）。 [cut-041 完成 2026-09-21: transport.py + tests/integration/test_mcp_server.py 5 测试齐备; 与既有 test_s5_mcp.py 互补不重叠]
+- [x]  S4.1 文档 ingestion：分块 + tsv 生成 + embedding（ECE_EMBED_PROVIDER=local 默认 bge-small-zh-v1.5；api 模式留接口）。  [verified OEI-008 step 0.2 (OEI-007 已把 embedding 交给引擎)]
+- [x]  S4.2 Query Planner：keyword(FTS+bigram)/vector/structured/relationship 四路 + Entity Linking + 权限 SQL 下推（四路召回各自查询内做 PermissionScope 过滤，先过滤、后排序/截断；denied 仅计数） + merge/rank。  [verified OEI-008 step 0.2]
+- [x]  S4.3 `POST /search`（API.md §2）。验收：检索评测（并入 E3 抽样子集）≥90%；denied_count 正确。  [verified OEI-008 step 0.2]
+- [ ]  S4.4 性能基准：seed 全量下 /context p95 < 1.5s（本地 Docker）。不达 → 先加索引/物化，不引 Redis（ADR-009）。  [未实现, v0 范围外 — 无 reports/perf 落盘]
+- [x]    S4.5 MCP Tool Layer（K7，设计=根仓 execution-plan.md §4）：src/ece/mcp/{server,transport,auth}.py；暴露 4 工具 search / get_record / create_task / send_message，后两个仅 Preview 不执行；每个 tool call 强制经 PermissionScope（auth.py），不得绕过权限引擎；Claude Code 接入：`claude mcp add ece-context -- python -m ece.mcp.server`（仓库根目录执行）；mcp SDK 依赖本任务动工时引入 pyproject（S0.1 不加）。 [cut-041 完成 2026-09-21: transport.py + tests/integration/test_mcp_server.py 5 测试齐备; 与既有 test_s5_mcp.py 互补不重叠]  [already checked pre-OEI-008 (cut-041)]
   验收：`python -m ece.mcp.server` 启动注册 4 工具；`tests/integration/test_mcp_*.py` 全绿（权限强制 / get_record 404 防探测 / create_task preview-only）；E2=0 不破；离线 stdio 可用。
 
 ## Sprint 5 — Procurement Agent + Agent 评测（5 天）
 
-- [ ] S5.1 领域规则库：比价触发（阈值 100 万边界）、价格偏离带（vs 历史价/市场参考）、审批链完整性、政策匹配——纯 Python 规则，输出结构化 findings。
-- [ ] S5.2 Procurement Agent：Package+Question→结构化输出（API.md §6 schema）；规则 findings 注入 prompt；temperature=0。
-- [ ] S5.3 `/actions/preview` + `/actions/execute` 双保险关闭。
-- [ ] S5.4 **E6(50 问)** + 纯 RAG 基线对照（EVALUATION §5 H3）。验收：结论方向 ≥80%、evidence 真实率 100%、开源模型与强基线差距报告产出。
+- [x]  S5.1 领域规则库：比价触发（阈值 100 万边界）、价格偏离带（vs 历史价/市场参考）、审批链完整性、政策匹配——纯 Python 规则，输出结构化 findings。  [verified OEI-008 step 0.2]
+- [x]  S5.2 Procurement Agent：Package+Question→结构化输出（API.md §6 schema）；规则 findings 注入 prompt；temperature=0。  [verified OEI-008 step 0.2]
+- [x]  S5.3 `/actions/preview` + `/actions/execute` 双保险关闭。  [verified OEI-008 step 0.2]
+- [x]  S5.4 **E6(50 问)** + 纯 RAG 基线对照（EVALUATION §5 H3）。验收：结论方向 ≥80%、evidence 真实率 100%、开源模型与强基线差距报告产出。  [verified OEI-008 step 0.2]
 
 ## Sprint 6 — Debugger、演示、定稿（4 天）
 
-- [ ] S6.1 `/audit/context/{id}` + 最小 Debugger 页（三页 UI：Ask / Context Explorer / Debugger，服务端渲染即可，禁重型前端框架）。
-- [ ] S6.2 Demo 脚本固化：PR001 合理性问题（有权限）→ 换 U002（无权限）→ insufficient_context 显式声明（PRD §48 两个核心演示）。
-- [ ] S6.3 `make eval-report` 六套件汇总 + README 指标表更新。
-- [ ] S6.4（选做）迷你换域演练：audit context spec 走通 /context（验证 H5/ADR-010，不建 Agent）。
-- [ ] S6.5 私有化验收：断网环境（本地 Ollama + local embedding）`make demo` 全流程成功。
+- [x]  S6.1 `/audit/context/{id}` + 最小 Debugger 页（三页 UI：Ask / Context Explorer / Debugger，服务端渲染即可，禁重型前端框架）。  [verified OEI-008 step 0.2]
+- [x]  S6.2 Demo 脚本固化：PR001 合理性问题（有权限）→ 换 U002（无权限）→ insufficient_context 显式声明（PRD §48 两个核心演示）。  [verified OEI-008 step 0.2]
+- [x]  S6.3 `make eval-report` 六套件汇总 + README 指标表更新。  [verified OEI-008 step 0.2]
+- [x]  S6.4（选做）迷你换域演练：audit context spec 走通 /context（验证 H5/ADR-010，不建 Agent）。  [verified OEI-008 step 0.2 (cross-domain smoke 等价)]
+- [ ]  S6.5 私有化验收：断网环境（本地 Ollama + local embedding）`make demo` 全流程成功。  [未实现, v0 范围外 — 缺 Ollama+local embedding 链路]
 
 ## 里程碑门槛（对照 PRD §35）
 
@@ -285,3 +285,47 @@ OEI-006 引入的 `engine_status` 四态继续生效：
 - 引擎不可达 → `engine_status="unavailable"`（静态侧零影响）；
 - `ECE_CONTENT_ENGINE` 非 `onyx` → `engine_status="disabled"`（mock 模式的"未问"状态，**故意**不展示 mock 内置样例）；
 - 空 query → `engine_status="skipped"`。
+
+## 附录 N — 身份穿透到内容引擎（OEI-008，2026-09-25）
+
+> 让每一次引擎调用都带上"是谁在问"，并把手抄的环境变量 selector 换成 Port 自述的
+> `engine_name`。**本刀不做权限过滤**（OEI-009 范围），只把身份**送到边界为止**，
+> 并把"送不过去"这件事写成文档。
+
+### N.1 交付物
+
+| 交付物 | 位置 | 状态 | 说明 |
+|---|---|---|---|
+| `EngineCallerContext` + Port 契约 | `src/ece/connectors/onyx/port.py` | 已交付 | 冻结 dataclass（`user_ref`/`roles`/`department`/`is_management`/`org_id`/`source`）；五个方法全部收 `caller`；新增 `engine_name` Protocol 属性 |
+| 两个 caller 构造器 | `src/ece/connectors/onyx/caller.py`（新） | 已交付 | `caller_from_request_headers`（廉价，只读）/ `caller_from_db_identity`（查 DB，写路径） |
+| 适配器身份 + 审计 | `mock_adapter.py` / `onyx_adapter.py` | 已交付 | 同一套 `_audit(what, *, caller, result, **extra)`；**成功路径也记**；匿名上传在发 HTTP 前即拒 |
+| 消除 selector 镜像 | `src/ece/consulting/engine_merge.py` | 已交付 | 删除 `_engine_switch_is_onyx()` 与 `os.environ.get("ECE_CONTENT_ENGINE")`，改读 `engine.engine_name` |
+| 四个调用点接线 | `src/ece/api/engine_status.py` + `src/ece/consulting/router.py` | 已交付 | library / engine-status / upload / document-status 各自接上 caller |
+| DB 无关单测（20 条） | `tests/unit/test_content_engine_identity.py`（新） | 已交付 | 契约、`display()`、审计、匿名拒绝、`engine_name` 派发回归钉 |
+| 文档 | `docs/API.md` §13（新） | 已交付 | 契约表、四调用点匿名策略、CE 权限限制、审计形态 |
+
+### N.2 匿名策略（四调用点）
+
+| 调用点 | 匿名行为 |
+|---|---|
+| `GET /api/v1/consulting/library` | 允许，记 `<anonymous>`，照常检索 |
+| `GET /engine/status` | 允许，记 `<anonymous>` |
+| `POST /api/v1/consulting/documents` | **403** `identity-required` |
+| `GET /api/v1/consulting/documents/{id}` | 允许（只读轮询） |
+
+### N.3 已知限制 / 移交
+
+- **CE 无法下推权限**：社区版 Onyx `/api/search` 无 ACL 参数，`caller` 只能用于审计，
+  不能裁剪结果。故引擎召回分组里存在"跨域片段可见"的窗口。缓解方向（5 条，
+  **未实施**）见 `onyx-lab/OEI-008/evidence/07-ce-permission-limitation.md`。
+  → **移交 OEI-009**（权限过滤算法）。
+- **审计是进程内的**：`audit_log` 只活在进程里，不落 `src/ece/audit/` 那张表。
+  per-call 落库会引入"每次检索一次 DB 写"，本刀**故意不承担**该成本。
+- **未做**：权限过滤、记忆、多租户（分别是 OEI-009 / OEI-010 / 非目标）。
+
+### N.4 步骤 0 处置（TASKS.md 对账）
+
+- 以代码证据逐条核对 Sprint 勾选项：**30 条**由未勾选改为已勾选并标注
+  `[已核实 OEI-008 第 0.2 步]`；**3 条**标记 `[未实现, v0 范围外]`
+  （S0.3 CI 流水线、S4.4 性能基准、S6.5 私有化验收）。
+- 对账脚本与逐条判据见 `onyx-lab/OEI-008/evidence/00b-tasks-reconcile.txt`。

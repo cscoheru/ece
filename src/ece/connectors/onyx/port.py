@@ -1,29 +1,41 @@
-"""ContentEnginePort — Protocol + Pydantic models (OEI-003 §4 步骤 2).
+"""ContentEnginePort — Protocol + Pydantic models (OEI-003 §4 + OEI-007 + OEI-008).
 
-Three read methods (OEI-003):
-- search(query, *, top_k=None) -> list[EngineDocument]
-- engine_status() -> EngineStatus
-- list_projects() -> list[EngineProject]
+Five methods:
+- search(query, *, top_k=None, caller=None)             — read (OEI-003)
+- engine_status(*, caller=None)                         — read (OEI-003)
+- list_projects(*, caller=None)                        — read (OEI-003)
+- upload_document(filename, content, *, project_id,
+                 title=None, metadata=None, caller=None)  — write (OEI-007)
+- document_status(document_id, *, caller=None)          — write (OEI-007)
 
-Two write methods (OEI-007):
-- upload_document(filename, content: bytes, *, project_id, title=None, metadata=None) -> EngineDocumentStatus
-- document_status(document_id: str) -> EngineDocumentStatus
+OEI-008 — Identity threading:
+  Every method now takes an optional `caller: EngineCallerContext | None = None`
+  so the caller's identity reaches the adapter for audit + recall labels. The
+  Port also exposes `engine_name` so the consulting layer's `engine_merge` no
+  longer has to mirror the selector switch (the previous "unable to describe"
+  comment is now obsolete — see `04-port-engine-descriptor.txt`).
 
 分层纪律:Onyx 专有字段(citation_id / source_type:user_file / 等)只能活在 adapter
-内部,Port 与统一返回模型(Pydantic)零依赖 Onyx。
+内部,Port 与统一返回模型(Pydantic)零依赖 Onyx。`EngineCallerContext` likewise
+imports nothing from Onyx.
 
-Note: OEI-007 deliberately keeps `engine_doc_id` on `EngineDocument` (the search-side
-identifier, set from Onyx `citation_id` for each recall) SEPARATE from `document_id`
-on `EngineDocumentStatus` (the upload-side identifier, set from Onyx `user_file.id`).
-They live in different namespaces — see `OnyxContentEngineAdapter.upload_document` for
-the mapping notes.
+Permission discipline (CE limitation, see `07-ce-permission-limitation.md`):
+  The Port **cannot** push per-user permissions into the engine (CE has no
+  external-source permission sync — that capability is on the EE side). The
+  Port therefore passes `caller` for *audit*, not for *enforcement*: per-result
+  filtering happens on the ECE side. This is the design contract; every
+  adapter emission must surface it in its audit log.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from ece.identity.parser import Identity
 
 
 class EngineDocument(BaseModel):
@@ -104,29 +116,122 @@ class EngineDocumentStatus(BaseModel):
     raw: dict[str, Any] = Field(default_factory=dict, description="engine-specific extras")
 
 
+# ---------------------------------------------------------------------------
+# OEI-008 — EngineCallerContext (the "who" payload threaded through Port)
+# ---------------------------------------------------------------------------
+
+
+EngineCallerSourceT = Literal["jwt", "header", "anonymous", "test"]
+
+
+@dataclass(frozen=True)
+class EngineCallerContext:
+    """Identity payload carried through every ContentEnginePort call.
+
+    Three sources:
+      - "jwt"        — caller resolved from `Authorization: Bearer …` (cut-027/032)
+      - "header"     — caller resolved from legacy `X-User-Id` header
+                       (cut-036 R36.2: only when `ECE_ALLOW_HEADER_AUTH=1`)
+      - "anonymous"  — no caller (allowed on read-only surfaces; explicitly
+                       forbidden on upload — see OEI-008 §A5)
+      - "test"       — internal marker for unit tests; never produced by
+                       the API layer
+
+    `roles` is a frozen tuple (not a list) so the context is hashable and
+    cheap to put in audit records.
+
+    Construct via `EngineCallerContext.from_headers(...)` (helpers in
+    `src/ece/connectors/onyx/caller.py`) or `EngineCallerContext.anonymous()`.
+    Direct construction is allowed (it's a dataclass) but `source` must be
+    one of the literal values above.
+    """
+
+    user_ref: str | None
+    roles: tuple[str, ...] = ()
+    department: str = ""
+    is_management: bool = False
+    org_id: str | None = None
+    source: EngineCallerSourceT = "anonymous"
+
+    @classmethod
+    def anonymous(cls) -> EngineCallerContext:
+        """The "no caller" context. Used for read-only anonymous endpoints."""
+        return cls(user_ref=None, roles=(), department="", is_management=False,
+                   org_id=None, source="anonymous")
+
+    @classmethod
+    def from_identity(
+        cls,
+        identity: Identity | None,
+        *,
+        source: EngineCallerSourceT = "header",
+    ) -> EngineCallerContext:
+        """Build from a resolved `Identity` (or `None` for anonymous).
+
+        Lazy TYPE_CHECKING import keeps port.py independent of the
+        identity module at module load time.
+        """
+        if identity is None:
+            return cls.anonymous()
+        return cls(
+            user_ref=identity.user_ref,
+            roles=tuple(identity.roles),
+            department=identity.department or "",
+            is_management=identity.is_management,
+            org_id=None,
+            source=source,
+        )
+
+    def display(self) -> str:
+        """Stable string for audit logs (no secrets, no PII beyond user_ref)."""
+        ref = self.user_ref or "<anonymous>"
+        return f"{ref}[{self.source},dept={self.department or '-'},mgmt={self.is_management}]"
+
+
 @runtime_checkable
 class ContentEnginePort(Protocol):
     """Abstract port to a content + search engine.
 
     Implementations: OnyxContentEngineAdapter (real), MockContentEngineAdapter (offline).
+    Every method now takes an optional `caller: EngineCallerContext | None = None`
+    (OEI-008). Adapters MUST record the caller's identity for audit; callers
+    MAY pass `None` for read-only anonymous access (see OEI-008 §A5).
     """
 
-    async def search(self, query: str, *, top_k: int | None = None) -> list[EngineDocument]:
+    @property
+    def engine_name(self) -> str:
+        """A stable string identifying the engine kind.
+
+        Lets the consulting layer describe the live engine without
+        re-implementing the selector switch (eliminates the debt
+        documented in OEI-007 §R1). MUST be lowercase, no spaces.
+        """
+        ...
+
+    async def search(
+        self,
+        query: str,
+        *,
+        top_k: int | None = None,
+        caller: EngineCallerContext | None = None,
+    ) -> list[EngineDocument]:
         """Run a search query and return up to top_k documents (engine's default if None).
 
         MUST NOT raise on empty results — return [] instead.
         MUST raise EngineError on transport / HTTP / parsing failures.
+        `caller` is for audit only (does not affect results — see CE
+        permission-limitation note in module docstring).
         """
         ...
 
-    async def engine_status(self) -> EngineStatus:
+    async def engine_status(self, *, caller: EngineCallerContext | None = None) -> EngineStatus:
         """Return current engine state snapshot.
 
         MUST raise EngineError if engine is unreachable.
         """
         ...
 
-    async def list_projects(self) -> list[EngineProject]:
+    async def list_projects(self, *, caller: EngineCallerContext | None = None) -> list[EngineProject]:
         """List all projects on the engine.
 
         MUST raise EngineError on transport failure.
@@ -141,12 +246,18 @@ class ContentEnginePort(Protocol):
         project_id: int,
         title: str | None = None,
         metadata: dict[str, Any] | None = None,
+        caller: EngineCallerContext | None = None,
     ) -> EngineDocumentStatus:
         """Upload a document to the engine and return its initial status.
 
         `content` is the raw file bytes (the engine does the text extraction).
         `metadata` is engine-shaped advisory data — the adapter may store it
         however the engine supports; MUST NOT raise when the engine ignores it.
+
+        `caller` MUST be non-None on this write path (OEI-008 §A5):
+        anonymous uploads are forbidden. Adapters MUST raise `EngineError`
+        if `caller` is None — the consulting layer's upload route guards
+        this with a 401/403 before reaching the Port.
 
         MUST raise EngineError on transport / HTTP / parsing failures.
         MUST raise EngineError if the engine rejects the upload (non-2xx).
@@ -155,7 +266,12 @@ class ContentEnginePort(Protocol):
         """
         ...
 
-    async def document_status(self, document_id: str) -> EngineDocumentStatus:
+    async def document_status(
+        self,
+        document_id: str,
+        *,
+        caller: EngineCallerContext | None = None,
+    ) -> EngineDocumentStatus:
         """Poll the indexing status of a document previously uploaded.
 
         MUST raise EngineError if the engine is unreachable.

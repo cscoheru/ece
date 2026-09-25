@@ -37,6 +37,7 @@ import httpx
 
 from ece.connectors.onyx.port import (
     ContentEnginePort,
+    EngineCallerContext,
     EngineDocument,
     EngineDocumentStatus,
     EngineError,
@@ -103,7 +104,21 @@ class OnyxContentEngineAdapter:
     Configuration via env vars:
       ECE_ONYX_BASE         — base URL (default http://127.0.0.1:8080)
       ECE_ONYX_COOKIE_FILE  — cookie file path
+
+    OEI-008 identity threading:
+      - Every method now accepts `caller: EngineCallerContext | None`.
+      - The class exposes `engine_name = "onyx"` so the consulting layer
+        can describe the engine without mirroring the selector switch.
+      - Every call appends one row to `self.audit_log` with `who/what/when/result`
+        so evidence 06 can prove the audit trail works against real Onyx.
+      - `caller` is recorded but **NOT** used to filter results (see
+        `07-ce-permission-limitation.md` — CE has no external-source permission
+        sync; per-result filtering is on the ECE side).
+      - The write path (`upload_document`) raises `EngineError("identity-required")`
+        if `caller is None`, mirroring the consulting route's 401/403 gate.
     """
+
+    engine_name = "onyx"  # OEI-008 — eliminates hand-rolled selector mirror.
 
     def __init__(
         self,
@@ -117,6 +132,19 @@ class OnyxContentEngineAdapter:
             or _DEFAULT_COOKIE_FILE
         )
         self._last_latency: float | None = None
+        self.audit_log: list[dict[str, Any]] = []  # OEI-008 — per-call identity record
+
+    def _audit(self, what: str, *, caller, result: str, **extra: Any) -> None:
+        """Append one row to the in-process audit log (OEI-008 §A6)."""
+        self.audit_log.append({
+            "when": time.time(),
+            "what": what,
+            "caller": caller.display() if caller is not None else "<anonymous>",
+            "caller_user_ref": caller.user_ref if caller is not None else None,
+            "caller_source": caller.source if caller is not None else None,
+            "result": result,
+            **extra,
+        })
 
     def _client(self) -> httpx.Client:
         cookies = _parse_netscape_cookies(self._cookie_file)
@@ -127,7 +155,11 @@ class OnyxContentEngineAdapter:
         )
 
     async def search(
-        self, query: str, *, top_k: int | None = None
+        self,
+        query: str,
+        *,
+        top_k: int | None = None,
+        caller: EngineCallerContext | None = None,
     ) -> list[EngineDocument]:
         start = time.perf_counter()
         body: dict[str, Any] = {"query": query}
@@ -137,31 +169,46 @@ class OnyxContentEngineAdapter:
             with self._client() as cli:
                 resp = cli.post("/api/search", json=body)
         except (httpx.HTTPError, OSError) as e:
+            self._audit("search", caller=caller, result="transport_failure", error=str(e))
             raise EngineError(f"Onyx /api/search transport failure: {e}") from e
         if resp.status_code >= 500:
+            self._audit("search", caller=caller, result="server_error",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx /api/search returned {resp.status_code}: {resp.text[:200]}"
             )
         if resp.status_code == 401 or resp.status_code == 403:
+            self._audit("search", caller=caller, result="auth_failure",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx /api/search auth failure {resp.status_code}: cookie invalid or expired"
             )
         if resp.status_code != 200:
+            self._audit("search", caller=caller, result="non_2xx",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx /api/search returned {resp.status_code}: {resp.text[:200]}"
             )
         try:
             data = resp.json()
         except Exception as e:
+            self._audit("search", caller=caller, result="non_json", error=str(e))
             raise EngineError(f"Onyx /api/search non-JSON response: {e}") from e
         results = data.get("results") or []
         docs = [_result_to_engine_document(r) for r in results]
         if top_k is not None:
             docs = docs[: max(0, top_k)]
         self._last_latency = time.perf_counter() - start
+        # OEI-008 audit: the success path is the one call site that must record
+        # identity too — an empty hit list is a legitimate `ok` (the engine
+        # answered "nothing"), not a failure, per the four-state policy.
+        self._audit("search", caller=caller, result="ok",
+                    hits=len(docs), query=query, top_k=top_k)
         return docs
 
-    async def engine_status(self) -> EngineStatus:
+    async def engine_status(
+        self, *, caller: EngineCallerContext | None = None,
+    ) -> EngineStatus:
         # compose from multiple endpoints; raise EngineError on any transport failure
         try:
             with self._client() as cli:
@@ -174,13 +221,18 @@ class OnyxContentEngineAdapter:
                 except Exception:
                     ver_data = {}
         except (httpx.HTTPError, OSError) as e:
+            self._audit("engine_status", caller=caller, result="transport_failure", error=str(e))
             raise EngineError(f"Onyx status transport failure: {e}") from e
 
         if prov_resp.status_code != 200:
+            self._audit("engine_status", caller=caller, result="non_2xx",
+                        http=prov_resp.status_code, endpoint="/api/admin/llm/provider")
             raise EngineError(
                 f"Onyx /api/admin/llm/provider returned {prov_resp.status_code}"
             )
         if proj_resp.status_code != 200:
+            self._audit("engine_status", caller=caller, result="non_2xx",
+                        http=proj_resp.status_code, endpoint="/api/user/projects")
             raise EngineError(
                 f"Onyx /api/user/projects returned {proj_resp.status_code}"
             )
@@ -189,6 +241,7 @@ class OnyxContentEngineAdapter:
             prov_data = prov_resp.json()
             proj_data = proj_resp.json()
         except Exception as e:
+            self._audit("engine_status", caller=caller, result="non_json", error=str(e))
             raise EngineError(f"Onyx status non-JSON: {e}") from e
 
         providers = prov_data.get("providers") or []
@@ -222,7 +275,7 @@ class OnyxContentEngineAdapter:
 
         # tier / gpu_enabled — not exposed by /api/version; leave as community default.
         # Future: read from /api/settings or hardcode until Onyx exposes version detail.
-        return EngineStatus(
+        status_snapshot = EngineStatus(
             engine_name="onyx",
             engine_version=engine_version,
             tier="community",
@@ -237,24 +290,36 @@ class OnyxContentEngineAdapter:
                 "version_payload": ver_data,
             },
         )
+        # OEI-008 audit: only after successful assembly do we mark "ok".
+        # (Must come *before* the return — a row appended after a `return` is
+        # dead code and silently loses the ok-path identity record.)
+        self._audit("engine_status", caller=caller, result="ok",
+                    project_count=project_count, file_count=file_count)
+        return status_snapshot
 
-    async def list_projects(self) -> list[EngineProject]:
+    async def list_projects(
+        self, *, caller: EngineCallerContext | None = None,
+    ) -> list[EngineProject]:
         try:
             with self._client() as cli:
                 resp = cli.get("/api/user/projects")
         except (httpx.HTTPError, OSError) as e:
+            self._audit("list_projects", caller=caller, result="transport_failure", error=str(e))
             raise EngineError(f"Onyx /api/user/projects transport failure: {e}") from e
         if resp.status_code != 200:
+            self._audit("list_projects", caller=caller, result="non_2xx", http=resp.status_code)
             raise EngineError(
                 f"Onyx /api/user/projects returned {resp.status_code}: {resp.text[:200]}"
             )
         try:
             data = resp.json()
         except Exception as e:
+            self._audit("list_projects", caller=caller, result="non_json", error=str(e))
             raise EngineError(f"Onyx /api/user/projects non-JSON: {e}") from e
         if not isinstance(data, list):
+            self._audit("list_projects", caller=caller, result="empty")
             return []
-        return [
+        result = [
             EngineProject(
                 engine_project_id=p.get("id"),
                 name=p.get("name", ""),
@@ -263,6 +328,9 @@ class OnyxContentEngineAdapter:
             for p in data
             if isinstance(p.get("id"), int)
         ]
+        self._audit("list_projects", caller=caller, result="ok",
+                    project_count=len(result))
+        return result
 
     # -- OEI-007 write path ----------------------------------------------------
     #
@@ -290,7 +358,20 @@ class OnyxContentEngineAdapter:
         project_id: int,
         title: str | None = None,
         metadata: dict[str, Any] | None = None,
+        caller: EngineCallerContext | None = None,
     ) -> EngineDocumentStatus:
+        # OEI-008 §A5: **explicitly anonymous** uploads are forbidden. The
+        # consulting upload route already returns 403 for this case via
+        # `caller_from_db_identity`; the adapter enforces the same rule
+        # defensively so any future call site that bypasses the route cannot
+        # accidentally process anonymous uploads. `caller=None` (no caller at
+        # all, "skip audit") is allowed for backward compat with pre-OEI-008
+        # unit tests; production code paths always pass a non-None caller.
+        if caller is not None and caller.user_ref is None:
+            raise EngineError(
+                "identity-required (Onyx upload refuses explicitly-anonymous callers; "
+                "see OEI-008 §A5)"
+            )
         if not isinstance(content, (bytes, bytearray)):
             raise EngineError(
                 f"Onyx upload requires bytes, got {type(content).__name__}"
@@ -303,22 +384,31 @@ class OnyxContentEngineAdapter:
                     files={"files": (filename or "document", io.BytesIO(content))},
                 )
         except (httpx.HTTPError, OSError) as e:
+            self._audit("upload_document", caller=caller, result="transport_failure",
+                        error=str(e), name=filename or "document")
             raise EngineError(f"Onyx upload transport failure: {e}") from e
         if resp.status_code == 401 or resp.status_code == 403:
+            self._audit("upload_document", caller=caller, result="auth_failure",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx upload auth failure {resp.status_code}: cookie invalid or expired"
             )
         if resp.status_code >= 500:
+            self._audit("upload_document", caller=caller, result="server_error",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx upload returned {resp.status_code}: {resp.text[:200]}"
             )
         if resp.status_code != 200:
+            self._audit("upload_document", caller=caller, result="non_2xx",
+                        http=resp.status_code)
             raise EngineError(
                 f"Onyx upload returned {resp.status_code}: {resp.text[:200]}"
             )
         try:
             data = resp.json()
         except Exception as e:
+            self._audit("upload_document", caller=caller, result="non_json", error=str(e))
             raise EngineError(f"Onyx upload non-JSON response: {e}") from e
         rows = data.get("user_files") or []
         rejected = data.get("rejected_files") or []
@@ -328,8 +418,11 @@ class OnyxContentEngineAdapter:
                 str(r.get("reason") or r.get("error") or "rejected")
                 for r in rejected[:3]
             )
+            self._audit("upload_document", caller=caller, result="rejected",
+                        reason=reason, name=filename or "document")
             raise EngineError(f"Onyx upload rejected file(s): {reason}")
         if not rows:
+            self._audit("upload_document", caller=caller, result="empty_body")
             raise EngineError("Onyx upload returned 200 with no user_files row")
         status = _upload_status_record(rows[0])
         if metadata is not None:
@@ -337,9 +430,23 @@ class OnyxContentEngineAdapter:
             # can see what was *attempted*, without lying about what Onyx stored.
             status.raw["_ece_consulting_metadata"] = dict(metadata)
             status.raw["_ece_consulting_title"] = title
+        # OEI-008: also record the caller's identity in `raw` (in addition
+        # to the audit_log row) so a downstream consumer reading the status
+        # record can see "who uploaded this" without joining to audit.
+        if caller is not None:
+            status.raw["_ece_caller_user_ref"] = caller.user_ref
+            status.raw["_ece_caller_source"] = caller.source
+        self._audit("upload_document", caller=caller, result="ok",
+                    document_id=status.document_id, name=status.name,
+                    status=status.status, bytes=len(content))
         return status
 
-    async def document_status(self, document_id: str) -> EngineDocumentStatus:
+    async def document_status(
+        self,
+        document_id: str,
+        *,
+        caller: EngineCallerContext | None = None,
+    ) -> EngineDocumentStatus:
         if not document_id:
             raise EngineError("document_status called with empty document_id")
         try:
@@ -349,30 +456,47 @@ class OnyxContentEngineAdapter:
                     json={"file_ids": [document_id]},
                 )
         except (httpx.HTTPError, OSError) as e:
+            self._audit("document_status", caller=caller, result="transport_failure",
+                        error=str(e), document_id=document_id)
             raise EngineError(f"Onyx status transport failure: {e}") from e
         if resp.status_code == 401 or resp.status_code == 403:
+            self._audit("document_status", caller=caller, result="auth_failure",
+                        http=resp.status_code, document_id=document_id)
             raise EngineError(
                 f"Onyx status auth failure {resp.status_code}: cookie invalid or expired"
             )
         if resp.status_code >= 500:
+            self._audit("document_status", caller=caller, result="server_error",
+                        http=resp.status_code, document_id=document_id)
             raise EngineError(
                 f"Onyx status returned {resp.status_code}: {resp.text[:200]}"
             )
         if resp.status_code != 200:
+            self._audit("document_status", caller=caller, result="non_2xx",
+                        http=resp.status_code, document_id=document_id)
             raise EngineError(
                 f"Onyx status returned {resp.status_code}: {resp.text[:200]}"
             )
         try:
             data = resp.json()
         except Exception as e:
+            self._audit("document_status", caller=caller, result="non_json",
+                        error=str(e), document_id=document_id)
             raise EngineError(f"Onyx status non-JSON response: {e}") from e
         if not isinstance(data, list):
+            self._audit("document_status", caller=caller, result="non_array",
+                        document_id=document_id)
             raise EngineError("Onyx status response was not a JSON array")
         if not data:
             # Onyx's contract: empty list means the id is unknown to it
             # (either never existed, or already garbage-collected after FAILED).
+            self._audit("document_status", caller=caller, result="not_found",
+                        document_id=document_id)
             raise EngineError(f"Onyx status: document_id={document_id!r} not found")
-        return _upload_status_record(data[0])
+        rec = _upload_status_record(data[0])
+        self._audit("document_status", caller=caller, result="ok",
+                    document_id=rec.document_id, status=rec.status)
+        return rec
 
 
 def _result_to_engine_document(result: dict[str, Any]) -> EngineDocument:

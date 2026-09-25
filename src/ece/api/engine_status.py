@@ -12,7 +12,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import HTMLResponse
 
 from ece.connectors.onyx.port import EngineError
@@ -111,25 +111,37 @@ def _render_status_page(
 async def engine_status(
     request: Request,
     q: str | None = Query(default=None, description="optional search query"),
+    authorization: str | None = Header(default=None),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
 ) -> HTMLResponse:
     """Render engine status HTML; with `q` param, also recall + render citations.
 
     Degraded path: any EngineError → degraded banner + no 500.
+
+    OEI-008 — identity threading:
+      This is a read-only anonymous surface: we resolve the caller via
+      `caller_from_request_headers` and forward it to the engine for audit
+      (the onyx adapter appends one row per call to `audit_log`). If no
+      auth headers are present, we pass `EngineCallerContext.anonymous()` —
+      the engine still works, the audit row simply says `<anonymous>`.
     """
+    from ece.connectors.onyx.caller import caller_from_request_headers
+    caller = caller_from_request_headers(authorization, x_user_id)
+
     engine = get_content_engine()
     status_dict: dict[str, Any] | None = None
     docs: list[dict[str, Any]] | None = None
     degraded_reason: str | None = None
 
     try:
-        status = await engine.engine_status()
+        status = await engine.engine_status(caller=caller)
         status_dict = status.model_dump()
     except EngineError as e:
         degraded_reason = f"engine_status failed: {e}"
 
     if q:
         try:
-            recalled = await engine.search(q)
+            recalled = await engine.search(q, caller=caller)
             docs = [
                 {
                     "engine_doc_id": d.engine_doc_id,

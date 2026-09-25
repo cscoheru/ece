@@ -30,7 +30,11 @@ from fastapi.testclient import TestClient
 
 from ece.connectors.onyx.mock_adapter import MockContentEngineAdapter
 from ece.connectors.onyx.onyx_adapter import _result_to_engine_document
-from ece.connectors.onyx.port import EngineDocument, EngineError
+from ece.connectors.onyx.port import (
+    EngineCallerContext,
+    EngineDocument,
+    EngineError,
+)
 from ece.consulting import engine_merge
 from ece.consulting.engine_merge import DEFAULT_TOP_K, merge_engine, to_engine_items
 from ece.consulting.models import EngineItem
@@ -62,23 +66,29 @@ class _StubEngine:
     `engine_status` / `list_projects` raise on purpose: `merge_engine` must not
     need them, and a future refactor that starts calling them should fail loudly
     here rather than silently doubling the per-request engine traffic.
+
+    OEI-008: now exposes `engine_name = "onyx"` so `engine_merge`'s
+    descriptor-based dispatch treats it as the live engine.
     """
+
+    engine_name = "onyx"
 
     def __init__(self, docs: list[EngineDocument] | None = None, error: Exception | None = None):
         self.docs = docs or []
         self.error = error
         self.search_calls: list[tuple[str, int | None]] = []
 
-    async def search(self, query: str, *, top_k: int | None = None) -> list[EngineDocument]:
+    async def search(self, query: str, *, top_k: int | None = None,
+                     caller: EngineCallerContext | None = None) -> list[EngineDocument]:
         self.search_calls.append((query, top_k))
         if self.error is not None:
             raise self.error
         return list(self.docs)
 
-    async def engine_status(self):  # pragma: no cover - asserted not to be called
+    async def engine_status(self, *, caller: EngineCallerContext | None = None):  # pragma: no cover - asserted not to be called
         raise AssertionError("merge_engine must not call engine_status()")
 
-    async def list_projects(self):  # pragma: no cover - asserted not to be called
+    async def list_projects(self, *, caller: EngineCallerContext | None = None):  # pragma: no cover - asserted not to be called
         raise AssertionError("merge_engine must not call list_projects()")
 
 
@@ -196,6 +206,10 @@ def test_non_onyx_switch_is_disabled(monkeypatch: pytest.MonkeyPatch, switch: st
     else:
         monkeypatch.setenv("ECE_CONTENT_ENGINE", switch)
     stub = _StubEngine([_doc()])
+    # OEI-008: `engine_merge` reads `engine.engine_name` (not the env var) to
+    # decide whether to short-circuit; force the stub to report a non-onyx name
+    # so the test exercises the same code path it did pre-OEI-008.
+    stub.engine_name = "mock"
     items, status = asyncio.run(merge_engine("问题树", engine=stub))
     assert (items, status) == ([], "disabled")
     assert stub.search_calls == []

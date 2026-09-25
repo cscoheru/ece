@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile, status
 
 from ece.connectors.onyx.port import EngineError
 from ece.connectors.onyx.selector import get_content_engine
@@ -65,6 +65,8 @@ async def get_library(
     sort: str = Query(default="relevance", description="Sort key: relevance (default) or title."),  # noqa: B008
     limit: int = Query(default=24, ge=1, le=100),  # noqa: B008
     offset: int = Query(default=0, ge=0),  # noqa: B008
+    authorization: str | None = Header(default=None),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
 ) -> LibraryResponse:
     static = default_catalog().search(
         q=q,
@@ -79,11 +81,15 @@ async def get_library(
         limit=limit,
         offset=offset,
     )
+    # OEI-008: build caller for audit. Read-only anonymous surface — no 401.
+    from ece.connectors.onyx.caller import caller_from_request_headers
+    caller = caller_from_request_headers(authorization, x_user_id)
+
     # OEI-006: the static response is computed FIRST and is never mutated — the
     # engine merge only ever adds the two new fields on top. `model_copy(update=)`
     # (rather than rebuilding the response) is what structurally guarantees the
     # static fields stay byte-identical for existing consumers.
-    engine_items, engine_status = await merge_engine(q)
+    engine_items, engine_status = await merge_engine(q, caller=caller)
     return static.model_copy(
         update={"engine_items": engine_items, "engine_status": engine_status}
     )
@@ -134,6 +140,8 @@ async def upload_documents(
     client_industry: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     problem_types: Annotated[list[str] | None, Form()] = None,  # noqa: B008
     methods: Annotated[list[str] | None, Form()] = None,  # noqa: B008
+    authorization: str | None = Header(default=None),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
 ) -> UploadResponse:
     """Upload one or more files to the engine for indexing.
 
@@ -180,6 +188,17 @@ async def upload_documents(
         raise HTTPException(status_code=413, detail=str(exc)) from exc
 
     engine = get_content_engine()
+    # OEI-008 §A5: build the caller's EngineCallerContext from headers + DB.
+    # Anonymous callers → 403 (the upload is auth-required). The adapter
+    # additionally refuses anonymous callers defensively (see onyx_adapter.py).
+    from ece.connectors.onyx.caller import caller_from_db_identity
+    from ece.connectors.onyx.port import EngineError
+    from ece.db import get_engine as _get_db
+    try:
+        caller = caller_from_db_identity(_get_db(), authorization, x_user_id)
+    except EngineError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     results: list[UploadedDocument] = []
     vocab_dropped_any = False
 
@@ -233,6 +252,7 @@ async def upload_documents(
                 project_id=_UPLOAD_PROJECT_ID,
                 title=titles[i],
                 metadata=merged,
+                caller=caller,
             )
         except EngineError as exc:
             results.append(
@@ -264,20 +284,32 @@ async def upload_documents(
 
 
 @router.get("/documents/{document_id}", response_model=DocumentStatusResponse)
-async def get_document_status(document_id: str) -> DocumentStatusResponse:
+async def get_document_status(
+    document_id: str,
+    authorization: str | None = Header(default=None),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+) -> DocumentStatusResponse:
     """Poll the indexing status of a document uploaded via POST /documents.
 
     The engine-side id is the value returned in `documents[i].document_id`.
     Translates the engine's `PROCESSING / COMPLETED / FAILED` lifecycle into
     the same vocabulary the upload response used.
 
+    OEI-008 — read-only anonymous surface: we resolve the caller via
+    `caller_from_request_headers` and forward it to the engine for audit.
+    No 401 here — anyone can poll status for any document they have the id
+    for (the id itself is the bearer). The audit row records who asked.
+
     Errors:
       404 — engine reports "not found" for this id (id unknown / expired)
       502 — engine unreachable (proxies the underlying EngineError)
     """
+    from ece.connectors.onyx.caller import caller_from_request_headers
+    caller = caller_from_request_headers(authorization, x_user_id)
+
     engine = get_content_engine()
     try:
-        rec = await engine.document_status(document_id)
+        rec = await engine.document_status(document_id, caller=caller)
     except EngineError as exc:
         msg = str(exc)
         # "not found" is the only engine error that maps to 404; everything else
