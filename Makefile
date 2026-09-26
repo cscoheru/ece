@@ -1,4 +1,10 @@
-.PHONY: setup up test eval demo rev help check-api-docs db-upgrade schema-check gen-dataset pull-db seed-fixtures test-integration
+.PHONY: setup up test eval demo rev help check-api-docs db-upgrade schema-check gen-dataset pull-db seed-fixtures test-integration demo-up demo-down
+
+# OEI-013 — 常驻咨询演示站。脚本住在 onyx-lab/ 下（那是任务书的家），
+# 不在本仓内；这里只做一层转发，免得演示者要记两条路径。
+# 幂等：连跑两次不会重复起任何东西。
+DEMO_UP := $(CURDIR)/../onyx-lab/OEI-013/workspace/demo-up.sh
+DEMO_DOWN := $(CURDIR)/../onyx-lab/OEI-013/workspace/demo-down.sh
 
 help:
 	@echo "ECE v0 Makefile"
@@ -7,6 +13,8 @@ help:
 	@echo "  make test             - run unit + integration + security tests"
 	@echo "  make eval             - run E1-E6 evaluation suite (needs ECE_LLM_*)"
 	@echo "  make demo             - run procurement demo scenario"
+	@echo "  make demo-up          - OEI-013: 起常驻咨询演示站（打印浏览器 URL；幂等）"
+	@echo "  make demo-down        - OEI-013: 停演示站（--all 连带删演示 PG）"
 	@echo "  make check-api-docs   - API.md ↔ FastAPI routes 双向 diff (S0.4)"
 	@echo "  make db-upgrade       - alembic upgrade head (S0.5)"
 	@echo "  make schema-check     - live DB ↔ DATA_MODEL.md 比对 (S0.5)"
@@ -48,6 +56,16 @@ eval-report:
 
 demo:
 	uv run python -m ece.demo
+
+# OEI-013 — 常驻咨询演示（浏览器可看的那条链）
+#   make demo-up   → PG + migrate + seed + 回填 + uvicorn:8765 + 同源:8181，打印浏览器 URL
+#   make demo-down → 停 api + origin（`--all` 再删演示 PG）
+# 说明见 onyx-lab/OEI-013/workspace/demo-script.md 与 OEI-013/REPORT.md。
+demo-up:
+	bash $(DEMO_UP)
+
+demo-down:
+	bash $(DEMO_DOWN)
 
 # S0.4: API.md ↔ FastAPI openapi.json 双向 diff(文档有而路由无 WARNING;路由有而文档无 ERROR exit 1)
 check-api-docs:

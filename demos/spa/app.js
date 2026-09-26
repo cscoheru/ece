@@ -447,31 +447,206 @@
     drawer.setAttribute("aria-hidden", "false");
   }
 
+  // ----- OEI-013 — deterministic question → keyword rewrite (no LLM) --------
+  //
+  // Why this is needed (measured, not assumed): the catalogue's free-text
+  // search matches the WHOLE query string as ONE substring against
+  // title/summary/methods/problem_types/deliverables. So a real business
+  // question — "客户想做一次采购成本诊断, 该从哪下手" — matches nothing at all,
+  // while a bare keyword like "诊断" matches 11 entries. A demo whose act one
+  // is "a client's question" cannot ship with that gap unfilled.
+  //
+  // The bridge is a fixed lexicon of terms that actually occur in the
+  // catalogue's own vocabulary. Extraction is pure string work over that list:
+  // same question in → same terms out, every time. No model, no scoring, no
+  // network. Whatever it picks is shown to the audience (see
+  // `setConsultingRewriteNote`) — a rewrite nobody can see is indistinguishable
+  // from a rigged demo.
+  //
+  // Membership rule: a term belongs here only if the catalogue actually matches
+  // it (each was checked against /library — a term matching 0 entries would be
+  // dead weight that makes the rewrite look busier without finding anything).
+  // Note the catalogue and the engine corpus are DIFFERENT sources: "MECE" and
+  // "问题树" score 0 here because they live in the indexed documents, not in the
+  // 65-object catalogue. This list serves the catalogue.
+  //
+  // Scope note: this lives in the SPA, not the API. `/api/v1/consulting/library`
+  // still does whole-phrase matching for every other consumer; tightening that
+  // is an API-contract decision for a later cut (see REPORT §转出).
+  var CONSULTING_QUESTION_LEXICON = [
+    "采购成本", "供应链", "渠道库存", "组织架构", "风险披露", "库存周转",
+    "采购", "成本", "诊断", "风险", "披露", "韧性", "渠道", "库存",
+    "周转", "定价", "组织", "架构", "流程", "合规", "访谈", "指标",
+    "拆解", "转型", "提案", "交付", "落地", "模板", "框架", "基准", "复盘",
+    "毛利", "绩效", "门店", "巡检", "供应商", "经销商",
+    "制造业", "零售", "银行", "快消", "能源", "医疗", "物流", "保险",
+    "公共部门", "科技", "KPI"
+  ];
+  // Cap the rewrite fan-out. Each extra term is one more library call, and a
+  // library call with a non-empty query also fires one engine recall — so this
+  // cap is really a bound on engine load, not on UI work.
+  var CONSULTING_REWRITE_MAX_TERMS = 3;
+
+  // The element that DISCLOSES the rewrite. Named rather than inlined because
+  // the whole point of the note is that act two tells the audience the library
+  // was searched by extracted terms — a silent rewrite would be a worse demo
+  // and an easier thing to lose in a refactor.
+  var CONSULTING_REWRITE_NOTE_ID = "consulting-rewrite-note";
+
+  function rewriteConsultingQuestion(question) {
+    var q = (question || "").trim();
+    if (!q) return { terms: [], rewritten: false };
+    var found = [];
+    for (var i = 0; i < CONSULTING_QUESTION_LEXICON.length; i++) {
+      var term = CONSULTING_QUESTION_LEXICON[i];
+      if (found.indexOf(term) === -1 && q.indexOf(term) !== -1) found.push(term);
+    }
+    if (found.length === 0) return { terms: [], rewritten: false };
+    // The question is already a bare keyword the catalogue can match — do not
+    // touch it. Rewriting a query that already works would only widen it.
+    if (found.indexOf(q) !== -1) return { terms: [], rewritten: false };
+    // Longest first (more specific before more generic), stable for ties.
+    found.sort(function (a, b) { return b.length - a.length; });
+    // Collapse redundant picks. "采购成本" already covers "采购" and "成本", so
+    // searching all three would fetch the same entries three times AND crowd a
+    // genuinely different concept ("诊断", 11 matches) out of the cap. Keep the
+    // most specific form of each concept; drop any later term that is a
+    // substring of an accepted one, or that contains one.
+    var picked = [];
+    for (var k = 0; k < found.length; k++) {
+      var cand = found[k];
+      var redundant = false;
+      for (var p = 0; p < picked.length; p++) {
+        if (picked[p].indexOf(cand) !== -1 || cand.indexOf(picked[p]) !== -1) {
+          redundant = true;
+          break;
+        }
+      }
+      if (!redundant) picked.push(cand);
+      if (picked.length >= CONSULTING_REWRITE_MAX_TERMS) break;
+    }
+    if (picked.length === 0) return { terms: [], rewritten: false };
+    return { terms: picked, rewritten: true };
+  }
+
+  function setConsultingRewriteNote(terms, mergedCount) {
+    var el = document.getElementById(CONSULTING_REWRITE_NOTE_ID);
+    if (!el) return;
+    if (!terms || terms.length === 0) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = "这句话不是一个关键词, 知识库没直接命中. 已按其中的业务词检索: "
+      + terms.join(" / ") + " — 合并去重后 " + mergedCount + " 条.";
+  }
+
+  function fetchConsultingLibrary(params) {
+    return fetch("/api/v1/consulting/library?" + params.toString(), {
+      headers: { "Accept": "application/json" }
+    }).then(function (r) { return r.json(); });
+  }
+
+  // Merge several library responses into one view. Dedup by object id, keep
+  // first-seen order (deterministic: the term order is deterministic). The
+  // engine group is merged the same way, and reports "ok" if ANY call got a
+  // real answer — one slow term must not blank a group another term filled.
+  function mergeConsultingBodies(bodies) {
+    var seenId = {};
+    var items = [];
+    var seenDoc = {};
+    var engineItems = [];
+    var statuses = [];
+    for (var i = 0; i < bodies.length; i++) {
+      var b = bodies[i] || {};
+      var list = b.items || [];
+      for (var j = 0; j < list.length; j++) {
+        var o = list[j];
+        if (o && o.id && !seenId[o.id]) { seenId[o.id] = true; items.push(o); }
+      }
+      var elist = b.engine_items || [];
+      for (var k = 0; k < elist.length; k++) {
+        var d = elist[k];
+        if (d && d.engine_doc_id && !seenDoc[d.engine_doc_id]) {
+          seenDoc[d.engine_doc_id] = true;
+          engineItems.push(d);
+        }
+      }
+      statuses.push(b.engine_status || "disabled");
+    }
+    var status = "disabled";
+    if (statuses.indexOf("ok") !== -1) status = "ok";
+    else if (statuses.indexOf("unavailable") !== -1) status = "unavailable";
+    else if (statuses.indexOf("skipped") !== -1) status = "skipped";
+    return { items: items, total: items.length, engine_items: engineItems,
+             engine_status: status };
+  }
+
+  function renderConsultingResult(body, total) {
+    var totalEl = document.getElementById("consulting-total");
+    totalEl.textContent = "共 " + total + " 条结果";
+    renderConsultingCards(body && body.items ? body.items : []);
+    renderConsultingEngine(
+      body && body.engine_items ? body.engine_items : [],
+      body && body.engine_status ? body.engine_status : "disabled",
+      total
+    );
+  }
+
   function runConsultingSearch() {
-    var params = readConsultingFilters();
     var totalEl = document.getElementById("consulting-total");
     totalEl.textContent = "载入中…";
-    fetch("/api/v1/consulting/library?" + params.toString(), {
-      headers: { "Accept": "application/json" }
-    })
-      .then(function (r) { return r.json(); })
+    var params = readConsultingFilters();
+    var question = document.getElementById("consulting-search").value.trim();
+
+    fetchConsultingLibrary(params)
       .then(function (body) {
         var total = body && typeof body.total === "number" ? body.total : 0;
-        totalEl.textContent = "共 " + total + " 条结果";
-        renderConsultingCards(body && body.items ? body.items : []);
-        renderConsultingEngine(
-          body && body.engine_items ? body.engine_items : [],
-          body && body.engine_status ? body.engine_status : "disabled",
-          total
-        );
+        // Direct hit (or nothing to rewrite) — the common path, unchanged.
+        if (total > 0 || !question) {
+          setConsultingRewriteNote(null);
+          renderConsultingResult(body, total);
+          return null;
+        }
+        var rw = rewriteConsultingQuestion(question);
+        if (!rw.rewritten) {
+          setConsultingRewriteNote(null);
+          renderConsultingResult(body, 0);
+          return null;
+        }
+        // Deterministic fallback: one library call per extracted term.
+        var calls = [];
+        for (var i = 0; i < rw.terms.length; i++) {
+          var p = new URLSearchParams(params.toString());
+          p.set("q", rw.terms[i]);
+          calls.push(fetchConsultingLibrary(p));
+        }
+        return Promise.all(calls).then(function (bodies) {
+          var merged = mergeConsultingBodies(bodies);
+          setConsultingRewriteNote(rw.terms, merged.total);
+          renderConsultingResult(merged, merged.total);
+        });
       })
       .catch(function (err) {
+        setConsultingRewriteNote(null);
         totalEl.textContent = "[GET /api/v1/consulting/library 失败] " +
           (err && err.message ? err.message : err);
       });
   }
 
+  // Act one opens on a real business question, not an empty box (TASK §3.3.1).
+  // The question is deliberately one a consultant would actually be asked —
+  // and deliberately one the catalogue cannot match as a whole string, because
+  // that is what makes the deterministic rewrite below demonstrably necessary
+  // rather than decorative.
+  var CONSULTING_DEMO_QUESTION = "客户想做一次采购成本诊断, 该从哪下手";
+
   function loadConsultingLibrary() {
+    var input = document.getElementById("consulting-search");
+    if (input && !input.value.trim()) {
+      input.value = CONSULTING_DEMO_QUESTION;
+    }
     var p = loadConsultingFacets();
     if (p && typeof p.then === "function") {
       p.then(runConsultingSearch);
@@ -596,6 +771,22 @@
   var closeBtn = document.getElementById("consulting-detail-close");
   if (closeBtn) {
     closeBtn.addEventListener("click", closeConsultingDetail);
+  }
+
+  // ----- OEI-013 — act-one recipe chips -----------------------------------
+  // Clicking a chip puts a real client question in the box and searches. The
+  // chip label is the short name; the question it types is the full sentence,
+  // so the audience sees the rewrite happen on something that reads like a
+  // client, not like a query.
+  var questionChips = document.querySelectorAll("#consulting-question-chips .chip");
+  for (var qc = 0; qc < questionChips.length; qc++) {
+    (function (btn) {
+      btn.addEventListener("click", function () {
+        var input = document.getElementById("consulting-search");
+        if (input) input.value = btn.getAttribute("data-question") || "";
+        runConsultingSearch();
+      });
+    })(questionChips[qc]);
   }
 
   // ----- OEI-007 — upload + status wiring (additive; does not touch search) -----

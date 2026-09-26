@@ -119,6 +119,8 @@ class OnyxContentEngineAdapter:
     """
 
     engine_name = "onyx"  # OEI-008 — eliminates hand-rolled selector mirror.
+    # OEI-013 — this adapter sends skip_query_expansion when asked (OEI-012).
+    supports_skip_query_expansion = True
 
     def __init__(
         self,

@@ -208,6 +208,22 @@ class ContentEnginePort(Protocol):
         """
         ...
 
+    @property
+    def supports_skip_query_expansion(self) -> bool:
+        """Does `search()` accept the `skip_query_expansion` keyword?
+
+        OEI-013 — capability descriptor, same idea as `engine_name` above: the
+        consulting layer can ask the Port whether an optional retrieval switch
+        exists instead of guessing. `merge_engine` forwards the keyword ONLY when
+        the caller asked for deterministic recall AND the engine says it accepts
+        it, so a narrower engine (or a test double with the pre-OEI-012
+        signature) is never handed an unexpected keyword.
+
+        Adapters that added the parameter in OEI-012 return True. Anything that
+        does not declare this attribute is treated as False.
+        """
+        ...
+
     async def search(
         self,
         query: str,

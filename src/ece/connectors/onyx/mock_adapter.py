@@ -117,6 +117,9 @@ class MockContentEngineAdapter:
     """
 
     engine_name = "mock"  # OEI-008 — eliminates hand-rolled selector mirror in engine_merge.
+    # OEI-013 — the mock accepts the keyword for signature isomorphism (it
+    # deliberately does NOT invent a behavioural difference; see OEI-012 §A4).
+    supports_skip_query_expansion = True
 
     def __init__(self) -> None:
         self._last_latency: float | None = None

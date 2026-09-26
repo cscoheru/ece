@@ -15,8 +15,10 @@
     <button data-view="a" class="active" type="button">视图 A · 多域实时演示（live）</button>
     <button data-view="b" type="button">视图 B · 架构解释（kernel 视角）</button>
     <button data-view="c" type="button">视图 C · 扩展蓝图（live）</button>
-    <!-- KC-001: Consulting Knowledge Library (file-backed seed, no DB / no LLM) -->
-    <button data-view="d" type="button">视图 D · 咨询知识库</button>
+    <!-- KC-001: Consulting Knowledge Library (file-backed seed, no DB / no LLM).
+         OEI-013: the button label must keep the literal 咨询知识库 —
+         test_consulting_spa_view::test_nav_button_for_view_d_exists pins it. -->
+    <button data-view="d" type="button">视图 D · 咨询知识库（客户演示）</button>
   </nav>
 
   <main>
@@ -167,19 +169,61 @@
       <p class="muted">三域共享同一底座 (底座泛化 cut-042); 部署层为自有演示服务器, 不做客户私有化交付 (详见 <code>deploy/README.md</code>).</p>
     </section>
 
-    <!-- View D — Consulting Knowledge Library (KC-001)
+    <!-- View D — Consulting demo narrative (KC-001 → OEI-013)
          业务文案: 面向顾问 / 销售 / 合伙人, 不暴露内部技术词 (PRD §9).
-         数据源: file-backed seed catalog (36+ objects). 不引入 DB / LLM / embedding. -->
+         数据源: file-backed seed catalog (65 objects) + 已索引文件召回.
+         三幕: ① 一个问题 → ② 知识库怎么答 → ③ 你的文件.
+
+         Constraints this markup must not break (test_consulting_spa_view pins
+         them; changing the test to fit the UI is forbidden by TASK §3.3.2):
+           - the view-d block is sliced up to the NEXT <section> tag, so nothing
+             in here may be a <section> — the acts are <div>s on purpose.
+           - anchors that must exist inside this block:
+             consulting-search (type=search) / filter-type / filter-practice /
+             filter-phase / filter-industry / filter-problem / filter-source /
+             consulting-reset / consulting-total / consulting-cards /
+             consulting-empty / consulting-detail.
+           - business vocabulary only (PRD §9 guardrail). -->
     <section id="view-d" class="view" data-view="d" hidden>
-      <h2>咨询知识库</h2>
-      <p class="muted">找相关案例、方法论、提案素材和交付模板. 数据来源已标注, 客户名脱敏.</p>
+      <h2>咨询知识库 — 一次客户问答的完整路径</h2>
+      <p class="muted">一个业务问题, 从知识库答到你的文件. 数据来源已标注, 客户名脱敏.</p>
 
-      <label>
-        <span>关键词搜索</span>
-        <input id="consulting-search" type="search" placeholder="例如: 采购诊断 / KPI / 风险披露">
-      </label>
+      <!-- 幕一 — 一个问题 -->
+      <div id="consulting-act-1" class="demo-act">
+        <h3><span class="act-no">①</span> 一个问题</h3>
+        <p class="muted">
+          客户带着一个业务问题来. 把它输进去 — 下面是知识库给出的答复路径.
+        </p>
 
-      <div id="consulting-filters">
+        <label>
+          <span>客户的问题</span>
+          <input id="consulting-search" type="search"
+                 placeholder="例如: 客户想做一次采购成本诊断, 该从哪下手">
+        </label>
+
+        <div id="consulting-question-chips" class="chip-row">
+          <span class="muted">示范问题:</span>
+          <button type="button" class="chip" data-question="客户想做一次采购成本诊断, 该从哪下手">采购成本诊断</button>
+          <button type="button" class="chip" data-question="我们的项目风险该怎么向客户披露">项目风险披露</button>
+          <button type="button" class="chip" data-question="给制造业客户评估供应链韧性">供应链韧性</button>
+          <button type="button" class="chip" data-question="帮零售客户看渠道库存周转">渠道库存</button>
+        </div>
+
+        <!-- Shown whenever the question is turned into knowledge-base
+             keywords, so the audience sees exactly what was searched for.
+             A rewrite the audience cannot see would be indistinguishable
+             from magic. -->
+        <p id="consulting-rewrite-note" class="muted" hidden></p>
+      </div>
+
+      <!-- 幕二 — 知识库怎么答 -->
+      <div id="consulting-act-2" class="demo-act">
+        <h3><span class="act-no">②</span> 知识库怎么答</h3>
+        <p class="muted">
+          先给候选, 再按行业 / 类型 / 阶段收窄. 点开任意一条看它的依据.
+        </p>
+
+        <div id="consulting-filters">
         <label>
           <span>类型</span>
           <select id="filter-type"><option value="">全部</option></select>
@@ -210,25 +254,31 @@
       <div id="consulting-total">载入中…</div>
       <div id="consulting-cards"></div>
       <div id="consulting-empty">目录无命中: 目录里没有匹配的条目, 试试调整关键词或筛选条件.</div>
-
-      <!-- OEI-006 — 第二个来源: 引擎召回 (来自已索引文档).
-           与上面的目录卡片分组展示; 引擎不可用/未接入时只显示提示, 不影响目录.
-           注意: 这里刻意用 div 而非嵌套的分节元素 — test_consulting_spa_view
-           以"下一个分节标签"作为 view-d 扫描区间的结束标志, 嵌套会把详情抽屉切出扫描区. -->
-      <div id="consulting-engine" hidden>
-        <h3>引擎召回 (来自已索引文档)</h3>
-        <p id="consulting-engine-status" class="muted"></p>
-        <div id="consulting-engine-cards"></div>
-        <p id="consulting-engine-empty" hidden></p>
       </div>
+      <!-- /幕二 -->
 
-      <!-- OEI-007 — 上传与状态区 (单页内闭环: 选文件 → 上传 → 轮询状态 → 重新检索即看到).
-           与 OEI-006 的"引擎召回"分组同一种视觉风格, 沿用同一详情抽屉. -->
-      <div id="consulting-upload">
-        <h3>上传文档至引擎索引</h3>
+      <!-- 幕三 — 你的文件 (OEI-006 召回组 + OEI-007 上传, 同一幕里讲完)
+           刻意用 div 而非嵌套的分节元素 — test_consulting_spa_view 以"下一个
+           分节标签"作为 view-d 扫描区间的结束标志, 嵌套会把详情抽屉切出扫描区. -->
+      <div id="consulting-act-3" class="demo-act">
+        <h3><span class="act-no">③</span> 你的文件</h3>
+        <p class="muted">
+          上传一份自己的案例 — 它进入索引, 之后检索时作为「来自已索引文件」的一条,
+          带来源和片段出现在下面. 这一步是现场做的, 不是截图.
+        </p>
+
+        <div id="consulting-engine" hidden>
+          <h4>来自已索引文件</h4>
+          <p id="consulting-engine-status" class="muted"></p>
+          <div id="consulting-engine-cards"></div>
+          <p id="consulting-engine-empty" hidden></p>
+        </div>
+
+        <div id="consulting-upload">
+        <h4>上传一份案例</h4>
         <p id="consulting-upload-help" class="muted">
           支持 .md / .txt / .docx / .pdf (单文件 ≤ 4 MiB, 总量 ≤ 16 MiB).
-          元数据按文件名 + 标题自动建议, 落地后即可在「引擎召回」里被检索到.
+          元数据按文件名 + 标题自动建议, 落地后即可在上面的「来自已索引文件」里被检索到.
         </p>
         <label>
           <span>文档标题 (可选, 用于元数据建议)</span>
@@ -247,8 +297,11 @@
         <h4>最近上传</h4>
         <ul id="consulting-upload-rows"></ul>
       </div>
+      </div>
+      <!-- /幕三 -->
 
-      <!-- Detail drawer (KC-001 view-d detail panel) -->
+      <!-- Detail drawer (KC-001 view-d detail panel). Kept at section level
+           (not inside an act) so it stays a drawer over the whole view. -->
       <aside id="consulting-detail" aria-hidden="true">
         <header class="detail-header">
           <h2 id="consulting-detail-title">详情</h2>

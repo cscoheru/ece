@@ -506,6 +506,35 @@ Onyx v4.7.8 的 `/api/search` 是 **agentic 检索管线**（LLM 查询扩展 + 
 > 3. 因此**默认值保持 `False`**：翻转能买到复现性与延迟，**买不到命中率**，
 >    且会让候选集变窄（q05 3→2 条、q11 3→1 条）。详见 `workspace/retrieval-decision.md` §4。
 
+**能力描述符 `supports_skip_query_expansion`（OEI-013 新增，连接器层）**
+
+`ContentEnginePort` 新增同名只读属性（与 OEI-008 的 `engine_name` 同一模式）：
+
+| 适配器 | 取值 |
+|---|---|
+| `OnyxContentEngineAdapter` | `True`（OEI-012 起真的会发该字段） |
+| `MockContentEngineAdapter` | `True`（同构接受；**刻意不造行为差异**） |
+| 未声明该属性的实现（含既有测试替身） | 视为 `False` |
+
+`merge_engine` 只有在**调用方要求确定性召回**且**引擎声明支持**时，才把
+`skip_query_expansion=True` 传给 `search()`。两道闸门都必要：默认路径的请求体
+因此保持逐字节不变，而签名较窄的实现（例如 `search(self, q, *, top_k, caller)`）
+永远不会收到一个它不认识的形参。
+
+**库路径的确定性召回开关 `ECE_LIBRARY_SKIP_QUERY_EXPANSION`（OEI-013 新增，服务端环境变量）**
+
+| 取值 | `/api/v1/consulting/library` 的引擎召回 |
+|---|---|
+| 未设置 / 其他值（**默认**） | 引擎默认档（query expansion 开） |
+| `1` / `true` / `yes` / `on` | 确定性档（`skip_query_expansion=true`） |
+
+> **这不是 HTTP API 参数**：`/library` 的请求查询串与响应键集合**均未改变**
+> （响应键集合由契约测试钉住）。它只在服务端进程环境里选档，用 `demo-up.sh` 切换。
+> 默认值 **off**：OEI-013 实测发现确定性档**并非白赚** —— 它的候选集更窄，
+> 在本语料上有时唯一命中就是那份受控对照文档，而它会被权限过滤挡掉，
+> 于是用户看到的是**空召回组**，而默认档反而能露出真文档。
+> 两档的产品层实测见 `onyx-lab/OEI-013/evidence/03*.json`。
+
 **示例**：
 
 ```bash

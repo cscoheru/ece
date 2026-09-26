@@ -52,6 +52,7 @@ a 5xx.
 """
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from ece.connectors.onyx.port import EngineCallerContext, EngineDocument, EngineError
@@ -77,6 +78,38 @@ DEFAULT_TOP_K = 8
 # selector's switch) so the consulting layer no longer needs to mirror the
 # env-var logic. MockAdapter.engine_name == "mock" → short-circuits.
 LIVE_ENGINE_NAME = "onyx"
+
+# OEI-013 — deterministic recall for the Library path, opt-in via env.
+#
+# OEI-012 measured the engine's two modes and found `skip_query_expansion=True`
+# strictly better on reproducibility (1.000 vs 0.833) and latency (median 1.47 s
+# vs 5.02 s). TASK §3.2.2 therefore asks for that deterministic path to be wired
+# into the demo. But OEI-013's product-layer re-measurement found the trade is
+# NOT free: the deterministic path returns a *narrower* candidate set, and on
+# this corpus that sometimes means the one and only hit is the controlled
+# comparison document — which the permission filter then hides, leaving the user
+# an EMPTY engine group where the default mode would have shown a real document.
+#
+# So this stays an explicit opt-in with the SHIPPING DEFAULT OFF:
+#
+#   unset / anything else  → engine default (query expansion on)
+#   ECE_LIBRARY_SKIP_QUERY_EXPANSION=1 → deterministic path
+#
+# Both modes are measured in `onyx-lab/OEI-013/evidence/03*.json`; the demo chain
+# sets whichever the numbers favour, and `demo-up.sh` states which and why. The
+# Port's own default is untouched (still False) per TASK §8.
+_LIBRARY_DETERMINISTIC_ENV = "ECE_LIBRARY_SKIP_QUERY_EXPANSION"
+_TRUTHY = ("1", "true", "yes", "on")
+
+
+def library_deterministic_recall() -> bool:
+    """Is the deterministic (expansion-off) recall path requested for /library?
+
+    Read at CALL time, not import time, so tests can toggle it and so a running
+    server can be switched by restarting with a different environment.
+    """
+    value = (os.environ.get(_LIBRARY_DETERMINISTIC_ENV) or "").strip().lower()
+    return value in _TRUTHY
 
 
 def to_engine_items(docs: Iterable[EngineDocument]) -> list[EngineItem]:
@@ -137,8 +170,20 @@ async def merge_engine(
     if getattr(engine, "engine_name", "unknown") != LIVE_ENGINE_NAME:
         return [], "disabled"
 
+    # OEI-013: forward the deterministic-recall flag ONLY when the caller asked
+    # for it AND the engine declares it accepts the keyword. Gating on both
+    # keeps the shipped default path byte-identical for every other consumer of
+    # `merge_engine` (the same rule OEI-012 applied inside the Onyx adapter) and
+    # means a narrower engine — including the test doubles in the suite, whose
+    # `search()` predates OEI-012 — is never handed an unexpected keyword.
+    search_kwargs: dict = {"top_k": top_k, "caller": caller}
+    if library_deterministic_recall() and getattr(
+        engine, "supports_skip_query_expansion", False
+    ):
+        search_kwargs["skip_query_expansion"] = True
+
     try:
-        docs = await engine.search(query, top_k=top_k, caller=caller)
+        docs = await engine.search(query, **search_kwargs)
     except EngineError:
         # Covers transport failure, auth failure, 5xx and unparseable payload —
         # the adapter wraps all of them into EngineError. Degrade, don't crash.
@@ -166,4 +211,10 @@ async def merge_engine(
     return filter_result.allowed_items, "ok"
 
 
-__all__ = ["DEFAULT_TOP_K", "LIVE_ENGINE_NAME", "merge_engine", "to_engine_items"]
+__all__ = [
+    "DEFAULT_TOP_K",
+    "LIVE_ENGINE_NAME",
+    "library_deterministic_recall",
+    "merge_engine",
+    "to_engine_items",
+]

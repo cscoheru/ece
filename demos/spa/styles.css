@@ -649,3 +649,93 @@ footer code {
   padding: 0.15rem 0.6rem;
   color: #374151;
 }
+
+/* ---------------------------------------------------------------------------
+   OEI-013 — 咨询演示叙事 (view-d 三幕)
+   Purely presentational: the three acts are <div>s, so the view-d slicing in
+   test_consulting_spa_view is untouched. Nothing here changes an anchor id.
+   --------------------------------------------------------------------------- */
+
+.demo-act {
+  margin: 0 0 1.5rem 0;
+  padding: 1rem 1.15rem 1.15rem 1.15rem;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #1f2937;
+  border-radius: 8px;
+  background: #fcfcfd;
+}
+
+.demo-act > h3 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+/* The ① ② ③ step marker — a small round chip so the three acts read as a
+   sequence when projected, without relying on colour alone. */
+.demo-act .act-no {
+  display: inline-block;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1.5rem;
+  text-align: center;
+  margin-right: 0.4rem;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.demo-act > p.muted {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+/* Act one — recipe chips that type a real client question into the box. */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.chip-row .muted {
+  font-size: 0.85rem;
+}
+
+.chip {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* The rewrite note. Styled as an explicit, readable admission — if the
+   audience is being shown a rewritten query, it must not look like a
+   footnote. */
+#consulting-rewrite-note {
+  margin: 0.5rem 0 0 0;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+  border-radius: 0 6px 6px 0;
+  color: #1e3a8a;
+}
+
+/* Act two / three sub-headings now sit one level down from the act title. */
+#consulting-engine h4,
+#consulting-upload h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: #111827;
+}
