@@ -160,9 +160,16 @@ class OnyxContentEngineAdapter:
         *,
         top_k: int | None = None,
         caller: EngineCallerContext | None = None,
+        skip_query_expansion: bool = False,
     ) -> list[EngineDocument]:
         start = time.perf_counter()
         body: dict[str, Any] = {"query": query}
+        # OEI-012 §A4: forward the engine's request-level query-expansion switch.
+        # Onyx v4.7.8 /api/search accepts `skip_query_expansion` (bool). Only sent
+        # when True so the default request body stays byte-identical to pre-OEI-012
+        # (no behaviour change for existing callers).
+        if skip_query_expansion:
+            body["skip_query_expansion"] = True
         # Onyx v4.7.8 /api/search does not accept top_k directly; we cap client-side
         # by slicing results. Future: pass source_limit or similar if added.
         try:
@@ -203,7 +210,8 @@ class OnyxContentEngineAdapter:
         # identity too — an empty hit list is a legitimate `ok` (the engine
         # answered "nothing"), not a failure, per the four-state policy.
         self._audit("search", caller=caller, result="ok",
-                    hits=len(docs), query=query, top_k=top_k)
+                    hits=len(docs), query=query, top_k=top_k,
+                    skip_query_expansion=skip_query_expansion)
         return docs
 
     async def engine_status(

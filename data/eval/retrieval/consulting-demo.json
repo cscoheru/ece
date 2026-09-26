@@ -1,0 +1,107 @@
+{
+  "name": "consulting-demo-retrieval",
+  "version": "1",
+  "created": "2026-09-26",
+  "description": "OEI-012 召回评测集：query -> 应命中的文档（ground truth 来自三份演示文档原文）。kind=hit 表示 expected_title 应出现在该 query 的召回 title 集合；kind=miss 表示 expected_title 不得出现在该 query 的召回 title 集合。",
+  "ground_truth_source": {
+    "case-management-consulting.md": "onyx-lab/OEI-001/workspace/case-management-consulting.md",
+    "methodology-framework.md": "onyx-lab/OEI-001/workspace/methodology-framework.md",
+    "play-sales-delivery.md": "onyx-lab/OEI-001/workspace/play-sales-delivery.md"
+  },
+  "corpus": {
+    "project_id": 1,
+    "target_titles": [
+      "case-management-consulting.md",
+      "methodology-framework.md",
+      "play-sales-delivery.md"
+    ],
+    "note": "项目 1 另有一份权限受限对照文档 ece-df16d19c9e7b-oei009-comparison-restricted.md，不在 ground truth 目标内；其出现在原始召回里不影响 hit/miss 判定。"
+  },
+  "miss_semantics": "kind=miss 的判定是「expected_title 不在该 query 的召回 title 集合里」，不是「期望 0 条结果」——本部署 /api/search 对任何 query 都会返回结果。",
+  "queries": [
+    {
+      "id": "q01",
+      "query": "某零售集团毛利率连续下滑，怎么降本",
+      "expected_title": "case-management-consulting.md",
+      "kind": "hit",
+      "rationale": "原文：客户为华东地区…中型连锁零售集团…毛利率连续三个季度下滑（从 22.4% 跌至 19.1%）…是该项目立项的核心驱动。"
+    },
+    {
+      "id": "q02",
+      "query": "SKU 过度膨胀怎么砍尾",
+      "expected_title": "case-management-consulting.md",
+      "kind": "hit",
+      "rationale": "原文：SKU 失控：在售 SKU 超过 18 万个，但贡献 80% 销量的 SKU 仅占 12%。方案含 SKU 砍尾。"
+    },
+    {
+      "id": "q03",
+      "query": "库存周转天数过高怎么降低",
+      "expected_title": "case-management-consulting.md",
+      "kind": "hit",
+      "rationale": "原文：库存周转天数高达 67 天…；试点后从 67 天降至 54 天。"
+    },
+    {
+      "id": "q04",
+      "query": "问题树怎么拆解业务问题",
+      "expected_title": "methodology-framework.md",
+      "kind": "hit",
+      "rationale": "原文：问题树负责把模糊的业务问题拆成可分析、可指派的子问题。"
+    },
+    {
+      "id": "q05",
+      "query": "MECE 的排他性和穷尽性怎么检验",
+      "expected_title": "methodology-framework.md",
+      "kind": "hit",
+      "rationale": "原文：MECE（Mutually Exclusive, Collectively Exhaustive）保证最终交付的方案彼此独立、合起来覆盖全部情形。"
+    },
+    {
+      "id": "q06",
+      "query": "假设驱动怎么排验证优先级",
+      "expected_title": "methodology-framework.md",
+      "kind": "hit",
+      "rationale": "原文：用「业务影响 × 验证可行性」二维矩阵排验证顺序：第一梯队…。"
+    },
+    {
+      "id": "q07",
+      "query": "销售到交付的五阶段衔接怎么做",
+      "expected_title": "play-sales-delivery.md",
+      "kind": "hit",
+      "rationale": "原文：阶段1 线索验证 → 阶段2 售前立项 → 阶段3 合同与启动准备 → 阶段4 交付 kickoff → 阶段5 第一次交付复盘。"
+    },
+    {
+      "id": "q08",
+      "query": "售前立项书要包含什么内容",
+      "expected_title": "play-sales-delivery.md",
+      "kind": "hit",
+      "rationale": "原文：《售前立项书》一份（问题树、假设清单、可量化收益草案、报价区间、时间线）。"
+    },
+    {
+      "id": "q09",
+      "query": "交付 kickoff 会议要讲清哪三件事",
+      "expected_title": "play-sales-delivery.md",
+      "kind": "hit",
+      "rationale": "原文：三件事必须当场讲清：项目边界、变更流程、阶段验收标准。"
+    },
+    {
+      "id": "q10",
+      "query": "员工报销政策与发票审核流程",
+      "expected_title": "play-sales-delivery.md",
+      "kind": "miss",
+      "rationale": "play-sales-delivery.md 讲销售→交付五阶段衔接，全文无「报销」「发票」字样，属主题隔离。"
+    },
+    {
+      "id": "q11",
+      "query": "研发团队 OKR 绩效考核办法",
+      "expected_title": "case-management-consulting.md",
+      "kind": "miss",
+      "rationale": "case-management-consulting.md 讲零售供应链降本，全文无「OKR」「绩效考核」字样，属主题隔离。"
+    },
+    {
+      "id": "q12",
+      "query": "数据中心机房选址与服务器运维",
+      "expected_title": "methodology-framework.md",
+      "kind": "miss",
+      "rationale": "methodology-framework.md 讲问题树/MECE/假设驱动，全文无「数据中心」「机房」「服务器」字样，属主题隔离。"
+    }
+  ]
+}

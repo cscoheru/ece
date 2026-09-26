@@ -469,6 +469,43 @@ N=5 byte-equal 确定性 + denied 零副作用 + 真实运行 `elapsed_ms > 0`�
 - `mock`（默认）— 离线固定数据，演示/CI 用
 - `onyx` — 真实 Onyx 引擎，需配 `ECE_ONYX_BASE` + `ECE_ONYX_COOKIE_FILE`
 
+**检索请求开关 `skip_query_expansion`（OEI-012 新增，连接器层）**
+
+`ContentEnginePort.search(query, *, top_k=None, caller=None, skip_query_expansion=False)`
+——两个适配器（`onyx` / `mock`）**同构**接受该形参，默认 `False`。
+
+| 取值 | 语义 | 线上请求体 |
+|---|---|---|
+| `False`（默认） | 保持 OEI-012 之前的既有行为，**不做任何默认翻转** | 请求体**不含**该字段（与改动前逐字节一致） |
+| `True` | 转发给引擎的请求级查询扩展开关 | `{"query": ..., "skip_query_expansion": true}` |
+
+Onyx v4.7.8 的 `/api/search` 是 **agentic 检索管线**（LLM 查询扩展 + 服务端 `auto_detect_filters`），
+其中**只有** `skip_query_expansion` 是请求级可控的；`auto_detect_filters` 属服务端设置，
+**请求关不掉**（详见 `onyx-lab/OEI-009/VERDICT.md` §4 与本仓 `TASKS.md` 附录 S）。
+
+> **注意（当前边界）**：该开关目前**只在连接器层**（Python Port）暴露，
+> **尚未**提升到 ECE 的 HTTP API —— 上表两个端点的请求体/查询串都**没有**对应字段。
+> 之所以先落连接器层：OEI-012 需要的是"能实测的两档对比"，而不是先给客户面加参数。
+> 三处接入点与实测数据见 `onyx-lab/OEI-012/`（`04-retrieval-matrix.json`、`workspace/retrieval-decision.md`）。
+
+**检索可复现性 —— 已知结论（OEI-012 实测，2026-09-26；真引擎 72 次调用）**
+
+| 指标 | `expansion_on`（默认） | `expansion_off` |
+|---|---|---|
+| 同 query 3 次召回集合**完全一致**比例 | 0.833（10/12） | **1.000（12/12）** |
+| 两两 Jaccard 均值 | 0.926 | **1.000** |
+| 延迟 median / mean | 5.02s / 10.67s | **1.47s / 2.25s** |
+| hit@1 / hit@3（12 条评测集） | 0.0% / 0.0% | 0.0% / 0.0% |
+
+> **三条可复现的结论，按重要性排序：**
+> 1. **召回命中率当前是 0%**（hit@1 = hit@3 = 0%，两档皆然）。已排除"索引没建好"：
+>    三份目标文档在同一批实验里都被实际召回过，**逐字查询也召不回原文** →
+>    这是**排序问题，不是索引问题**。**不要**把本节的开关当成召回修复。
+> 2. **`expansion_off` 的召回是确定性可复现的**（1.000），不确定性来自
+>    query expansion 那一步的 LLM；关掉它即消除。
+> 3. 因此**默认值保持 `False`**：翻转能买到复现性与延迟，**买不到命中率**，
+>    且会让候选集变窄（q05 3→2 条、q11 3→1 条）。详见 `workspace/retrieval-decision.md` §4。
+
 **示例**：
 
 ```bash

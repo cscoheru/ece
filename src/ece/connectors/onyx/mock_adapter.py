@@ -144,6 +144,7 @@ class MockContentEngineAdapter:
         *,
         top_k: int | None = None,
         caller: EngineCallerContext | None = None,
+        skip_query_expansion: bool = False,
     ) -> list[EngineDocument]:
         start = time.perf_counter()
         # simulate ~50ms "engine work" so latency is non-zero
@@ -154,9 +155,17 @@ class MockContentEngineAdapter:
             results = all_docs[: max(1, min(top_k, len(all_docs)))]
         else:
             results = all_docs
+        # OEI-012 §A4: the mock accepts the request-level switch for signature
+        # isomorphism with the real adapter (A6) and records it in `audit_log`,
+        # which is how the DB-free test proves the wire-through without a
+        # network. The mock's result set is deliberately NOT affected: it is a
+        # fixed fixture independent of corpus/expansion, so inventing a
+        # behavioural difference here would be dishonest. The real two-mode
+        # difference is measured against the live engine (evidence 04/05).
         # record latency as float seconds
         self._last_latency = time.perf_counter() - start
-        self._audit("search", caller=caller, result=f"hits={len(results)}", query=query, top_k=top_k)
+        self._audit("search", caller=caller, result=f"hits={len(results)}", query=query,
+                    top_k=top_k, skip_query_expansion=skip_query_expansion)
         return list(results)
 
     async def engine_status(

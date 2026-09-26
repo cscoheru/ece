@@ -214,6 +214,7 @@ class ContentEnginePort(Protocol):
         *,
         top_k: int | None = None,
         caller: EngineCallerContext | None = None,
+        skip_query_expansion: bool = False,
     ) -> list[EngineDocument]:
         """Run a search query and return up to top_k documents (engine's default if None).
 
@@ -221,6 +222,13 @@ class ContentEnginePort(Protocol):
         MUST raise EngineError on transport / HTTP / parsing failures.
         `caller` is for audit only (does not affect results — see CE
         permission-limitation note in module docstring).
+
+        `skip_query_expansion` (OEI-012) forwards the engine's own
+        request-level query-expansion switch to the backend. It defaults to
+        False, which preserves the pre-existing behaviour exactly; the flag is
+        opt-in and no caller flips it by default. Onyx v4.7.8 only exposes this
+        single request-level retrieval switch (server-side `auto_detect_filters`
+        is not request-controllable), so it is the whole of the A4 surface.
         """
         ...
 

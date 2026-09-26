@@ -830,3 +830,105 @@ risk_check **9** / proposal_play **8** / deliverable_template **7**。
   pytest 用例，要求每条"带具体行业"的对象都有锚点），那需要在下一刀里显式授权
   **新增测试文件**——本刀的任务书虽然允许新增测试文件，但 A0–A11 未要求，
   为遵守"不做没要求的事"故未加。
+
+## 附录 S — 检索质量：召回评测集 + 召回可复现 + 一项实测改进（OEI-012，2026-09-26）
+
+> **本刀首次把"引擎检索质量"从主观印象变成可复现的数字**，也是唯一一刀
+> **必须用真引擎取证**（失败路径同样不得用 mock 顶替）。任务书 `onyx-lab/OEI-012/TASK.md`（v1）。
+> 证据 `onyx-lab/OEI-012/evidence/`；决策 `onyx-lab/OEI-012/workspace/retrieval-decision.md`。
+
+### S.1 评测集：ground truth 可溯源（A1）
+
+`data/eval/retrieval/consulting-demo.json` —— **12 条**（9 hit + 3 miss），语料为项目 1 的
+4 份文档（3 份演示文档 + 1 份受限对照）。每条含 `query / expected_title / kind / rationale`，
+**rationale 逐条引三份演示文档原文**（源文本 `onyx-lab/OEI-001/workspace/*.md`），可人工复核。
+
+**`miss` 语义（容易搞错，这里写死）**：`expected_title` **不应出现在召回集里**；
+**不是**"期望引擎返回 0 条"。引擎返回 5 条其它文档不算 miss 失败。
+
+### S.2 命中率实测：0%（A3）—— 本刀最重要的负面发现
+
+真引擎（`ECE_CONTENT_ENGINE=onyx`）、N=3、两档共 **72 次调用**（原始数据
+`evidence/04-retrieval-matrix.json`，汇总 `05-hit-repro-summary.txt`）：
+
+| 档位 | hit@1 | hit@3 | 误召回 |
+|---|---|---|---|
+| `expansion_on`（现状默认） | **0.0%** | **0.0%** | 3/9 |
+| `expansion_off` | **0.0%** | **0.0%** | 3/9 |
+
+**9 条 hit query × 3 次 × 2 档 = 54 次，目标文档一次都没进前 3。**
+
+关键在于**这不是索引坏了**：三份目标文档在矩阵内都被实际召回过
+（CASE 18 次、METH 6 次、PLAY 4 次），对照文档被召回 61 次。且 q05 的 query
+`MECE 的排他性和穷尽性怎么检验` 是 `methodology-framework.md` 里的**逐字标题句**，
+**逐字查询也召不回原文**。
+
+> **定性结论：这是排序问题，不是索引问题。** `skip_query_expansion` 对此**毫无帮助**
+> （两档同等 0%）。本刀的价值不在提升命中率，而在**把"0% 是索引坏了还是排不上来"
+> 这个会决定后续所有工作的分岔口判死了**。
+
+### S.3 召回可复现（A2）—— 本刀把"可复现"当验收面的直接收获
+
+| 档位 | 3 次去重 title 集完全一致 | 两两 Jaccard 均值 |
+|---|---|---|
+| `expansion_on` | 10/12 = **0.833** | **0.926** |
+| `expansion_off` | 12/12 = **1.000** | **1.000** |
+
+不稳定的是**两条** query（q09 `交付 kickoff 会议要讲清哪三件事`、q11 `研发团队 OKR 绩效考核办法`），
+症状相同 —— **第 1 次与后两次不一致**（两条的 r1~r2 = r1~r3 = 0.333，r2~r3 = 1.0）；
+两条在 `expansion_off` 下三次全同。逐次两两 Jaccard 明细见 `05-hit-repro-summary.txt`。
+
+**不确定性来自 query expansion 那一步（LLM 参与）；关掉它就消除了。**
+
+### S.4 改进实现：`skip_query_expansion` 接入（A4）
+
+`ContentEnginePort.search()` 新增形参 `skip_query_expansion: bool = False`，三处接入：
+`port.py`（Protocol 声明）/ `onyx_adapter.py`（**真发到请求体**）/ `mock_adapter.py`（同构接受 +
+记入 `audit_log`）。**默认 `False`，无默认翻转。**
+
+两个实现细节值得记：
+
+1. **`False` 时字段整体不发送**（不是发 `false`）—— 这样默认路径的请求体与 OEI-012 之前
+   **逐字节一致**，老引擎不会看到未知字段。
+2. **`mock` 不装作有行为差异**：它的结果集是与语料无关的固定 fixture，若为它编一个
+   "关掉 expansion 就少几条"的行为就是造假。mock 只负责**同构接受 + 审计可见**，
+   两档的真实差异一律以真引擎为准。
+
+**扫描器有牙**：`workspace/mutation_check.sh` 把真正的接线挖掉 → 测试必须变红；
+`evidence/03-unit-test-raw.txt` 记录了 基线绿 / 变异红 / 还原绿 三段。新增 12 条 DB-free 用例
+（`tests/unit/test_skip_query_expansion.py`，`httpx.MockTransport` 抓**真实发出的请求体**，
+不是只比签名）。
+
+### S.5 代价与决策：`expansion_off 更优`，但**默认不翻转**（A5）
+
+| 轴 | `expansion_on` | `expansion_off` | 结论 |
+|---|---|---|---|
+| hit@1 / hit@3 | 0.0% / 0.0% | 0.0% / 0.0% | **无差异** |
+| 复现性 | 0.833 | **1.000** | off 更优 |
+| 延迟 median / mean | 5.02s / 10.67s | **1.47s / 2.25s** | off 更优（3.41× / 4.74×） |
+| LLM 往返 | 36/36 次都走（**无一次 <2s**） | 34/36 次 <2s | off 更优 |
+
+结论：**`expansion_off 更优`**（三轴严格更优，一轴持平，任何一轴都不更差）。
+
+**但默认值仍是 `False`。** 这是**有数字支撑的不翻转**：翻转能买到复现性与延迟，
+**买不到命中率**（两档同为 0%），却会改变所有调用方（含 consulting library）的行为；
+且 `expansion_off` 会让候选集**变窄**（q05 3→2 条，q11 3→1 条）——在排序问题解决前
+先收窄候选集，是拿未验证的假设换已量化的收益。正确顺序是**先解决排序，再复测**。
+
+### S.6 转出 / 遗留
+
+- **排序问题是本刀查出的最大遗留**：hit@k = 0% 而文档明明可召回。`/api/search` 是
+  agentic 管线，**唯一请求级开关就是 `skip_query_expansion`**（`auto_detect_filters`
+  是服务端设置，请求关不掉）。要真正修排序，得动 Onyx 服务端配置或换检索路径——
+  **超出本刀授权**（本刀明令不碰 Onyx 配置）。建议下一刀先定性排序成因。
+- **`skip_query_expansion` 目前只在连接器层**，**未**提升到 ECE 的 HTTP API
+  （见 `docs/API.md` §10 的显式说明）。这是刻意的：本刀要的是"能实测的两档对比"，
+  不是先给客户面加参数。
+- **LLM token 代价未能量化**：`/api/search` 响应体不含 usage 字段，引擎日志也不吐 token 数。
+  本刀用**延迟分布形状**（`expansion_on` 36/36 次 ≥3.3s vs `expansion_off` 34/36 次 <2s）
+  作为"是否走 LLM"的可测替代口径，**不编 token 数**。
+- **样本小**：12 query、单一语料、N=3。足以定性（0% vs 0%、1.000 vs 0.833），
+  不足以给置信区间。
+- **`evidence/04-retrieval-matrix.json` 的 `started_at` 与 `finished_at` 相同**：
+  runner 的时间戳记录缺陷（两个都写在收尾时刻），跑完后已在 `retrieval_runner.py` 修正；
+  该证据文件**未回改**（不回改证据）。权威起始时刻取 `04b-run-log.txt` 首行 `09:46:22`。
