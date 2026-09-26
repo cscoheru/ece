@@ -680,3 +680,153 @@ KC-001 留下的 6 处与语料规模耦合的断言，其中**四处**按 TASK 
 - **facets 仍只返回值集合，不含计数**：本刀的"值 → 命中数"聚合表是**证据**里算的，
   不是 API 返回的。若前端要在下拉里显示条数，需要改 `FacetsResponse`（会动键集合）——
   那是一次**契约变更**，不在本刀范围。
+
+## 附录 R — 咨询内容加深：行业锚点 + 每行业 ≥4 + 行业说明补齐（OEI-014，2026-09-26）
+
+> 本刀仍是**内容刀**，且是**纯新增刀**：只追加种子对象，**既有 65 条之前的那 45 条
+> 一个字段都不动**（整对象 sha256 逐条相等）。任务书 `onyx-lab/OEI-014/TASK.md`（v1）。
+> 证据 `onyx-lab/OEI-014/evidence/`。
+
+### R.1 行业锚点：词边界安全、可机检（步骤 0 / 1）
+
+附录 Q 把 24 条对象标成 `cross_industry` 时用的是"关键词表推导"（宽松），
+本刀把依据收紧为**可机检的锚点规则**（`workspace/anchor_scan.py`）：
+
+| # | 规则 | 为什么 |
+|---|---|---|
+| ① | 锚点必须落在对象**自己的 `title` 或 `summary`** | `practice` / `methods` / `problem_types` 里出现行业词，只说明"这条通用方法**用过**在某行业"，不等于"这条内容**属于**该行业" |
+| ② | ASCII 关键词用 `\b...\b`（大小写不敏感） | 子串匹配是假阳性的根源 |
+| ③ | 只收**具体行业词**，弱词不作判据 | 见下 |
+
+**被明令排除的弱词**（`WEAK_TOKENS`）：`ai` / `public` / `tech` / `制造(业)` /
+`供应链`·`supply_chain` / `运输`。理由：`ai` 是 `supply_ch**ai**n`、
+`data_av**ai**lability` 的子串；`public` 可作普通词义且是 `public_benchmark` 的一部分；
+`制造 / 制造业` 可以是在讲"**用于**制造业与服务运营场景"（范围），不是内容所属行业；
+`供应链` / `运输` 是所有行业都有的通用概念。
+
+**4 条已知假阳性必须仍被判为"无锚点"**（回归样例，`REGRESSION_SAMPLES`）：
+
+| 对象 | 附录 Q 里的假阳性来源 | 本刀严格扫描 |
+|---|---|---|
+| `methodology-value-chain-003` | `practice` 里的 `supply_chain` → 子串 `ai` | 无锚点 ✓ |
+| `methodology-lean-waste-walk-005` | `summary` 里的"**制造业**与服务运营场景" | 无锚点 ✓（**注意：这条命中在 summary 里**，所以只靠"限定 title/summary"挡不住，必须同时有"具体词"规则） |
+| `methodology-benchmarking-public-010` | `methods` 里的 `public_benchmark` → 子串 `public` | 无锚点 ✓ |
+| `risk-check-data-availability-001` | `problem_types` 里的 `data_availability` → 子串 `ai` | 无锚点 ✓ |
+
+**扫描器有牙（不是"扫不出东西所以看起来通过"）**：`anchor_scan.py::test_teeth()`
+注入一个正例（含"某城商行信贷审批"→ 必须报 `banking`）与一个反例
+（含 `supply_ch**ai**n` / `data_av**ai**lability` 的 ASCII 串 → 严格模式必须**报不出**
+`technology`），并断言 4 条回归样例仍无锚点。`--loose` 对照模式可**复现**附录 Q 的
+4 条假阳性，证明两个模式的差异确实是词边界与词表，而不是实现坏了。
+
+### R.2 有界加深：45 → 65（步骤 2 / 3）
+
+**新增 20 条**，10 个具体行业**各 +2**（每条都对齐到一个具体行业，不是撒胡椒面）：
+
+| 行业 | 新增 | 加深后 |
+|---|---|---|
+| `banking` | `case-banking-credit-approval-014`、`risk-check-banking-branch-007` | 2 → **4** |
+| `consumer_goods` | `case-consumer-goods-distributor-015`、`proposal-play-consumer-goods-listing-007` | 2 → **4** |
+| `energy` | `case-energy-grid-load-016`、`risk-check-energy-maintenance-008` | 2 → **4** |
+| `healthcare` | `case-healthcare-outpatient-017`、`deliverable-template-healthcare-005` | 2 → **4** |
+| `insurance` | `industry-note-cn-insurance-2026-007`、`risk-check-insurance-underwriting-009` | 2 → **4** |
+| `logistics` | `case-logistics-warehouse-018`、`proposal-play-logistics-network-008` | 2 → **4** |
+| `manufacturing` | `deliverable-template-manufacturing-006`、`methodology-manufacturing-oee-011` | 2 → **4** |
+| `public_sector` | `industry-note-cn-public-sector-2026-008`、`case-public-sector-permit-cycle-019` | 2 → **4** |
+| `retail` | `deliverable-template-retail-007`、`methodology-retail-shelf-012` | 2 → **4** |
+| `technology` | `industry-note-cn-technology-2026-009`、`case-technology-rd-delivery-020` | 2 → **4** |
+
+**每条新增对象都附锚点依据**（`evidence/03-anchor-basis.json`）：锚点词 + 所在字段 +
+原句，并机检该锚点是**该对象自身 `title`/`summary` 的子串**。20/20 有锚点。
+
+**前后对照**（`evidence/04-coverage-before-after.json`）：
+
+| 目标 | 阈值 | 前（OEI-011 之后） | 后 |
+|---|---|---|---|
+| 总数 | 65 ≤ N ≤ 70 | 45 | **65** |
+| 每个具体行业 | ≥ 4 | 全部 = 2 | **全部 = 4** |
+| 每个具体行业有 `industry_note` | ≥ 1 | **3 个行业没有** | **10 个行业各 1 条** |
+| `deliverable_template` | ≥ 6 | 4 | **7** |
+| `cross_industry` | ≥ 10 | 26 | **26**（本刀不改既有对象，故不变） |
+
+**实际类型分布（OEI-014 之后）**：case **20** / methodology **12** / industry_note **9** /
+risk_check **9** / proposal_play **8** / deliverable_template **7**。
+附录 Q 的类型下限（10/10/6/4/4/2）全部继续满足。
+
+**纯新增是机检出来的，不是自称的**：
+- `evidence/01b-existing-45-unchanged-hashes.txt`：既有 45 条**整对象**规范化 sha256
+  与 `c30e50e` 逐条相等（45/45）。本刀是纯新增刀，所以要求的是**整对象**相等，
+  不是附录 Q 那种"除某个字段外相等"。
+- `evidence/01c-seed-diff-stat.txt`：`git diff --numstat` = **713 插入 / 0 删除**。
+- 写盘前两道守卫（`workspace/apply_increment.py`）：①种子文件能被自身的序列化器
+  （`json.dumps(..., ensure_ascii=False, indent=2)`）**逐字节**复原，否则重写会顺手
+  重排未改动的对象；②当前文件与 `c30e50e` **完全一致**（开工前无其它漂移）。
+
+### R.3 三个缺失 `industry_note` 的行业补齐（步骤 3）
+
+`insurance` / `public_sector` / `technology` 在 OEI-011 之后**仍没有** `industry_note`
+（其余 7 个行业各有 1 条）。本刀各补 1 条，且 NOTE 本身也带锚点：
+- `industry-note-cn-insurance-2026-007`：锚点 `寿险` / `核保` / `理赔` / `财险` / `保险`
+- `industry-note-cn-public-sector-2026-008`：锚点 `一网通办` / `政务` / `政务大厅`
+- `industry-note-cn-technology-2026-009`：锚点 `互联网` / `软件` / `科技企业`
+
+补后 10 个具体行业 `industry_note` 覆盖 = **10/10**（每行业恰好 1 条）。
+
+### R.4 契约不回归 + facets 可用性升级（步骤 4 / 5）
+
+**契约逐键对照**（`evidence/08-contract-regression.txt`）：`GET /library`、
+`GET /facets` 的**键集合**与 `c30e50e` 的 `LibraryResponse` / `FacetsResponse` /
+`KnowledgeObject` 字段**逐键相等**；`items[0]` 的键集合与 `KnowledgeObject` 一致。
+变化的是**值集**（`total` 45 → 65），不是键集 → **前端 `app.js` 不需要改**。
+
+**facets 可用性从"非空"升级为"可浏览"**（`evidence/07-facet-and-filter.json`，
+走真实 HTTP 面 `fastapi.testclient`，DSN 指死端口、`ECE_CONTENT_ENGINE=mock`）：
+
+| 保证 | OEI-011 | OEI-014 | 实测 |
+|---|---|---|---|
+| 每个取值命中 ≥ 1（下拉无空选项） | ✅ | ✅ | 11/11 通过 |
+| **每个具体行业命中 ≥ 4** | — | ✅ | 10 个行业各 **4** |
+| **每个具体行业命中 ≥ 1 条 `industry_note`** | — | ✅ | 10/10 |
+| **note 的 id 集合：接口 vs 种子逐 id 相等** | — | ✅ | 10/10 |
+
+最后一行是防"接口能查、内容其实没有"的交叉验证：把
+`GET /library?client_industry=<v>&type=industry_note` 返回的 id 集合与直接从种子文件
+按同条件筛出的 id 集合比较，必须**逐 id 相等**。`cross_industry` 26 条不在"≥4"的
+分子里（它是通用档，不是具体行业），但仍在"≥1"里。
+
+### R.5 改动文件清单（OEI-014）
+
+内容（**唯一实质改动**）：
+- `src/ece/consulting/seed/consulting_objects.json`（**只追加 20 条**，既有 45 条逐字节不变）
+
+文档：
+- `docs/API.md`（§11 行业轴：对照表加 OEI-014 列 + 可用性保证升为 ≥4 / note 覆盖）
+- `TASKS.md`（本附录 R）
+
+**未改**（本刀明令冻结）：
+- `src/ece/consulting/metadata.py`（`ALLOWED_*` 一字未动 → facets 仍是 **11** 个取值，
+  本刀**不新增词表值**）
+- `tests/**`（**既有断言一个都没改**。§8 规定：若发现某条断言必须改 → 停手报 BLOCKED。
+  本刀全程 65 条内容**没有触碰任何既有断言**，故无 BLOCKED。）
+- `pyproject.toml` / `uv.lock`（零 diff）、`ece/demos/spa/**`（逐字节不变）、
+  引擎 / 检索 / 记忆 / 三域业务断言、Onyx 上游 / compose / `.env`
+
+### R.6 转出 / 遗留
+
+- **`test_consulting_seed_count.py` 的 docstring 仍描述 OEI-011 的现值（45）**：
+  OEI-011 把它改成了 "FLOORS" 叙述并写下当时的总数。本刀 §8/A6 明令
+  **不得改任何既有测试文件**，故该 docstring 未同步。它**不影响判定**
+  （下限断言 `>=` 对 65 条依然成立，全绿），但**现值以本附录 R 与
+  `evidence/04-coverage-before-after.json` 为准**，不要以那条 docstring 为准。
+- **附录 Q.6 的三条遗留原样带过来**：`industry-note-cn-consumer-2026-002` 带 2 个具体
+  行业（若要收窄 §3.1.3 的"恰好 1 个"需显式授权）；`methodology-mckinsey-7s-004`
+  的 id 含竞品名（改 id 属改既有对象，本刀无权）；行业轴仍只有 10 个具体行业
+  + 1 个通用档（扩 `ALLOWED_INDUSTRIES` 是第二项词表变更，本刀不做）。
+- **`case` 与 `industry_note` 的数量增长空间**：本刀把 `case` 做到 20 条、
+  `industry_note` 做到 9 条，都已显著高于 KC-001 §4.2 的建议分布；若下一刀继续加深，
+  需先想清楚"加深到什么程度算够"，否则内容会开始注水。
+- **锚点扫描器仍只在 `onyx-lab/OEI-014/workspace/` 里**：它是**证据工具**，不是
+  产品代码（未进 `ece/`，无新依赖）。若希望它成为**长期内容闸门**（例如新增一条
+  pytest 用例，要求每条"带具体行业"的对象都有锚点），那需要在下一刀里显式授权
+  **新增测试文件**——本刀的任务书虽然允许新增测试文件，但 A0–A11 未要求，
+  为遵守"不做没要求的事"故未加。

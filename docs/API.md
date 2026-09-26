@@ -492,11 +492,13 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 
 ## 11. Consulting Knowledge Library（KC-001 + OEI-006 引擎合并）
 
-> 视图 D「咨询知识库」的两个数据来源：**静态目录**（`45` 个 file-backed 种子对象）与
+> 视图 D「咨询知识库」的两个数据来源：**静态目录**（`65` 个 file-backed 种子对象）与
 > **引擎召回**（来自内容引擎已索引的真实文档）。两者在同一个响应里以**并列字段**返回，
 > 互不覆盖；静态侧语义与字段**完全未变**，引擎结果只走新增字段。
 >
-> **`45` 的来历**：KC-001 基线是 `36`，OEI-011 按有界规则新增 9 条（补薄行业与薄类型）。
+> **`65` 的来历**：KC-001 基线是 `36`，OEI-011 按有界规则新增 9 条到 `45`，
+> OEI-014 再做**行业加深**新增 20 条到 `65`（每行业 2 → 4）。三次都是**只增不改**：
+> 既有对象的所有字段逐字节不变，A1 用逐条哈希证明。
 > 「素材不得少于 KC-001 基线」是**下限**，不是钉死数量——`static_catalog_size` 与
 > `total` 的契约是 `>= 36`。
 
@@ -528,7 +530,7 @@ curl -s 'http://127.0.0.1:8000/engine/status?q=问题树怎么用' | less
 {
   // ---- 静态目录（KC-001，语义与字段均未改变）----
   "items":   [ /* KnowledgeObject[] */ ],
-  "total":   45,
+  "total":   65,
   "limit":   24,
   "offset":  0,
   "facets":  { "types": [], "practices": [], "engagement_phases": [],
@@ -601,7 +603,7 @@ curl -s --get --data-urlencode 'q=问题树怎么用' \
 ```
 
 > 上面这个例子恰好是"两个来源独立"的样本：该 query 静态目录 0 命中、引擎 1 条。
-> 空 query 时静态侧返回全部 45 条且 `engine_status="skipped"`。
+> 空 query 时静态侧返回全部 65 条且 `engine_status="skipped"`。
 
 **性能注意**：`ok` 路径的响应时间取决于内容引擎，实测 Onyx 稳态约 **4.2 秒**、
 冷启动首查可达 **15 秒**（ECE 侧适配器超时 60 秒）。经本机 `cut_045_local_origin.py`
@@ -625,16 +627,18 @@ curl -s http://127.0.0.1:8000/api/v1/consulting/facets
 > 设计动机：`/library` 的 `facets` 是全集（不随 query 收窄），所以前端可在进入页面前
 > 先取一次 `/facets` 用于侧栏筛选器；两个端点契约同构，可互换消费。
 
-#### `client_industries`（行业轴）的语义 —— OEI-011 之后
+#### `client_industries`（行业轴）的语义 —— OEI-011 / OEI-014 之后
 
 行业轴是**数据驱动**的：前端把 `client_industries` 原样填进行业下拉（`demos/spa/app.js`
 拉本端点），因此"这个下拉有没有用"完全由**内容**决定，不由前端代码决定。
 
-| | OEI-011 之前 | OEI-011 之后 |
-|---|---|---|
-| `client_industry` 为空的种子对象 | 24 / 36 | **0 / 45** |
-| 具体行业里"只有 1 条对象"的 | 7 个 | **0 个** |
-| `client_industries` 的取值 | 10 个具体行业 | 10 个具体行业 + **`cross_industry`** |
+| | OEI-011 之前 | OEI-011 之后 | **OEI-014 之后** |
+|---|---|---|---|
+| `client_industry` 为空的种子对象 | 24 / 36 | 0 / 45 | **0 / 65** |
+| 具体行业里"只有 1 条对象"的 | 7 个 | 0 个 | **0 个** |
+| **每个具体行业的对象数** | 1–2 | 2 | **4** |
+| **每个具体行业是否有 `industry_note`** | 3 个行业没有 | 3 个行业没有 | **10 个行业各有 ≥1** |
+| `client_industries` 的取值 | 10 个具体行业 | 10 个具体行业 + `cross_industry` | 同左（本刀**不新增词表值**） |
 
 **语义**：`cross_industry` = **通用 / 跨行业**，表示"这条方法 / 模板 / 风险清单不针对特定行业"。
 它是一条**诚实性**取值，不是占位符——没有它，一条通用方法只能硬贴一个具体行业（伪造）
@@ -642,9 +646,20 @@ curl -s http://127.0.0.1:8000/api/v1/consulting/facets
 `cross_industry`**；只有 `methodology` / `proposal_play` / `deliverable_template` /
 `risk_check` 里确实是通用的对象才标它。
 
-**可用性保证（机检，见 `TASKS.md 附录 Q`）**：对 `client_industries` 里的**每一个**取值 `v`，
-`GET /api/v1/consulting/library?client_industry=<v>` 都命中 **≥ 2** 条。
-即下拉里**不存在"选出来是空的"选项**。
+**可用性保证（机检，见 `TASKS.md 附录 Q` / `附录 R`）**：
+
+1. 对 `client_industries` 里的**每一个**取值 `v`，
+   `GET /api/v1/consulting/library?client_industry=<v>` 都命中 **≥ 1** 条
+   —— 即下拉里**不存在"选出来是空的"选项**（OEI-011 已保证，OEI-014 仍成立）。
+2. 对**10 个具体行业**（`cross_industry` 是通用取值，不计入）里的每一个 `v`，
+   同一次调用都命中 **≥ 4** 条 —— 下拉选出来的不是一个"孤例"，而是一个可浏览的集合。
+3. 每个具体行业 `v` 都至少命中 **1 条 `industry_note`**
+   （`GET /api/v1/consulting/library?client_industry=<v>&type=industry_note`），
+   即每个行业都有**自己的**行业说明，而不是靠通用方法凑数；且该调用返回的 id 集合与
+   种子文件里同条件的 id 集合**逐 id 相等**（防止"接口能查、内容其实没有"）。
+
+三条都由 `onyx-lab/OEI-014/workspace/verify_api.py` 走真实 HTTP 面复算，
+原始输出见 `onyx-lab/OEI-014/evidence/07-facet-and-filter.json`。
 
 ### GET /api/v1/consulting/objects/{object_id}
 
@@ -714,7 +729,7 @@ GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
       "suggested_metadata": { ... }
     }
   ],
-  "static_catalog_size": 45,
+  "static_catalog_size": 65,
   "metadata_vocabulary_check": "ok"   // "dropped" iff 有越界元数据被丢弃
 }
 ```
@@ -729,7 +744,7 @@ GET  /api/v1/consulting/documents/{document_id}   — 轮询索引状态
 **白名单**（`ALLOWED_EXTENSIONS`，源码常量）：`.md` `.txt` `.docx` `.pdf`。
 文本抽取由 Onyx 完成 —— ECE 侧不做任何文本解析（**OEI-007 坚持零新依赖**，二进制样本用 stdlib `zipfile + XML` 构造，见 `09-binary-format.json`）。
 
-**元数据词表**（由种子对象的取值集合派生；OEI-011 之后种子为 45 条对象）：
+**元数据词表**（由种子对象的取值集合派生；OEI-014 之后种子为 **65** 条对象）：
 
 | 字段 | 取值来源 |
 |---|---|
