@@ -45,13 +45,16 @@ ALLOWED_EXTENSIONS: frozenset[str] = frozenset(
         ".txt",
         ".docx",
         ".pdf",
+        ".pptx",
+        ".xlsx",
     }
 )
 
-# 4 MiB single file / 16 MiB aggregate — enough for a long consulting deck,
-# small enough that the upload is a single chunk over loopback.
-MAX_SINGLE_FILE_BYTES: int = 4 * 1024 * 1024
-MAX_TOTAL_BYTES: int = 16 * 1024 * 1024
+# 20 MiB single file / 80 MiB aggregate — real consulting decks (pptx/pdf) run
+# well past the original 4 MiB demo limit. Onyx handles these formats natively;
+# the ECE-side check only guards against runaway payloads.
+MAX_SINGLE_FILE_BYTES: int = 20 * 1024 * 1024
+MAX_TOTAL_BYTES: int = 80 * 1024 * 1024
 
 
 def check_extension(filename: str) -> str:
